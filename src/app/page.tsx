@@ -8,7 +8,7 @@ import ExcelUploader from "@/components/customs/ExcelUploader";
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [parsedData, setParsedData] = useState<any[] | null>(null);
+  const [parsedData, setParsedData] = useState(null);
 
   return (
     <div className="flex flex-col items-center mx-auto mt-10">
@@ -22,11 +22,8 @@ export default function Home() {
 
       {/* Parsed Data Preview */}
       <div className="p-6 max-w-md mx-auto mt-10">
-        {parsedData && (
-          <pre className="bg-gray-100 p-4 rounded text-sm overflow-auto max-h-64">
-            {JSON.stringify(parsedData, null, 2)}
-          </pre>
-        )}
+        <p>Total Rows : {parsedData?.length}</p>
+        <p>Total Columns: {parsedData && parsedData.length > 0 ? Object.keys(parsedData[0]).length : 0}</p>
       </div>
     </div>
   );
