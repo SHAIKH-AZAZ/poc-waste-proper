@@ -64,12 +64,6 @@ const UploadedFileInfoCard: React.FC<UploadedFileInfoCardProps> = ({
                       {datasetSizeInfo.fileSizeMB.toFixed(2)} MB
                     </div>
                   </div>
-                  <div className="text-gray-600">
-                    <span className="font-medium">Memory Est:</span>
-                    <div className="text-indigo-600 font-semibold">
-                      ~{datasetSizeInfo.estimatedMemoryUsageMB.toFixed(0)} MB
-                    </div>
-                  </div>
                 </div>
 
                 {/* Dataset Size Indicator */}
@@ -82,7 +76,9 @@ const UploadedFileInfoCard: React.FC<UploadedFileInfoCardProps> = ({
                           : "bg-yellow-100 text-yellow-800"
                       }`}
                     >
-                      {datasetSizeInfo.isVeryLargeDataset ? "⚠ Very Large Dataset" : "⚠ Large Dataset"}
+                      {datasetSizeInfo.isVeryLargeDataset
+                        ? "⚠ Very Large Dataset"
+                        : "⚠ Large Dataset"}
                     </div>
                   </div>
                 )}

@@ -25,7 +25,9 @@ export default function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
       const result = await res.json();
       console.log(result.data);
 
-      onDataParsed(result.data); // send data to parent component
+      onDataParsed(result.data , file.name); // send data to parent component
+      console.log(result.data);
+      
     } catch (err) {
       console.error(err);
     } finally {

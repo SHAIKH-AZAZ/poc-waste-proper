@@ -38,6 +38,12 @@ export default function ExcelPreviewTable({ data }: ExcelPreviewTableProps) {
     return "text";
   };
 
+  function renderCell(val: string | number | object | null | unknown) {
+    if (val === undefined || val === null || val === "") return "—";
+    if (typeof val === "object") return JSON.stringify(val);
+    return val;
+  }
+
   return (
     <div className="w-full max-w-7xl mx-auto p-4 bg-white rounded-xl shadow-lg mb-8">
       <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center text-center gap-2">
@@ -86,11 +92,7 @@ export default function ExcelPreviewTable({ data }: ExcelPreviewTableProps) {
                       width: `${getColumnWidth(j)}px`,
                     }}
                   >
-                    {val !== undefined && val !== null && val !== ""
-                      ? typeof val === "object"
-                        ? JSON.stringify(val)
-                        : val
-                      : "—"}
+                    {renderCell(val) as React.ReactNode}
                   </td>
                 ))}
               </tr>
