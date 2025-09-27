@@ -4,11 +4,13 @@ import { useState } from "react";
 import { handleFileUpload as uploadHandler } from "@/utils/fileHandlers";
 import { HeadDemo } from "@/components/customs/Heading";
 import ExcelUploader from "@/components/customs/ExcelUploader";
+import ExcelPreviewTable from "@/components/customs/ExcelPreviewTable";
+
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [parsedData, setParsedData] = useState(null);
+  const [parsedData, setParsedData] = useState<any[] | null>(null);
 
   return (
     <div className="flex flex-col items-center mx-auto mt-10">
@@ -16,15 +18,10 @@ export default function Home() {
         <HeadDemo />
       </div>
 
-
-      {/* Excel Uploader */}
+      {/* Parsed Data Preview */}
       <ExcelUploader onDataParsed={setParsedData} />
 
-      {/* Parsed Data Preview */}
-      <div className="p-6 max-w-md mx-auto mt-10">
-        <p>Total Rows : {parsedData?.length}</p>
-        <p>Total Columns: {parsedData && parsedData.length > 0 ? Object.keys(parsedData[0]).length : 0}</p>
-      </div>
+      {parsedData && <ExcelPreviewTable data={parsedData}  />}
     </div>
   );
 }
