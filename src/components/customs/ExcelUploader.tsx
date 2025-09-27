@@ -29,15 +29,16 @@ export default function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
 
       console.log("server parsed Data : ", result.data);
       setData(result.data);
+      onDataParsed(result.data);
       // checking for length of json
     } catch (err) {
-        console.error(err);
+      console.error(err);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-};
-const numRows = data?.length || 0;
-const numCols = data && data.length > 0 ? Object.keys(data[0]).length : 0;
+  };
+  const numRows = data?.length || 0;
+  const numCols = data && data.length > 0 ? Object.keys(data[0]).length : 0;
 
   return (
     <div>
