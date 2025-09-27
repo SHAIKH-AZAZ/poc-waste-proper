@@ -39,7 +39,8 @@ export default function ExcelPreviewTable({ data }: ExcelPreviewTableProps) {
   };
 
   function renderCell(val: string | number | object | null | unknown) {
-    if (val === undefined || val === null || val === "") return "—";
+    if (val === undefined || val === null || val === "" || Number.isNaN(val))
+      return "—";
     if (typeof val === "object") return JSON.stringify(val);
     return val;
   }

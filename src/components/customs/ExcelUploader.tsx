@@ -2,9 +2,10 @@
 "use client";
 import React, { useState } from "react";
 import FileUpload from "./FileUpload";
+import { sanitizeExcelData } from "@/utils/sanitizeData";
 
 interface ExcelUploaderProps {
-  onDataParsed: (data: any[]) => void;
+  onDataParsed: (data: any[], fileName: string) => void;
 }
 
 export default function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
@@ -23,11 +24,9 @@ export default function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
 
       if (!res.ok) throw new Error("Upload failed");
       const result = await res.json();
+      const sanitizeData = sanitizeExcelData(result.data);
+      onDataParsed(sanitizeData, file.name);
       console.log(result.data);
-
-      onDataParsed(result.data , file.name); // send data to parent component
-      console.log(result.data);
-      
     } catch (err) {
       console.error(err);
     } finally {
