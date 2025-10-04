@@ -1,15 +1,18 @@
 "use client";
 import React from "react";
 
+import type { BarCuttingRaw } from "@/types/BarCuttingRow";
+
 interface ExcelPreviewTableProps {
-  data: any[];
+  data: BarCuttingRaw[];
   maxRows?: number; // optional preview row limit
+  selectedDia?: number | null; // optional: to show filter status
 }
 
-export default function ExcelPreviewTable({ data }: ExcelPreviewTableProps) {
+export default function ExcelPreviewTable({ data, selectedDia }: ExcelPreviewTableProps) {
   if (!data || data.length === 0) return null;
 
-  const headers = Object.keys(data[0]);
+  const headers = Object.keys(data[0]) as (keyof BarCuttingRaw)[];
 
   // Calculate column width based on content
   const getColumnWidth = (index: number) => {
@@ -35,20 +38,34 @@ export default function ExcelPreviewTable({ data }: ExcelPreviewTableProps) {
       header.includes("lap")
     )
       return "number";
+    if (header.includes("si no") || header.includes("label") || header.includes("element"))
+      return "text";
     return "text";
   };
 
-  function renderCell(val: string | number | object | null | unknown) {
+  function renderCell(val: string | number | object | null | unknown, header: string) {
     if (val === undefined || val === null || val === "" || Number.isNaN(val))
       return "—";
     if (typeof val === "object") return JSON.stringify(val);
+    
+    // Format float values for Cutting Length and Lap Length
+    if ((header === "Cutting Length" || header === "Lap Length") && typeof val === "number") {
+      return val.toFixed(3);
+    }
+    
     return val;
   }
 
   return (
     <div className="w-full max-w-7xl mx-auto p-4 bg-white rounded-xl shadow-lg mb-8">
       <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center text-center gap-2">
-        <span className="text-2xl">📊</span> Excel Data Preview
+        <span className="text-2xl">📊</span> 
+        Excel Data Preview
+        {selectedDia && (
+          <span className="text-lg bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
+            Filtered: Dia {selectedDia}
+          </span>
+        )}
       </h2>
 
       <div
@@ -93,7 +110,7 @@ export default function ExcelPreviewTable({ data }: ExcelPreviewTableProps) {
                       width: `${getColumnWidth(j)}px`,
                     }}
                   >
-                    {renderCell(val) as React.ReactNode}
+                    {renderCell(val, headers[j]) as React.ReactNode}
                   </td>
                 ))}
               </tr>

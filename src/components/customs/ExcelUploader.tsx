@@ -3,16 +3,22 @@
 import React, { useState } from "react";
 import FileUpload from "./FileUpload";
 import { sanitizeExcelData } from "@/utils/sanitizeData";
+import { validateExcelData, enforceInterface } from "@/utils/dataValidation";
+import { validateHeaders, getHeaderValidationMessage } from "@/utils/excelTemplate";
+import type { BarCuttingRaw } from "@/types/BarCuttingRow";
 
 interface ExcelUploaderProps {
-  onDataParsed: (data: any[], fileName: string) => void;
+  onDataParsed: (data: BarCuttingRaw[], fileName: string) => void;
 }
 
 export default function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFileUpload = async (file: File) => {
     setLoading(true);
+    setError(null);
+    
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -24,15 +30,48 @@ export default function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
 
       if (!res.ok) throw new Error("Upload failed");
       const result = await res.json();
-      const sanitizeData = sanitizeExcelData(result.data);
-      onDataParsed(sanitizeData, file.name);
-      console.log(result.data);
+      
+      // Validate headers first
+      if (result.data.length > 0) {
+        const headers = Object.keys(result.data[0]);
+        const headerValidation = validateHeaders(headers);
+        
+        if (!headerValidation.isValid) {
+          throw new Error(getHeaderValidationMessage(headerValidation));
+        }
+      }
+      
+      // Process data through sanitization and validation pipeline
+      const sanitizedData = sanitizeExcelData(result.data);
+      const validatedData = validateExcelData(sanitizedData);
+      const finalData = enforceInterface(validatedData);
+      
+      if (finalData.length === 0) {
+        throw new Error("No valid data found in Excel file. Please check column headers and data format.");
+      }
+      
+      onDataParsed(finalData, file.name);
+      console.log("Processed data:", finalData);
+      console.log("Original data:", result.data);
     } catch (err) {
-      console.error(err);
+      console.error("Upload error:", err);
+      setError(err instanceof Error ? err.message : "Failed to process file");
     } finally {
       setLoading(false);
     }
   };
 
-  return <FileUpload onFileUpload={handleFileUpload} isLoading={loading} />;
+  return (
+    <div>
+      <FileUpload onFileUpload={handleFileUpload} isLoading={loading} />
+      {error && (
+        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-700 text-sm font-medium">Error: {error}</p>
+          <p className="text-red-600 text-xs mt-1">
+            Expected columns: SI no, Label, Dia, Total Bars, Cutting Length, Lap Length, No of lap, Element
+          </p>
+        </div>
+      )}
+    </div>
+  );
 }

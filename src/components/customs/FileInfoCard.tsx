@@ -3,16 +3,20 @@
 import React from "react";
 import AnimatedNumber from "./AnimatedNumber";
 
+import type { BarCuttingRaw } from "@/types/BarCuttingRow";
+
 // Type for a single Excel row
-export type ExcelRow = Record<string, string | number | boolean | null>;
+export type ExcelRow = BarCuttingRaw;
 
 interface FileInfoCardProps {
   fileName: string;
-  rows: ExcelRow[];
+  rows: BarCuttingRaw[];
   headers: string[];
-  jsonData: ExcelRow[];
+  jsonData: BarCuttingRaw[];
   clearData: () => void;
   downloadResults: () => void;
+  selectedDia?: number | null;
+  totalRows?: number;
   datasetSizeInfo?: {
     fileSizeMB: number;
     estimatedMemoryUsageMB: number;
@@ -28,6 +32,8 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
   jsonData,
   clearData,
   downloadResults,
+  selectedDia,
+  totalRows,
   datasetSizeInfo,
 }) => {
   if (!fileName) return null;
@@ -47,9 +53,16 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
           <div className="space-y-2 mb-4">
             <p className="text-gray-700 font-medium">
               <AnimatedNumber value={rows.length} />{" "}
-              <span className="text-sm text-gray-500">rows</span>,{" "}
+              <span className="text-sm text-gray-500">
+                {selectedDia ? `filtered rows (of ${totalRows} total)` : "rows"}
+              </span>,{" "}
               <AnimatedNumber value={headers.length} />{" "}
               <span className="text-sm text-gray-500">columns</span>
+              {selectedDia && (
+                <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                  Dia {selectedDia} Filter
+                </span>
+              )}
             </p>
             <p className="text-gray-700 font-medium">
               JSON Records:{" "}
