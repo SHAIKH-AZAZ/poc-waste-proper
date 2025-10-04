@@ -6,6 +6,7 @@ import {
   exportCuttingStockResults,
   exportCuttingInstructions,
 } from "@/utils/cuttingStockExport";
+import { exportToExcel } from "@/utils/excelExport";
 
 interface CuttingStockResultsProps {
   greedyResult: CuttingStockResult | null;
@@ -23,6 +24,10 @@ export default function CuttingStockResults({
   
   const handleExportAll = () => {
     exportCuttingStockResults(greedyResult, dynamicResult, fileName);
+  };
+
+  const handleExportExcel = () => {
+    exportToExcel(greedyResult, dynamicResult, fileName);
   };
   if (isLoading) {
     return (
@@ -51,12 +56,20 @@ export default function CuttingStockResults({
             <span className="text-2xl">📐</span> Cutting Stock Optimization
             Results
           </h2>
-          <button
-            onClick={handleExportAll}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-          >
-            <span>📥</span> Export Results
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={handleExportExcel}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+            >
+              <span>📊</span> Export Excel
+            </button>
+            <button
+              onClick={handleExportAll}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+            >
+              <span>📥</span> Export JSON
+            </button>
+          </div>
         </div>
 
         {/* Comparison Summary */}

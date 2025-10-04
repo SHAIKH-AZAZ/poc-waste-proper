@@ -144,6 +144,7 @@ export class DynamicCuttingStock {
             length: segment.length,
             count: 1,
             segmentIndex: segment.segmentIndex,
+            lapLength: segment.lapLength, // Pass through actual lap length
           });
         }
 
@@ -327,6 +328,10 @@ export class DynamicCuttingStock {
 
       for (const cut of pattern.cuts) {
         for (let i = 0; i < cut.count; i++) {
+          // For multi-bar cuts, ALL segments have lap (except if lapLength is 0 in input)
+          // hasLap is true if this segment is part of a multi-bar cut
+          const hasLap = cut.segmentIndex >= 0 && cut.lapLength > 0;
+          
           cuts.push({
             barCode: cut.parentBarCode,
             segmentId: cut.segmentId,
@@ -334,7 +339,8 @@ export class DynamicCuttingStock {
             quantity: 1,
             position: currentPosition,
             segmentIndex: cut.segmentIndex,
-            hasLap: cut.segmentIndex > 0,
+            hasLap: hasLap,
+            lapLength: hasLap ? cut.lapLength : 0, // Use actual lap length if has lap
           });
           currentPosition += cut.length;
         }

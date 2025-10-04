@@ -17,6 +17,7 @@ export interface BarSegment {
   hasLapStart: boolean;        // Lap at beginning
   hasLapEnd: boolean;          // Lap at end
   effectiveLength: number;     // Length including laps
+  lapLength: number;           // Actual lap length from input data
 }
 
 export interface MultiBarCuttingRequest {
@@ -47,6 +48,7 @@ export interface PatternCut {
   length: number;
   count: number;               // How many of this cut in pattern
   segmentIndex: number;
+  lapLength: number;           // Lap length for this cut (0 if no lap)
 }
 
 export interface CuttingBin {
@@ -95,4 +97,5 @@ export interface CutInstruction {
   position: number;           // Position on the bar
   segmentIndex: number;
   hasLap: boolean;
+  lapLength: number;          // Actual lap length (0 if no lap)
 }

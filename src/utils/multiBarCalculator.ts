@@ -138,6 +138,7 @@ export class MultiBarCalculator {
         hasLapStart,
         hasLapEnd,
         effectiveLength: Math.min(effectiveLength, this.STANDARD_LENGTH),
+        lapLength: lapLength, // Store actual lap length from input
       });
     });
 
