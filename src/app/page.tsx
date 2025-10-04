@@ -10,8 +10,8 @@ import CuttingStockResults from "@/components/customs/CuttingStockResults";
 import { clearData, downloadResults } from "@/utils/dataUtils";
 import { transformToDisplayFormat, filterDisplayDataByDia } from "@/utils/barCodeUtils";
 import { CuttingStockPreprocessor } from "@/utils/cuttingStockPreprocessor";
-import { GreedyCuttingStock } from "@/algorithms/greedyCuttingStock";
-import { DynamicCuttingStock } from "@/algorithms/dynamicCuttingStock";
+import { getWorkerManager } from "@/utils/workerManager";
+import { exportAllDiasToExcel } from "@/utils/exportAllDias";
 import type { BarCuttingRaw, BarCuttingDisplay } from "@/types/BarCuttingRow";
 import type { CuttingStockResult } from "@/types/CuttingStock";
 
@@ -23,6 +23,11 @@ export default function Home() {
   const [greedyResult, setGreedyResult] = useState<CuttingStockResult | null>(null);
   const [dynamicResult, setDynamicResult] = useState<CuttingStockResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [greedyProgress, setGreedyProgress] = useState({ stage: "", percentage: 0 });
+  const [dynamicProgress, setDynamicProgress] = useState({ stage: "", percentage: 0 });
+  const [calculationError, setCalculationError] = useState<string | null>(null);
+  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [downloadAllProgress, setDownloadAllProgress] = useState({ current: 0, total: 0, dia: 0 });
 
   const handleClearData = () => {
     clearData(setParsedData, setFileName);
@@ -30,6 +35,8 @@ export default function Home() {
     setSelectedDia(null);
     setGreedyResult(null);
     setDynamicResult(null);
+    setGreedyProgress({ stage: "", percentage: 0 });
+    setDynamicProgress({ stage: "", percentage: 0 });
   };
 
   const handleDataParsed = (data: BarCuttingRaw[], name: string) => {
@@ -40,6 +47,8 @@ export default function Home() {
     setSelectedDia(null);
     setGreedyResult(null);
     setDynamicResult(null);
+    setGreedyProgress({ stage: "", percentage: 0 });
+    setDynamicProgress({ stage: "", percentage: 0 });
   };
 
   // Filter display data based on selected Dia
@@ -54,6 +63,9 @@ export default function Home() {
     setSelectedDia(dia);
     setGreedyResult(null);
     setDynamicResult(null);
+    setGreedyProgress({ stage: "", percentage: 0 });
+    setDynamicProgress({ stage: "", percentage: 0 });
+    setCalculationError(null);
 
     if (dia !== null && displayData) {
       setIsCalculating(true);
@@ -63,20 +75,32 @@ export default function Home() {
         const preprocessor = new CuttingStockPreprocessor();
         const requests = preprocessor.convertToCuttingRequests(displayData);
         
-        // Run both algorithms
-        const greedy = new GreedyCuttingStock();
-        const dynamic = new DynamicCuttingStock();
+        console.log("[Page] Starting calculation with", requests.length, "requests for dia", dia);
         
-        // Calculate in parallel
-        const [greedyRes, dynamicRes] = await Promise.all([
-          Promise.resolve(greedy.solve(requests, dia)),
-          Promise.resolve(dynamic.solve(requests, dia))
-        ]);
+        // Run both algorithms in Web Workers (parallel execution) with progress tracking
+        const workerManager = getWorkerManager();
+        const { greedy: greedyRes, dynamic: dynamicRes } = await workerManager.runBoth(
+          requests, 
+          dia,
+          {
+            greedy: (stage, percentage) => {
+              console.log("[Page] Greedy progress:", stage, percentage);
+              setGreedyProgress({ stage, percentage });
+            },
+            dynamic: (stage, percentage) => {
+              console.log("[Page] Dynamic progress:", stage, percentage);
+              setDynamicProgress({ stage, percentage });
+            }
+          }
+        );
         
+        console.log("[Page] Calculation complete. Greedy:", greedyRes, "Dynamic:", dynamicRes);
         setGreedyResult(greedyRes);
         setDynamicResult(dynamicRes);
       } catch (error) {
-        console.error("Error calculating cutting stock:", error);
+        console.error("[Page] Error calculating cutting stock:", error);
+        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+        setCalculationError(errorMessage);
       } finally {
         setIsCalculating(false);
       }
@@ -91,6 +115,30 @@ export default function Home() {
       downloadResults(filteredDisplayData, downloadFileName);
     }
   };
+
+  const handleDownloadAllDias = useCallback(async () => {
+    if (!displayData) return;
+
+    setIsDownloadingAll(true);
+    setDownloadAllProgress({ current: 0, total: 0, dia: 0 });
+
+    try {
+      await exportAllDiasToExcel(
+        displayData,
+        fileName,
+        (dia, current, total) => {
+          setDownloadAllProgress({ dia, current, total });
+        }
+      );
+    } catch (error) {
+      console.error("[Page] Error downloading all dias:", error);
+      const errorMessage = error instanceof Error ? error.message : "Failed to download all diameters";
+      setCalculationError(errorMessage);
+    } finally {
+      setIsDownloadingAll(false);
+      setDownloadAllProgress({ current: 0, total: 0, dia: 0 });
+    }
+  }, [displayData, fileName]);
 
   return (
     <div className="flex flex-col items-center mx-auto mt-10">
@@ -135,7 +183,63 @@ export default function Home() {
           data={displayData}
           selectedDia={selectedDia}
           onDiaSelect={handleDiaSelect}
+          onDownloadAll={handleDownloadAllDias}
+          isDownloadingAll={isDownloadingAll}
         />
+      )}
+
+      {/* Download All Progress */}
+      {isDownloadingAll && (
+        <div className="w-full max-w-7xl mx-auto p-6 bg-purple-50 border border-purple-200 rounded-xl shadow-lg mb-6">
+          <h3 className="text-lg font-bold text-purple-800 mb-4 flex items-center gap-2">
+            <div className="w-5 h-5 border-3 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+            Processing All Diameters...
+          </h3>
+          <div className="mb-2">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-purple-700">
+                Processing Dia {downloadAllProgress.dia} ({downloadAllProgress.current} of {downloadAllProgress.total})
+              </span>
+              <span className="text-sm font-medium text-purple-700">
+                {downloadAllProgress.total > 0 
+                  ? Math.round((downloadAllProgress.current / downloadAllProgress.total) * 100)
+                  : 0}%
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div 
+                className="bg-purple-500 h-full transition-all duration-300 ease-out"
+                style={{ 
+                  width: `${downloadAllProgress.total > 0 
+                    ? (downloadAllProgress.current / downloadAllProgress.total) * 100 
+                    : 0}%` 
+                }}
+              />
+            </div>
+          </div>
+          <p className="text-sm text-purple-600 mt-3">
+            Running calculations for all diameters and generating Excel file...
+          </p>
+        </div>
+      )}
+
+      {/* Error Display */}
+      {calculationError && (
+        <div className="w-full max-w-7xl mx-auto p-6 bg-red-50 border border-red-200 rounded-xl shadow-lg mb-6">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">⚠️</span>
+            <div>
+              <h3 className="text-lg font-bold text-red-800 mb-2">Calculation Error</h3>
+              <p className="text-red-700">{calculationError}</p>
+              <button
+                onClick={() => setCalculationError(null)}
+                className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Cutting Stock Results */}
@@ -145,6 +249,8 @@ export default function Home() {
           dynamicResult={dynamicResult}
           isLoading={isCalculating}
           fileName={fileName}
+          greedyProgress={greedyProgress}
+          dynamicProgress={dynamicProgress}
         />
       )}
 

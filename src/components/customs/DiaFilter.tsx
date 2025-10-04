@@ -8,9 +8,11 @@ interface DiaFilterProps {
   data: BarCuttingDisplay[];
   selectedDia: number | null;
   onDiaSelect: (dia: number | null) => void;
+  onDownloadAll?: () => void;
+  isDownloadingAll?: boolean;
 }
 
-export default function DiaFilter({ data, selectedDia, onDiaSelect }: DiaFilterProps) {
+export default function DiaFilter({ data, selectedDia, onDiaSelect, onDownloadAll, isDownloadingAll = false }: DiaFilterProps) {
   const uniqueDias = getUniqueDiaFromDisplay(data);
 
   if (uniqueDias.length === 0) return null;
@@ -18,9 +20,34 @@ export default function DiaFilter({ data, selectedDia, onDiaSelect }: DiaFilterP
   return (
     <ClientOnly>
       <div className="w-full max-w-7xl mx-auto p-4 bg-white rounded-xl shadow-lg mb-6">
-        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <span className="text-xl">🔍</span> Filter by Dia
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <span className="text-xl">🔍</span> Filter by Dia
+          </h3>
+          {onDownloadAll && uniqueDias.length > 1 && (
+            <button
+              onClick={onDownloadAll}
+              disabled={isDownloadingAll}
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-2 ${
+                isDownloadingAll
+                  ? "bg-gray-400 text-white cursor-not-allowed"
+                  : "bg-purple-600 text-white hover:bg-purple-700 shadow-md"
+              }`}
+            >
+              {isDownloadingAll ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Processing All Dias...</span>
+                </>
+              ) : (
+                <>
+                  <span>📊</span>
+                  <span>Download All Dias</span>
+                </>
+              )}
+            </button>
+          )}
+        </div>
       
       <div className="flex flex-wrap gap-3 mb-4">
         {/* Show All Button */}

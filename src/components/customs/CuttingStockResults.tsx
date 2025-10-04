@@ -13,6 +13,8 @@ interface CuttingStockResultsProps {
   dynamicResult: CuttingStockResult | null;
   isLoading: boolean;
   fileName?: string;
+  greedyProgress?: { stage: string; percentage: number };
+  dynamicProgress?: { stage: string; percentage: number };
 }
 
 export default function CuttingStockResults({
@@ -20,6 +22,8 @@ export default function CuttingStockResults({
   dynamicResult,
   isLoading,
   fileName = "data",
+  greedyProgress = { stage: "", percentage: 0 },
+  dynamicProgress = { stage: "", percentage: 0 },
 }: CuttingStockResultsProps) {
   
   const handleExportAll = () => {
@@ -32,13 +36,48 @@ export default function CuttingStockResults({
   if (isLoading) {
     return (
       <div className="w-full max-w-7xl mx-auto p-6 bg-white rounded-xl shadow-lg mb-6">
-        <div className="flex items-center justify-center py-12">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <p className="text-gray-600 font-medium">
-              Calculating optimal cutting patterns...
-            </p>
+        <div className="py-8">
+          <h3 className="text-xl font-bold text-gray-800 mb-6 text-center">
+            Calculating Optimal Cutting Patterns...
+          </h3>
+          
+          {/* Greedy Algorithm Progress */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-blue-700">Greedy Algorithm</span>
+              <span className="text-sm font-medium text-blue-700">{greedyProgress.percentage}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div 
+                className="bg-blue-500 h-full transition-all duration-300 ease-out"
+                style={{ width: `${greedyProgress.percentage}%` }}
+              />
+            </div>
+            {greedyProgress.stage && (
+              <p className="text-xs text-gray-600 mt-1">{greedyProgress.stage}</p>
+            )}
           </div>
+
+          {/* Dynamic Programming Progress */}
+          <div className="mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-green-700">Dynamic Programming</span>
+              <span className="text-sm font-medium text-green-700">{dynamicProgress.percentage}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+              <div 
+                className="bg-green-500 h-full transition-all duration-300 ease-out"
+                style={{ width: `${dynamicProgress.percentage}%` }}
+              />
+            </div>
+            {dynamicProgress.stage && (
+              <p className="text-xs text-gray-600 mt-1">{dynamicProgress.stage}</p>
+            )}
+          </div>
+
+          <p className="text-center text-sm text-gray-500 mt-6">
+            Running algorithms in parallel using Web Workers...
+          </p>
         </div>
       </div>
     );

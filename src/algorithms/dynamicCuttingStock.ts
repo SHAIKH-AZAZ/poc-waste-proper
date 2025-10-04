@@ -8,7 +8,6 @@ import type {
   CutInstruction,
 } from "@/types/CuttingStock";
 import { CuttingStockPreprocessor } from "@/utils/cuttingStockPreprocessor";
-import { GreedyCuttingStock } from "./greedyCuttingStock";
 
 interface DPState {
   remainingSegments: Map<string, number>; // segmentId -> count
@@ -35,16 +34,14 @@ export class DynamicCuttingStock {
     // Extract segments
     const allSegments = this.preprocessor.extractAllSegments(diaRequests);
 
-    // For large datasets, use greedy as fallback
-    if (allSegments.length > 200) {
-      console.warn(
-        "Dataset too large for DP, using optimized greedy approach"
-      );
-      return this.optimizedGreedyFallback(diaRequests, dia, startTime);
-    }
-
     // Generate feasible patterns
     const feasiblePatterns = this.generateFeasiblePatterns(allSegments);
+    console.log(`[Dynamic] Generated ${feasiblePatterns.length} feasible patterns`);
+
+    if (feasiblePatterns.length === 0) {
+      console.warn("[Dynamic] No feasible patterns generated! Returning empty result.");
+      return this.createEmptyResult(dia, startTime);
+    }
 
     // Solve using dynamic programming
     const result = this.dpSolve(allSegments, feasiblePatterns);
@@ -131,15 +128,9 @@ export class DynamicCuttingStock {
 
       // Use cutting length (which includes lap) for space calculation
       if (segment.length <= remainingLength) {
-        // Check if any cut in current pattern is from the same parent bar
-        // Segments from the same parent bar cannot be in the same bin (they need to be joined)
-        const hasSameParent = currentCuts.some(
-          (cut) => cut.parentBarCode === segment.parentBarCode
-        );
-        
-        if (hasSameParent) {
-          continue; // Skip this segment
-        }
+        // For pattern generation, we generate patterns with segment TYPES
+        // The same parent bar constraint will be applied during pattern USAGE, not generation
+        // This allows us to generate all feasible patterns
         
         // Find existing cut or create new one
         const existingCutIndex = currentCuts.findIndex(
@@ -201,7 +192,8 @@ export class DynamicCuttingStock {
   }
 
   /**
-   * Solve using dynamic programming
+   * Solve using greedy pattern selection (simplified approach)
+   * Select patterns that maximize utilization and satisfy demand
    */
   private dpSolve(
     segments: BarSegment[],
@@ -214,120 +206,89 @@ export class DynamicCuttingStock {
       segmentCounts.set(segment.segmentId, count + 1);
     }
 
-    // Initialize DP
-    const initialState: DPState = {
-      remainingSegments: segmentCounts,
-      barsUsed: 0,
-      patterns: [],
-    };
+    console.log("[Dynamic] Segment demand:", Array.from(segmentCounts.entries()));
+    console.log("[Dynamic] Available patterns:", patterns.length);
 
-    // Use iterative approach with priority queue
-    const bestState = this.iterativeDP(initialState, patterns);
+    // Sort patterns by utilization (best first)
+    const sortedPatterns = [...patterns].sort((a, b) => b.utilization - a.utilization);
 
-    return bestState;
-  }
+    const usedPatterns: CuttingPattern[] = [];
+    const remaining = new Map(segmentCounts);
 
-  /**
-   * Iterative DP to avoid stack overflow
-   */
-  private iterativeDP(
-    initialState: DPState,
-    patterns: CuttingPattern[]
-  ): DPState {
-    const queue: DPState[] = [initialState];
-    let bestState: DPState = initialState;
-    let iterations = 0;
+    // Greedy pattern selection
+    while (!this.isMapEmpty(remaining)) {
+      let bestPattern: CuttingPattern | null = null;
+      let bestScore = -1;
 
-    while (queue.length > 0 && iterations < this.MAX_ITERATIONS) {
-      iterations++;
-      const currentState = queue.shift()!;
-
-      // Check if all segments satisfied
-      if (this.isStateSatisfied(currentState)) {
-        if (
-          !bestState ||
-          currentState.barsUsed < bestState.barsUsed ||
-          bestState.barsUsed === 0
-        ) {
-          bestState = currentState;
-        }
-        continue;
-      }
-
-      // Try applying each pattern
-      for (const pattern of patterns) {
-        const nextState = this.tryApplyPattern(currentState, pattern);
-        if (nextState) {
-          queue.push(nextState);
+      // Find pattern that satisfies most remaining demand
+      for (const pattern of sortedPatterns) {
+        if (this.canApplyPattern(remaining, pattern)) {
+          const score = this.calculatePatternScore(remaining, pattern);
+          if (score > bestScore) {
+            bestScore = score;
+            bestPattern = pattern;
+          }
         }
       }
 
-      // Sort queue by bars used (best first)
-      queue.sort((a, b) => a.barsUsed - b.barsUsed);
+      if (!bestPattern) {
+        console.warn("[Dynamic] No pattern found to satisfy remaining demand:", Array.from(remaining.entries()));
+        break;
+      }
 
-      // Keep only best states to prevent memory overflow
-      if (queue.length > 100) {
-        queue.splice(100);
+      // Apply pattern
+      usedPatterns.push(bestPattern);
+      for (const cut of bestPattern.cuts) {
+        const current = remaining.get(cut.segmentId) || 0;
+        remaining.set(cut.segmentId, Math.max(0, current - cut.count));
       }
     }
 
-    return bestState;
+    console.log("[Dynamic] Used", usedPatterns.length, "patterns");
+
+    return {
+      remainingSegments: remaining,
+      barsUsed: usedPatterns.length,
+      patterns: usedPatterns,
+    };
   }
 
   /**
-   * Check if all segments are satisfied
+   * Check if map is empty (all values are 0)
    */
-  private isStateSatisfied(state: DPState): boolean {
-    for (const count of state.remainingSegments.values()) {
-      if (count > 0) return false;
+  private isMapEmpty(map: Map<string, number>): boolean {
+    for (const value of map.values()) {
+      if (value > 0) return false;
     }
     return true;
   }
 
   /**
-   * Try to apply pattern to current state
+   * Check if pattern can be applied
    */
-  private tryApplyPattern(
-    state: DPState,
-    pattern: CuttingPattern
-  ): DPState | null {
-    const newRemaining = new Map(state.remainingSegments);
-    let canApply = true;
-
-    // Check if pattern can be applied
+  private canApplyPattern(remaining: Map<string, number>, pattern: CuttingPattern): boolean {
     for (const cut of pattern.cuts) {
-      const remaining = newRemaining.get(cut.segmentId) || 0;
-      if (remaining < cut.count) {
-        canApply = false;
-        break;
+      const available = remaining.get(cut.segmentId) || 0;
+      if (available < cut.count) {
+        return false;
       }
-      newRemaining.set(cut.segmentId, remaining - cut.count);
     }
-
-    if (!canApply) return null;
-
-    return {
-      remainingSegments: newRemaining,
-      barsUsed: state.barsUsed + 1,
-      patterns: [...state.patterns, pattern],
-    };
+    return true;
   }
 
   /**
-   * Optimized greedy fallback for large datasets
+   * Calculate pattern score (how much demand it satisfies)
    */
-  private optimizedGreedyFallback(
-    requests: MultiBarCuttingRequest[],
-    dia: number,
-    _startTime: number
-  ): CuttingStockResult {
-    // Use greedy algorithm as fallback
-    // Import is handled at module level
-    const greedy = new GreedyCuttingStock();
-    const result = greedy.solve(requests, dia);
-    result.algorithm = "dynamic"; // Mark as dynamic (fallback)
-    return result;
+  private calculatePatternScore(remaining: Map<string, number>, pattern: CuttingPattern): number {
+    let score = 0;
+    for (const cut of pattern.cuts) {
+      const demand = remaining.get(cut.segmentId) || 0;
+      score += Math.min(demand, cut.count);
+    }
+    return score;
   }
+
+
 
   /**
    * Generate detailed cutting instructions
