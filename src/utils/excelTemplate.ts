@@ -20,33 +20,36 @@ export const EXPECTED_HEADERS = {
 export const SAMPLE_DATA: BarCuttingRaw[] = [
   {
     "SI no": "1",
-    "Label": "Main Bar",
+    "Label": "B1",
     "Dia": 12,
     "Total Bars": 50,
     "Cutting Length": 5.750,
     "Lap Length": 0.480,
     "No of lap": 2,
-    "Element": "Column"
+    "Element": "Column",
+    "BarCode": "1/B1/12"
   },
   {
     "SI no": "2", 
-    "Label": "Stirrup",
+    "Label": "S1",
     "Dia": 16,
     "Total Bars": 30,
     "Cutting Length": 4.200,
     "Lap Length": 0.640,
     "No of lap": 1,
-    "Element": "Beam"
+    "Element": "Beam",
+    "BarCode": "2/S1/16"
   },
   {
     "SI no": "3",
-    "Label": "Distribution Bar",
+    "Label": "D1",
     "Dia": 10,
     "Total Bars": 75,
     "Cutting Length": 3.150,
     "Lap Length": 0.400,
     "No of lap": 3,
-    "Element": "Slab"
+    "Element": "Slab",
+    "BarCode": "3/D1/10"
   }
 ];
 

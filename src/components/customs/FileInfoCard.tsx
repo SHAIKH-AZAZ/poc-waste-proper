@@ -1,19 +1,19 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import AnimatedNumber from "./AnimatedNumber";
 import ClientOnly from "../ui/ClientOnly";
 
-import type { BarCuttingRaw } from "@/types/BarCuttingRow";
+import type { BarCuttingRaw, BarCuttingDisplay } from "@/types/BarCuttingRow";
 
 // Type for a single Excel row
-export type ExcelRow = BarCuttingRaw;
+export type ExcelRow = BarCuttingDisplay;
 
 interface FileInfoCardProps {
   fileName: string;
-  rows: BarCuttingRaw[];
+  rows: BarCuttingDisplay[];
   headers: string[];
-  jsonData: BarCuttingRaw[];
+  jsonData: BarCuttingDisplay[];
   clearData: () => void;
   downloadResults: () => void;
   selectedDia?: number | null;
@@ -37,11 +37,7 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
   totalRows,
   datasetSizeInfo,
 }) => {
-  const [isClient, setIsClient] = useState(false);
 
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   if (!fileName) return null;
 
@@ -70,9 +66,11 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
               </ClientOnly>{" "}
               <span className="text-sm text-gray-500">columns</span>
               {selectedDia && (
-                <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                  Dia {selectedDia} Filter
-                </span>
+                <ClientOnly>
+                  <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                    Dia {selectedDia} Filter
+                  </span>
+                </ClientOnly>
               )}
             </p>
             <p className="text-gray-700 font-medium">

@@ -71,12 +71,23 @@ export default function ExcelFormatGuide() {
             </div>
           </div>
 
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
-            <p className="text-sm text-yellow-800">
-              <strong>Important:</strong> Column headers must match exactly (case-sensitive). 
-              The "Label" field is required after "SI no&quot;. 
-              Cutting Length and Lap Length will be rounded to 3 decimal places.
-            </p>
+          <div className="mt-4 space-y-3">
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded">
+              <p className="text-sm text-yellow-800">
+                <strong>Important:</strong> Column headers must match exactly (case-sensitive). 
+                The &quot;Label&quot; field is required after &quot;SI no&quot;. 
+                Cutting Length and Lap Length will be rounded to 3 decimal places.
+              </p>
+            </div>
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+              <p className="text-sm text-blue-800">
+                <strong>Display Note:</strong> In the table view, SI no and Label will be combined into a BarCode field (format: SI no/Label/Dia).
+                The &quot;No of lap&quot; column will be hidden in the display.
+              </p>
+              <p className="text-xs text-blue-600 mt-1">
+                Example: SI no &quot;1&quot;, Label &quot;B1&quot;, Dia &quot;12&quot; → BarCode &quot;1/B1/12&quot;
+              </p>
+            </div>
           </div>
         </div>
       )}

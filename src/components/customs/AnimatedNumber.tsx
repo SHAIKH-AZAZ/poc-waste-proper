@@ -10,40 +10,36 @@ const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
   value,
   duration = 800,
 }) => {
-  const [displayValue, setDisplayValue] = useState(value); // Start with the actual value to prevent hydration mismatch
-  const [isClient, setIsClient] = useState(false);
+  const [displayValue, setDisplayValue] = useState(value);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
+    // Only animate if the value actually changes and we're on the client
+    if (displayValue !== value && typeof window !== 'undefined') {
+      setIsAnimating(true);
+      
+      let start: number | null = null;
+      const initialValue = displayValue;
+      const change = value - initialValue;
 
-  useEffect(() => {
-    if (!isClient) return; // Only animate on client side
+      const step = (timestamp: number) => {
+        if (!start) start = timestamp;
+        const progress = Math.min((timestamp - start) / duration, 1);
+        const currentValue = Math.floor(initialValue + change * progress);
+        setDisplayValue(currentValue);
+        
+        if (progress < 1) {
+          requestAnimationFrame(step);
+        } else {
+          setIsAnimating(false);
+        }
+      };
 
-    let start: number | null = null;
-    const initialValue = displayValue;
-    const change = value - initialValue;
+      requestAnimationFrame(step);
+    }
+  }, [value, duration, displayValue]);
 
-    if (change === 0) return; // No animation needed
-
-    setDisplayValue(0); // Reset to 0 for animation
-
-    const step = (timestamp: number) => {
-      if (!start) start = timestamp;
-      const progress = Math.min((timestamp - start) / duration, 1);
-      setDisplayValue(Math.floor(change * progress));
-      if (progress < 1) requestAnimationFrame(step);
-    };
-
-    requestAnimationFrame(step);
-  }, [value, isClient, duration]);
-
-  // Show static value during SSR and initial client render
-  if (!isClient) {
-    return <span>{value}</span>;
-  }
-
-  return <span>{displayValue}</span>;
+  return <span className={isAnimating ? "transition-all duration-200" : ""}>{displayValue}</span>;
 };
 
 export default AnimatedNumber;

@@ -1,4 +1,5 @@
 import type { BarCuttingRaw } from "@/types/BarCuttingRow";
+import { generateBarCode } from "./barCodeUtils";
 
 /**
  * Validates if a row matches the BarCuttingRaw interface
@@ -16,7 +17,8 @@ export function validateBarCuttingRow(row: unknown): row is BarCuttingRaw {
     typeof obj["Cutting Length"] === "number" &&
     typeof obj["Lap Length"] === "number" &&
     typeof obj["No of lap"] === "number" &&
-    typeof obj["Element"] === "string"
+    typeof obj["Element"] === "string" &&
+    typeof obj["BarCode"] === "string"
   );
 }
 
@@ -40,15 +42,20 @@ export function formatNumericValue(value: number, decimalPlaces: number = 0): nu
  */
 export function enforceInterface(rawData: Record<string, unknown>[]): BarCuttingRaw[] {
   return rawData.map((row) => {
+    const siNo = (row["SI no"] || row["Sl no"] || row["SINo"] || "") as string | number;
+    const label = String(row["Label"] || row["label"] || "").trim();
+    const dia = formatNumericValue(Number(row["Dia"] || 0));
+    
     const processedRow: BarCuttingRaw = {
-      "SI no": (row["SI no"] || row["Sl no"] || row["SINo"] || "") as string | number,
-      "Label": String(row["Label"] || row["label"] || "").trim(),
-      "Dia": formatNumericValue(Number(row["Dia"] || 0)),
+      "SI no": siNo,
+      "Label": label,
+      "Dia": dia,
       "Total Bars": formatNumericValue(Number(row["Total Bars"] || 0)),
       "Cutting Length": formatNumericValue(Number(row["Cutting Length"] || 0), 3),
       "Lap Length": formatNumericValue(Number(row["Lap Length"] || 0), 3),
       "No of lap": formatNumericValue(Number(row["No of lap"] || 0)),
       "Element": String(row["Element"] || "").trim(),
+      "BarCode": generateBarCode(siNo, label, dia),
     };
 
     return processedRow;

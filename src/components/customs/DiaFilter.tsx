@@ -1,24 +1,26 @@
 "use client";
 import React from "react";
-import { getUniqueDiaValues, getDiaSummary } from "@/utils/dataFilters";
-import type { BarCuttingRaw } from "@/types/BarCuttingRow";
+import { getUniqueDiaFromDisplay, getDisplayDiaSummary } from "@/utils/barCodeUtils";
+import ClientOnly from "../ui/ClientOnly";
+import type { BarCuttingDisplay } from "@/types/BarCuttingRow";
 
 interface DiaFilterProps {
-  data: BarCuttingRaw[];
+  data: BarCuttingDisplay[];
   selectedDia: number | null;
   onDiaSelect: (dia: number | null) => void;
 }
 
 export default function DiaFilter({ data, selectedDia, onDiaSelect }: DiaFilterProps) {
-  const uniqueDias = getUniqueDiaValues(data);
+  const uniqueDias = getUniqueDiaFromDisplay(data);
 
   if (uniqueDias.length === 0) return null;
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 bg-white rounded-xl shadow-lg mb-6">
-      <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-        <span className="text-xl">🔍</span> Filter by Dia
-      </h3>
+    <ClientOnly>
+      <div className="w-full max-w-7xl mx-auto p-4 bg-white rounded-xl shadow-lg mb-6">
+        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <span className="text-xl">🔍</span> Filter by Dia
+        </h3>
       
       <div className="flex flex-wrap gap-3 mb-4">
         {/* Show All Button */}
@@ -35,7 +37,7 @@ export default function DiaFilter({ data, selectedDia, onDiaSelect }: DiaFilterP
 
         {/* Individual Dia Buttons */}
         {uniqueDias.map((dia) => {
-          const summary = getDiaSummary(data, dia);
+          const summary = getDisplayDiaSummary(data, dia);
           const isSelected = selectedDia === dia;
           
           return (
@@ -65,7 +67,7 @@ export default function DiaFilter({ data, selectedDia, onDiaSelect }: DiaFilterP
           </h4>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             {(() => {
-              const summary = getDiaSummary(data, selectedDia);
+              const summary = getDisplayDiaSummary(data, selectedDia);
               return (
                 <>
                   <div className="text-center">
@@ -90,6 +92,7 @@ export default function DiaFilter({ data, selectedDia, onDiaSelect }: DiaFilterP
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ClientOnly>
   );
 }

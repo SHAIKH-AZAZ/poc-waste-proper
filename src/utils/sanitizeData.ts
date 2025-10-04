@@ -1,4 +1,5 @@
 import type { BarCuttingRaw } from "@/types/BarCuttingRow";
+import { generateBarCode } from "./barCodeUtils";
 
 export function sanitizeExcelData(rawData: Record<string, unknown>[]): BarCuttingRaw[] {
   return rawData
@@ -22,15 +23,18 @@ export function sanitizeExcelData(rawData: Record<string, unknown>[]): BarCuttin
         return null; // Skip invalid rows
       }
 
+      const processedDia = isNaN(dia) ? 0 : Math.round(dia);
+      
       return {
         "SI no": siNo,
         "Label": label,
-        "Dia": isNaN(dia) ? 0 : Math.round(dia),
+        "Dia": processedDia,
         "Total Bars": isNaN(totalBars) ? 0 : Math.round(totalBars),
         "Cutting Length": isNaN(cuttingLength) ? 0 : Math.round(cuttingLength * 1000) / 1000, // Round to 3 decimal places
         "Lap Length": isNaN(lapLength) ? 0 : Math.round(lapLength * 1000) / 1000, // Round to 3 decimal places
         "No of lap": isNaN(noOfLap) ? 0 : Math.round(noOfLap),
         "Element": element,
+        "BarCode": generateBarCode(siNo, label, processedDia), // Generate BarCode
       };
     })
     .filter((row): row is BarCuttingRaw => row !== null);

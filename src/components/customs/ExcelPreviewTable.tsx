@@ -1,10 +1,10 @@
 "use client";
 import React from "react";
 
-import type { BarCuttingRaw } from "@/types/BarCuttingRow";
+import type { BarCuttingDisplay } from "@/types/BarCuttingRow";
 
 interface ExcelPreviewTableProps {
-  data: BarCuttingRaw[];
+  data: BarCuttingDisplay[];
   maxRows?: number; // optional preview row limit
   selectedDia?: number | null; // optional: to show filter status
 }
@@ -12,7 +12,7 @@ interface ExcelPreviewTableProps {
 export default function ExcelPreviewTable({ data, selectedDia }: ExcelPreviewTableProps) {
   if (!data || data.length === 0) return null;
 
-  const headers = Object.keys(data[0]) as (keyof BarCuttingRaw)[];
+  const headers = Object.keys(data[0]) as (keyof BarCuttingDisplay)[];
 
   // Calculate column width based on content
   const getColumnWidth = (index: number) => {

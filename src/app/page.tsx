@@ -7,38 +7,42 @@ import ExcelFormatGuide from "@/components/customs/ExcelFormatGuide";
 import DiaFilter from "@/components/customs/DiaFilter";
 import FileInfoCard from "@/components/customs/FileInfoCard";
 import { clearData, downloadResults } from "@/utils/dataUtils";
-import { filterDataByDia } from "@/utils/dataFilters";
-import type { BarCuttingRaw } from "@/types/BarCuttingRow";
+import { transformToDisplayFormat, filterDisplayDataByDia } from "@/utils/barCodeUtils";
+import type { BarCuttingRaw, BarCuttingDisplay } from "@/types/BarCuttingRow";
 
 export default function Home() {
   const [fileName, setFileName] = useState<string>("");
   const [parsedData, setParsedData] = useState<BarCuttingRaw[] | null>(null);
+  const [displayData, setDisplayData] = useState<BarCuttingDisplay[] | null>(null);
   const [selectedDia, setSelectedDia] = useState<number | null>(null);
 
   const handleClearData = () => {
     clearData(setParsedData, setFileName);
+    setDisplayData(null);
     setSelectedDia(null);
   };
 
   const handleDataParsed = (data: BarCuttingRaw[], name: string) => {
     setParsedData(data);
+    const transformed = transformToDisplayFormat(data);
+    setDisplayData(transformed);
     setFileName(name);
     setSelectedDia(null); // Reset filter when new data is loaded
   };
 
-  // Filter data based on selected Dia
-  const filteredData = useMemo(() => {
-    if (!parsedData) return null;
-    if (selectedDia === null) return parsedData;
-    return filterDataByDia(parsedData, selectedDia);
-  }, [parsedData, selectedDia]);
+  // Filter display data based on selected Dia
+  const filteredDisplayData = useMemo(() => {
+    if (!displayData) return null;
+    if (selectedDia === null) return displayData;
+    return filterDisplayDataByDia(displayData, selectedDia);
+  }, [displayData, selectedDia]);
 
   const handleDownloadResults = () => {
-    if (filteredData) {
+    if (filteredDisplayData) {
       const downloadFileName = selectedDia
         ? `${fileName.replace('.xlsx', '').replace('.xls', '')}_Dia_${selectedDia}.json`
         : `${fileName.replace('.xlsx', '').replace('.xls', '')}.json`;
-      downloadResults(filteredData, downloadFileName);
+      downloadResults(filteredDisplayData, downloadFileName);
     }
   };
 
@@ -57,39 +61,39 @@ export default function Home() {
       {/* Parsed Data Preview */}
 
       {/* File info card */}
-      {parsedData && fileName && (
+      {displayData && fileName && (
         <FileInfoCard
           fileName={fileName}
-          rows={filteredData || parsedData}
-          headers={Object.keys(parsedData[0] || {})}
-          jsonData={filteredData || parsedData}
+          rows={filteredDisplayData || displayData}
+          headers={Object.keys(displayData[0] || {})}
+          jsonData={filteredDisplayData || displayData}
           clearData={handleClearData}
           downloadResults={handleDownloadResults}
           selectedDia={selectedDia}
-          totalRows={parsedData.length}
+          totalRows={displayData.length}
           datasetSizeInfo={{
             fileSizeMB: 1.2, // optional: calculate dynamically
             estimatedMemoryUsageMB:
-              (filteredData || parsedData).length *
-              Object.keys(parsedData[0] || {}).length *
+              (filteredDisplayData || displayData).length *
+              Object.keys(displayData[0] || {}).length *
               0.001,
-            isLargeDataset: (filteredData || parsedData).length > 500,
-            isVeryLargeDataset: (filteredData || parsedData).length > 2000,
+            isLargeDataset: (filteredDisplayData || displayData).length > 500,
+            isVeryLargeDataset: (filteredDisplayData || displayData).length > 2000,
           }}
         />
       )}
 
       {/* Dia Filter */}
-      {parsedData && (
+      {displayData && (
         <DiaFilter
-          data={parsedData}
+          data={displayData}
           selectedDia={selectedDia}
           onDiaSelect={setSelectedDia}
         />
       )}
 
       {/* Filtered Data Preview */}
-      {filteredData && <ExcelPreviewTable data={filteredData} selectedDia={selectedDia} />}
+      {filteredDisplayData && <ExcelPreviewTable data={filteredDisplayData} selectedDia={selectedDia} />}
     </div>
   );
 }
