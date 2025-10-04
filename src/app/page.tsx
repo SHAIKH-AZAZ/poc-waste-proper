@@ -1,25 +1,35 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { HeadDemo } from "@/components/customs/Heading";
 import ExcelUploader from "@/components/customs/ExcelUploader";
 import ExcelPreviewTable from "@/components/customs/ExcelPreviewTable";
 import ExcelFormatGuide from "@/components/customs/ExcelFormatGuide";
 import DiaFilter from "@/components/customs/DiaFilter";
 import FileInfoCard from "@/components/customs/FileInfoCard";
+import CuttingStockResults from "@/components/customs/CuttingStockResults";
 import { clearData, downloadResults } from "@/utils/dataUtils";
 import { transformToDisplayFormat, filterDisplayDataByDia } from "@/utils/barCodeUtils";
+import { CuttingStockPreprocessor } from "@/utils/cuttingStockPreprocessor";
+import { GreedyCuttingStock } from "@/algorithms/greedyCuttingStock";
+import { DynamicCuttingStock } from "@/algorithms/dynamicCuttingStock";
 import type { BarCuttingRaw, BarCuttingDisplay } from "@/types/BarCuttingRow";
+import type { CuttingStockResult } from "@/types/CuttingStock";
 
 export default function Home() {
   const [fileName, setFileName] = useState<string>("");
   const [parsedData, setParsedData] = useState<BarCuttingRaw[] | null>(null);
   const [displayData, setDisplayData] = useState<BarCuttingDisplay[] | null>(null);
   const [selectedDia, setSelectedDia] = useState<number | null>(null);
+  const [greedyResult, setGreedyResult] = useState<CuttingStockResult | null>(null);
+  const [dynamicResult, setDynamicResult] = useState<CuttingStockResult | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
 
   const handleClearData = () => {
     clearData(setParsedData, setFileName);
     setDisplayData(null);
     setSelectedDia(null);
+    setGreedyResult(null);
+    setDynamicResult(null);
   };
 
   const handleDataParsed = (data: BarCuttingRaw[], name: string) => {
@@ -27,7 +37,9 @@ export default function Home() {
     const transformed = transformToDisplayFormat(data);
     setDisplayData(transformed);
     setFileName(name);
-    setSelectedDia(null); // Reset filter when new data is loaded
+    setSelectedDia(null);
+    setGreedyResult(null);
+    setDynamicResult(null);
   };
 
   // Filter display data based on selected Dia
@@ -36,6 +48,40 @@ export default function Home() {
     if (selectedDia === null) return displayData;
     return filterDisplayDataByDia(displayData, selectedDia);
   }, [displayData, selectedDia]);
+
+  // Calculate cutting stock when Dia is selected
+  const handleDiaSelect = useCallback(async (dia: number | null) => {
+    setSelectedDia(dia);
+    setGreedyResult(null);
+    setDynamicResult(null);
+
+    if (dia !== null && displayData) {
+      setIsCalculating(true);
+      
+      try {
+        // Preprocess data
+        const preprocessor = new CuttingStockPreprocessor();
+        const requests = preprocessor.convertToCuttingRequests(displayData);
+        
+        // Run both algorithms
+        const greedy = new GreedyCuttingStock();
+        const dynamic = new DynamicCuttingStock();
+        
+        // Calculate in parallel
+        const [greedyRes, dynamicRes] = await Promise.all([
+          Promise.resolve(greedy.solve(requests, dia)),
+          Promise.resolve(dynamic.solve(requests, dia))
+        ]);
+        
+        setGreedyResult(greedyRes);
+        setDynamicResult(dynamicRes);
+      } catch (error) {
+        console.error("Error calculating cutting stock:", error);
+      } finally {
+        setIsCalculating(false);
+      }
+    }
+  }, [displayData]);
 
   const handleDownloadResults = () => {
     if (filteredDisplayData) {
@@ -88,7 +134,17 @@ export default function Home() {
         <DiaFilter
           data={displayData}
           selectedDia={selectedDia}
-          onDiaSelect={setSelectedDia}
+          onDiaSelect={handleDiaSelect}
+        />
+      )}
+
+      {/* Cutting Stock Results */}
+      {selectedDia && (
+        <CuttingStockResults
+          greedyResult={greedyResult}
+          dynamicResult={dynamicResult}
+          isLoading={isCalculating}
+          fileName={fileName}
         />
       )}
 
