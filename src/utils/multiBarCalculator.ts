@@ -22,15 +22,22 @@ export class MultiBarCalculator {
     }
 
     // Multi-bar calculations
-    const subBarsRequired = Math.ceil(cuttingLength / this.STANDARD_LENGTH);
-    const lapsRequired = Math.floor(cuttingLength / this.STANDARD_LENGTH);
+    // First bar contributes full 12m, subsequent bars contribute (12 - lapLength)
+    // Formula: 12 + (n-1) × (12 - lapLength) >= cuttingLength
+    // Solving for n: n >= (cuttingLength - 12) / (12 - lapLength) + 1
+    const effectiveLengthPerBar = this.STANDARD_LENGTH - lapLength;
+    const subBarsRequired = Math.ceil(
+      (cuttingLength - this.STANDARD_LENGTH) / effectiveLengthPerBar + 1
+    );
+
+    // Number of laps = number of bars - 1
+    const lapsRequired = subBarsRequired - 1;
 
     // Calculate optimal segment distribution
     const segmentLengths = this.calculateOptimalSegments(
       cuttingLength,
       lapLength,
-      subBarsRequired,
-      lapsRequired
+      subBarsRequired
     );
 
     const lapPositions = this.calculateLapPositions(segmentLengths);
@@ -51,29 +58,29 @@ export class MultiBarCalculator {
 
   /**
    * Calculate optimal segment lengths considering lap overlaps
+   * Returns the EFFECTIVE LENGTH of each segment (what goes into the bar for cutting)
+   * Logic: Each segment except last = 12m - lapLength (effective cutting length)
+   *        Last segment = remaining length needed
    */
   private calculateOptimalSegments(
     totalLength: number,
     lapLength: number,
-    subBars: number,
-    laps: number
+    subBars: number
   ): number[] {
     const segments: number[] = [];
+    const effectiveLengthPerBar = this.STANDARD_LENGTH - lapLength;
     let remainingLength = totalLength;
 
     for (let i = 0; i < subBars; i++) {
       if (i === subBars - 1) {
-        // Last segment gets remaining length
-        segments.push(Math.max(0.1, remainingLength)); // Minimum 10cm
+        // Last segment: use remaining length (no lap at end)
+        // This is the actual cutting length for the last segment
+        segments.push(Math.min(remainingLength, this.STANDARD_LENGTH));
       } else {
-        // Calculate segment length considering lap overlap
-        // Each segment except last needs to account for lap
-        const segmentLength = Math.min(
-          this.STANDARD_LENGTH,
-          remainingLength + lapLength / 2
-        );
-        segments.push(segmentLength);
-        remainingLength -= segmentLength - lapLength / 2;
+        // All other segments: effective cutting length = 12m - lapLength
+        // This represents how much of the bar is used for the actual cut
+        segments.push(effectiveLengthPerBar);
+        remainingLength -= effectiveLengthPerBar;
       }
     }
 
@@ -111,6 +118,9 @@ export class MultiBarCalculator {
 
   /**
    * Create bar segments from cutting request
+   * Logic: All segments except last have lap at end
+   * Cutting length (for algorithm) = effective length + lap length
+   * This represents the total space needed in the 12m bar
    */
   createSegments(
     barCode: string,
@@ -119,26 +129,35 @@ export class MultiBarCalculator {
     lapLength: number
   ): BarSegment[] {
     const segments: BarSegment[] = [];
+    const isMultiBar = subBarInfo.subBarsRequired > 1;
 
     subBarInfo.segmentLengths.forEach((length, index) => {
-      const hasLapStart = index > 0;
-      const hasLapEnd = index < subBarInfo.segmentLengths.length - 1;
+      const isLastSegment = index === subBarInfo.segmentLengths.length - 1;
 
-      const effectiveLength =
-        length +
-        (hasLapStart ? lapLength / 2 : 0) +
-        (hasLapEnd ? lapLength / 2 : 0);
+      // Only last segment has no lap at end
+      // All other segments have lap at end (to connect to next segment)
+      const hasLapEnd = isMultiBar && !isLastSegment;
+      const hasLapStart = false; // Lap is at end, not start
+
+      // Last segment has NO lap, all others have lap
+      const segmentLapLength = isLastSegment ? 0 : lapLength;
+
+      // Effective length: the segment length without lap
+      const effectiveLength = length;
+      
+      // Cutting length: effective length + lap length (total space needed in bar)
+      const cuttingLength = effectiveLength + segmentLapLength;
 
       segments.push({
         segmentId: `${barCode}_seg_${index}`,
         parentBarCode: barCode,
         segmentIndex: index,
-        length: length,
+        length: Math.min(cuttingLength, this.STANDARD_LENGTH), // Cutting length for algorithm
         quantity: quantity,
         hasLapStart,
         hasLapEnd,
         effectiveLength: Math.min(effectiveLength, this.STANDARD_LENGTH),
-        lapLength: lapLength, // Store actual lap length from input
+        lapLength: segmentLapLength, // 0 for last segment, actual lap length for others
       });
     });
 

@@ -129,7 +129,18 @@ export class DynamicCuttingStock {
     for (let i = 0; i < availableSegments.length; i++) {
       const segment = availableSegments[i];
 
-      if (segment.effectiveLength <= remainingLength) {
+      // Use cutting length (which includes lap) for space calculation
+      if (segment.length <= remainingLength) {
+        // Check if any cut in current pattern is from the same parent bar
+        // Segments from the same parent bar cannot be in the same bin (they need to be joined)
+        const hasSameParent = currentCuts.some(
+          (cut) => cut.parentBarCode === segment.parentBarCode
+        );
+        
+        if (hasSameParent) {
+          continue; // Skip this segment
+        }
+        
         // Find existing cut or create new one
         const existingCutIndex = currentCuts.findIndex(
           (c) => c.segmentId === segment.segmentId
@@ -148,12 +159,12 @@ export class DynamicCuttingStock {
           });
         }
 
-        // Recurse
+        // Recurse - use cutting length (which includes lap) for space tracking
         this.generatePatternsRecursive(
           availableSegments.slice(i),
           currentCuts,
-          currentLength + segment.effectiveLength,
-          remainingLength - segment.effectiveLength,
+          currentLength + segment.length,
+          remainingLength - segment.length,
           patterns,
           depth + 1,
           maxDepth
@@ -328,9 +339,10 @@ export class DynamicCuttingStock {
 
       for (const cut of pattern.cuts) {
         for (let i = 0; i < cut.count; i++) {
-          // For multi-bar cuts, ALL segments have lap (except if lapLength is 0 in input)
-          // hasLap is true if this segment is part of a multi-bar cut
-          const hasLap = cut.segmentIndex >= 0 && cut.lapLength > 0;
+          // Determine if this segment has lap
+          // Lap exists if lapLength > 0 in input (for multi-bar cuts)
+          // All segments except last have lap at end
+          const hasLap = cut.lapLength > 0;
           
           cuts.push({
             barCode: cut.parentBarCode,

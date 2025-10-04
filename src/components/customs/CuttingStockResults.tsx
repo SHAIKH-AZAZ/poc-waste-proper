@@ -267,36 +267,47 @@ function DetailedResultCard({
                 </tr>
               </thead>
               <tbody>
-                {result.detailedCuts.map((detail, index) => (
-                  <tr key={index} className="hover:bg-blue-50 transition-colors">
-                    <td className="border border-gray-300 px-3 py-3 text-center">
-                      <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-700 font-bold text-sm rounded-full">
-                        {detail.barNumber}
-                      </span>
-                    </td>
-                    <td className="border border-gray-300 px-4 py-3">
-                      <CutsDisplay cuts={detail.cuts} />
-                    </td>
-                    <td className="border border-gray-300 px-3 py-3 text-right">
-                      <span className={`font-semibold ${detail.waste > 1 ? 'text-red-600' : 'text-green-600'}`}>
-                        {detail.waste.toFixed(3)}
-                      </span>
-                    </td>
-                    <td className="border border-gray-300 px-3 py-3 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <span className="font-semibold text-gray-800">
-                          {detail.utilization.toFixed(2)}%
+                {result.detailedCuts.map((detail, index) => {
+                  // Calculate actual waste: 12m - sum of cutting lengths
+                  // Note: cut.length already includes lap length (cutting length = effective + lap)
+                  const STANDARD_BAR = 12.0;
+                  const totalUsed = detail.cuts.reduce((sum, cut) => 
+                    sum + cut.length, 0
+                  );
+                  const actualWaste = STANDARD_BAR - totalUsed;
+                  const actualUtilization = (totalUsed / STANDARD_BAR) * 100;
+
+                  return (
+                    <tr key={index} className="hover:bg-blue-50 transition-colors">
+                      <td className="border border-gray-300 px-3 py-3 text-center">
+                        <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-700 font-bold text-sm rounded-full">
+                          {detail.barNumber}
                         </span>
-                        <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full ${detail.utilization > 95 ? 'bg-green-500' : detail.utilization > 85 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                            style={{ width: `${detail.utilization}%` }}
-                          />
+                      </td>
+                      <td className="border border-gray-300 px-4 py-3">
+                        <CutsDisplay cuts={detail.cuts} />
+                      </td>
+                      <td className="border border-gray-300 px-3 py-3 text-right">
+                        <span className={`font-semibold ${actualWaste > 1 ? 'text-red-600' : 'text-green-600'}`}>
+                          {actualWaste.toFixed(3)}
+                        </span>
+                      </td>
+                      <td className="border border-gray-300 px-3 py-3 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <span className="font-semibold text-gray-800">
+                            {actualUtilization.toFixed(2)}%
+                          </span>
+                          <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full ${actualUtilization > 95 ? 'bg-green-500' : actualUtilization > 85 ? 'bg-yellow-500' : 'bg-red-500'}`}
+                              style={{ width: `${actualUtilization}%` }}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -309,7 +320,7 @@ function DetailedResultCard({
 function CutsDisplay({ cuts }: { cuts: CutInstruction[] }) {
   // Group cuts by parent BarCode
   const groupedCuts = React.useMemo(() => {
-    const groups = new Map<string, { length: number; count: number; hasLap: boolean }>();
+    const groups = new Map<string, { length: number; lapLength: number; count: number }>();
     
     for (const cut of cuts) {
       const existing = groups.get(cut.barCode);
@@ -318,8 +329,8 @@ function CutsDisplay({ cuts }: { cuts: CutInstruction[] }) {
       } else {
         groups.set(cut.barCode, {
           length: cut.length,
+          lapLength: cut.lapLength,
           count: cut.quantity,
-          hasLap: cut.hasLap
         });
       }
     }
@@ -328,8 +339,9 @@ function CutsDisplay({ cuts }: { cuts: CutInstruction[] }) {
   }, [cuts]);
 
   // Calculate total length used
+  // Note: cut.length already includes lap (cutting length = effective + lap)
   const totalUsed = React.useMemo(() => {
-    return cuts.reduce((sum, cut) => sum + cut.length * cut.quantity, 0);
+    return cuts.reduce((sum, cut) => sum + cut.length, 0);
   }, [cuts]);
 
   return (
@@ -342,25 +354,25 @@ function CutsDisplay({ cuts }: { cuts: CutInstruction[] }) {
             </span>
             <span className="text-gray-400">→</span>
             <span className="font-bold text-gray-800 text-xs">
-              {info.length.toFixed(3)}m
+              {(info.length - info.lapLength).toFixed(3)}m
             </span>
+            {info.lapLength > 0 && (
+              <span className="text-[10px] text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded font-medium">
+                +{info.lapLength.toFixed(3)}m lap
+              </span>
+            )}
             {info.count > 1 && (
               <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
                 ×{info.count}
               </span>
             )}
           </div>
-          {info.hasLap && (
-            <span className="text-[10px] text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded font-medium">
-              LAP
-            </span>
-          )}
         </div>
       ))}
       {groupedCuts.length > 1 && (
         <div className="pt-1 mt-1 border-t border-gray-200">
           <span className="text-[10px] text-gray-500">
-            Total: {totalUsed.toFixed(3)}m
+            Total used: {totalUsed.toFixed(3)}m
           </span>
         </div>
       )}

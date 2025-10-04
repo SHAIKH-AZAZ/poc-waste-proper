@@ -92,11 +92,25 @@ export class GreedyCuttingStock {
 
   /**
    * Check if segment can fit in bin
+   * Constraint: Segments from the same parent bar cannot be in the same bin
+   * (they need to be joined together with lap joints)
    */
   private canPlaceInBin(bin: Bin, segment: BarSegment): boolean {
-    const requiredSpace = segment.effectiveLength;
+    // Use cutting length (which includes lap) for space calculation
+    const requiredSpace = segment.length;
     const tolerance = 0.01; // 1cm tolerance for cutting precision
-    return bin.remainingLength >= requiredSpace + tolerance;
+    
+    // Check if there's enough space
+    if (bin.remainingLength < requiredSpace + tolerance) {
+      return false;
+    }
+    
+    // Check if any cut in this bin is from the same parent bar
+    const hasSameParent = bin.cuts.some(
+      (cut) => cut.parentBarCode === segment.parentBarCode
+    );
+    
+    return !hasSameParent;
   }
 
   /**
@@ -121,7 +135,8 @@ export class GreedyCuttingStock {
       });
     }
 
-    bin.usedLength += segment.effectiveLength;
+    // Use cutting length (which includes lap) for space tracking
+    bin.usedLength += segment.length;
     bin.remainingLength = this.STANDARD_LENGTH - bin.usedLength;
   }
 
@@ -160,9 +175,10 @@ export class GreedyCuttingStock {
 
       for (const cut of pattern.cuts) {
         for (let i = 0; i < cut.count; i++) {
-          // For multi-bar cuts, ALL segments have lap (except if lapLength is 0 in input)
-          // hasLap is true if this segment is part of a multi-bar cut
-          const hasLap = cut.segmentIndex >= 0 && cut.lapLength > 0;
+          // Determine if this segment has lap
+          // Lap exists if lapLength > 0 in input (for multi-bar cuts)
+          // All segments except last have lap at end
+          const hasLap = cut.lapLength > 0;
           
           cuts.push({
             barCode: cut.parentBarCode,
