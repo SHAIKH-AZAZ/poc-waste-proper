@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import AnimatedNumber from "./AnimatedNumber";
+import ClientOnly from "../ui/ClientOnly";
 
 import type { BarCuttingRaw } from "@/types/BarCuttingRow";
 
@@ -36,6 +37,12 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
   totalRows,
   datasetSizeInfo,
 }) => {
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   if (!fileName) return null;
 
   return (
@@ -52,11 +59,15 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
           {/* Stats */}
           <div className="space-y-2 mb-4">
             <p className="text-gray-700 font-medium">
-              <AnimatedNumber value={rows.length} />{" "}
+              <ClientOnly fallback={<span>{rows.length}</span>}>
+                <AnimatedNumber value={rows.length} />
+              </ClientOnly>{" "}
               <span className="text-sm text-gray-500">
                 {selectedDia ? `filtered rows (of ${totalRows} total)` : "rows"}
               </span>,{" "}
-              <AnimatedNumber value={headers.length} />{" "}
+              <ClientOnly fallback={<span>{headers.length}</span>}>
+                <AnimatedNumber value={headers.length} />
+              </ClientOnly>{" "}
               <span className="text-sm text-gray-500">columns</span>
               {selectedDia && (
                 <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
@@ -67,7 +78,9 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
             <p className="text-gray-700 font-medium">
               JSON Records:{" "}
               <span className="text-indigo-600 font-semibold">
-                <AnimatedNumber value={jsonData.length} />
+                <ClientOnly fallback={<span>{jsonData.length}</span>}>
+                  <AnimatedNumber value={jsonData.length} />
+                </ClientOnly>
               </span>
             </p>
 
