@@ -142,7 +142,8 @@ export default function Home() {
   }, [displayData, fileName]);
 
   return (
-    <div className="flex flex-col items-center mx-auto mt-10">
+    <div className="min-h-screen bg-gray-900 text-white">
+      <div className="flex flex-col items-center mx-auto pt-10 px-4">
       <div>
         <HeadDemo />
       </div>
@@ -265,6 +266,7 @@ export default function Home() {
 
       {/* Filtered Data Preview */}
       {filteredDisplayData && <ExcelPreviewTable data={filteredDisplayData} selectedDia={selectedDia} />}
+      </div>
     </div>
   );
 }
