@@ -165,7 +165,6 @@ export class PatternRecognitionEngine {
       version: "1.0",
       exportDate: new Date().toISOString(),
       patterns: Array.from(this.patternDatabase.entries()).map(([id, signature]) => ({
-        id,
         ...signature,
         lastUsed: signature.lastUsed.toISOString()
       }))
