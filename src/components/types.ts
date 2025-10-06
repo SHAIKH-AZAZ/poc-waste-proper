@@ -8,10 +8,10 @@ export interface DatasetSizeInfo{
 
 export interface FileInfoCardProps {
     fileName : string;
-    rows : any[];
+    rows : unknown[];
     headers : string[];
-    jsonData : any[];
-    lapResults : any[];
+    jsonData : unknown[];
+    lapResults : unknown[];
     clearData : () =>void;
     DatasetSizeInfo?: DatasetSizeInfo;
 }

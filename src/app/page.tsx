@@ -17,7 +17,7 @@ import type { CuttingStockResult } from "@/types/CuttingStock";
 
 export default function Home() {
   const [fileName, setFileName] = useState<string>("");
-  const [parsedData, setParsedData] = useState<BarCuttingRaw[] | null>(null);
+  const [, setParsedData] = useState<BarCuttingRaw[] | null>(null);
   const [displayData, setDisplayData] = useState<BarCuttingDisplay[] | null>(null);
   const [selectedDia, setSelectedDia] = useState<number | null>(null);
   const [greedyResult, setGreedyResult] = useState<CuttingStockResult | null>(null);

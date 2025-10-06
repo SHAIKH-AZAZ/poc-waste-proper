@@ -3,9 +3,10 @@ import { generateBarCode } from "./barCodeUtils";
 
 export function sanitizeExcelData(rawData: Record<string, unknown>[]): BarCuttingRaw[] {
   return rawData
-    .map((row) => {
+    .map((row): BarCuttingRaw | null => {
       // Handle SI no as string or number
-      const siNo = row["SI no"] || row["Sl no"] || row["SINo"] || row["S.No"];
+      const rawSiNo = row["SI no"] || row["Sl no"] || row["SINo"] || row["S.No"];
+      const siNo = rawSiNo ? String(rawSiNo).trim() : "";
       
       // Parse numeric values
       const dia = Number(row["Dia"] || row["dia"] || 0);

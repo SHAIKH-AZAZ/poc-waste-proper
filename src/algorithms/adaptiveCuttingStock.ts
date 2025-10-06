@@ -305,7 +305,6 @@ export class AdaptiveCuttingStock {
    */
   private assessQuality(result: CuttingStockResult, allResults: CuttingStockResult[]): string {
     const minBars = Math.min(...allResults.map(r => r.totalBarsUsed));
-    const maxBars = Math.max(...allResults.map(r => r.totalBarsUsed));
     
     if (result.totalBarsUsed === minBars) {
       return "Optimal";

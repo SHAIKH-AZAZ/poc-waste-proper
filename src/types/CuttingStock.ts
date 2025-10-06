@@ -61,7 +61,7 @@ export interface CuttingBin {
 }
 
 export interface CuttingStockResult {
-  algorithm: 'greedy' | 'dynamic';
+  algorithm: 'greedy' | 'dynamic' | 'true-dynamic' | 'branch-and-bound' | 'column-generation' | 'heuristic' | 'adaptive';
   dia: number;
   patterns: CuttingPattern[];
   totalBarsUsed: number;

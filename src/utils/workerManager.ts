@@ -60,7 +60,9 @@ export class WorkerManager {
             if (event.data.error) {
               reject(new Error(event.data.error));
             } else if (event.data.result) {
-              resolve(event.data.result);
+              // Handle both single result and array results
+              const result = Array.isArray(event.data.result) ? event.data.result[0] : event.data.result;
+              resolve(result);
             }
           }
         }
@@ -122,7 +124,9 @@ export class WorkerManager {
               reject(new Error(event.data.error));
             } else if (event.data.result) {
               console.log("[WorkerManager] Dynamic result received:", event.data.result);
-              resolve(event.data.result);
+              // Handle both single result and array results
+              const result = Array.isArray(event.data.result) ? event.data.result[0] : event.data.result;
+              resolve(result);
             }
           }
         }

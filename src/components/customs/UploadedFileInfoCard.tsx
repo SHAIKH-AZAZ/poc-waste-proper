@@ -4,9 +4,9 @@ import AnimatedNumber from "./AnimatedNumber";
 
 interface UploadedFileInfoCardProps {
   fileName: string;
-  rows: any[];
+  rows: unknown[];
   headers: string[];
-  jsonData: any[];
+  jsonData: unknown[];
   clearData: () => void;
   downloadResults: () => void;
   datasetSizeInfo?: {

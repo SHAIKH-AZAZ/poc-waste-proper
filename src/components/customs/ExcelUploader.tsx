@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import FileUpload from "./FileUpload";
 import { sanitizeExcelData } from "@/utils/sanitizeData";
-import { validateExcelData, enforceInterface } from "@/utils/dataValidation";
+
 import { validateHeaders, getHeaderValidationMessage } from "@/utils/excelTemplate";
 import type { BarCuttingRaw } from "@/types/BarCuttingRow";
 
@@ -41,10 +41,8 @@ export default function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
         }
       }
       
-      // Process data through sanitization and validation pipeline
-      const sanitizedData = sanitizeExcelData(result.data);
-      const validatedData = validateExcelData(sanitizedData);
-      const finalData = enforceInterface(validatedData);
+      // Process data through sanitization pipeline
+      const finalData = sanitizeExcelData(result.data);
       
       if (finalData.length === 0) {
         throw new Error("No valid data found in Excel file. Please check column headers and data format.");

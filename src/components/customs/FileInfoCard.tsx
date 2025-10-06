@@ -4,7 +4,7 @@ import React from "react";
 import AnimatedNumber from "./AnimatedNumber";
 import ClientOnly from "../ui/ClientOnly";
 
-import type { BarCuttingRaw, BarCuttingDisplay } from "@/types/BarCuttingRow";
+import type { BarCuttingDisplay } from "@/types/BarCuttingRow";
 
 // Type for a single Excel row
 export type ExcelRow = BarCuttingDisplay;

@@ -22,7 +22,7 @@ export interface WorkerResponse {
 }
 
 // Helper to send progress updates
-function sendProgress(type: "greedy" | "dynamic", stage: string, percentage: number) {
+function sendProgress(type: "greedy" | "dynamic" | "true-dynamic" | "branch-bound" | "adaptive", stage: string, percentage: number) {
     const response: WorkerResponse = {
         type,
         progress: { stage, percentage },

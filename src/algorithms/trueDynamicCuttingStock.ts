@@ -173,7 +173,7 @@ export class TrueDynamicCuttingStock {
     console.log(`[ColumnGen] Starting with demand:`, Array.from(demand.entries()));
 
     // Start with basic patterns (one segment type per pattern)
-    let patterns = this.generateBasicPatterns(segments);
+    const patterns = this.generateBasicPatterns(segments);
     let iteration = 0;
     const maxIterations = 10;
 

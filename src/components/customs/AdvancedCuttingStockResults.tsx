@@ -294,7 +294,7 @@ export default function AdvancedCuttingStockResults({
             ].map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => setActiveTab(tab.key as any)}
+                onClick={() => setActiveTab(tab.key as "overview" | "patterns" | "details")}
                 className={`px-4 py-2 font-medium ${
                   activeTab === tab.key
                     ? "border-b-2 border-blue-500 text-blue-600"
@@ -354,7 +354,7 @@ export default function AdvancedCuttingStockResults({
 
           {activeTab === "details" && (
             <div className="space-y-4">
-              {selectedResult.detailedCuts.map((detail, index) => (
+              {selectedResult.detailedCuts.map((detail) => (
                 <div key={detail.patternId} className="bg-white p-4 rounded border">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium">Bar #{detail.barNumber}</h4>
@@ -406,7 +406,7 @@ export default function AdvancedCuttingStockResults({
         <div className="text-center py-8">
           <p className="text-gray-600 mb-4">Select algorithms above to start optimization</p>
           <p className="text-sm text-gray-500">
-            Tip: Start with "Adaptive Selection" for automatic algorithm selection
+            Tip: Start with &quot;Adaptive Selection&quot; for automatic algorithm selection
           </p>
         </div>
       )}

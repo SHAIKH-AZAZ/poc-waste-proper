@@ -167,8 +167,7 @@ export class BranchAndBoundCuttingStock {
       this.branchAndBound(childNode, patterns);
 
       // Early termination if optimal solution found
-      if (this.bestSolution?.isOptimal && 
-          this.bestSolution.barsUsed === this.calculateLowerBound(demand)) {
+      if (this.bestSolution?.isOptimal) {
         return;
       }
     }
