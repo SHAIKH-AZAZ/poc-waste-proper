@@ -30,8 +30,8 @@ export class GreedyCuttingStock {
       return this.createEmptyResult(dia, startTime);
     }
 
-    // Extract and sort segments
-    const allSegments = this.preprocessor.extractAllSegments(diaRequests);
+    // Extract and sort segments with unique identifiers for greedy algorithm
+    const allSegments = this.preprocessor.extractAllSegmentsForGreedy(diaRequests);
     const sortedSegments = this.preprocessor.sortSegmentsByLength(allSegments);
 
     // Apply First Fit Decreasing algorithm
@@ -92,7 +92,7 @@ export class GreedyCuttingStock {
 
   /**
    * Check if segment can fit in bin
-   * Constraint: Segments from the same parent bar cannot be in the same bin
+   * Constraint: Segments from the same parent bar instance cannot be in the same bin
    * (they need to be joined together with lap joints)
    */
   private canPlaceInBin(bin: Bin, segment: BarSegment): boolean {
@@ -105,35 +105,29 @@ export class GreedyCuttingStock {
       return false;
     }
     
-    // Check if any cut in this bin is from the same parent bar
-    const hasSameParent = bin.cuts.some(
+    // Check if any cut in this bin is from the same parent bar INSTANCE
+    // Now that we have unique parentBarCode per instance, this works correctly
+    const hasSameParentInstance = bin.cuts.some(
       (cut) => cut.parentBarCode === segment.parentBarCode
     );
     
-    return !hasSameParent;
+    return !hasSameParentInstance;
   }
 
   /**
    * Place segment in bin
    */
   private placeInBin(bin: Bin, segment: BarSegment): void {
-    // Check if this segment type already exists in bin
-    const existingCut = bin.cuts.find(
-      (cut) => cut.segmentId === segment.segmentId
-    );
-
-    if (existingCut) {
-      existingCut.count++;
-    } else {
-      bin.cuts.push({
-        segmentId: segment.segmentId,
-        parentBarCode: segment.parentBarCode,
-        length: segment.length,
-        count: 1,
-        segmentIndex: segment.segmentIndex,
-        lapLength: segment.lapLength, // Pass through actual lap length
-      });
-    }
+    // For greedy algorithm, each segment is placed individually
+    // Don't group by segmentId since each instance should be tracked separately
+    bin.cuts.push({
+      segmentId: segment.segmentId,
+      parentBarCode: segment.parentBarCode,
+      length: segment.length,
+      count: 1, // Always 1 since we're placing individual segments
+      segmentIndex: segment.segmentIndex,
+      lapLength: segment.lapLength, // Pass through actual lap length
+    });
 
     // Use cutting length (which includes lap) for space tracking
     bin.usedLength += segment.length;
@@ -181,7 +175,7 @@ export class GreedyCuttingStock {
           const hasLap = cut.lapLength > 0;
           
           cuts.push({
-            barCode: cut.parentBarCode,
+            barCode: cut.parentBarCode.replace(/_instance_\d+$/, ''), // Remove instance suffix for display
             segmentId: cut.segmentId,
             length: cut.length,
             quantity: 1,
