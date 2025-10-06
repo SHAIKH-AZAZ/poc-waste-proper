@@ -7,6 +7,7 @@ import ExcelFormatGuide from "@/components/customs/ExcelFormatGuide";
 import DiaFilter from "@/components/customs/DiaFilter";
 import FileInfoCard from "@/components/customs/FileInfoCard";
 import CuttingStockResults from "@/components/customs/CuttingStockResults";
+import CuttingVisualization3D from "@/components/customs/CuttingVisualization3D";
 import { clearData, downloadResults } from "@/utils/dataUtils";
 import { transformToDisplayFormat, filterDisplayDataByDia } from "@/utils/barCodeUtils";
 import { CuttingStockPreprocessor } from "@/utils/cuttingStockPreprocessor";
@@ -251,6 +252,14 @@ export default function Home() {
           fileName={fileName}
           greedyProgress={greedyProgress}
           dynamicProgress={dynamicProgress}
+        />
+      )}
+
+      {/* Visual Bar Cutting Diagrams */}
+      {selectedDia && greedyResult && greedyResult.patterns.length > 0 && (
+        <CuttingVisualization3D
+          patterns={greedyResult.patterns}
+          detailedCuts={greedyResult.detailedCuts}
         />
       )}
 
