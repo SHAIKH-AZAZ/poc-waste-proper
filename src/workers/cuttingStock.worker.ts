@@ -1,16 +1,19 @@
 import { GreedyCuttingStock } from "@/algorithms/greedyCuttingStock";
 import { DynamicCuttingStock } from "@/algorithms/dynamicCuttingStock";
+import { TrueDynamicCuttingStock } from "@/algorithms/trueDynamicCuttingStock";
+import { BranchAndBoundCuttingStock } from "@/algorithms/branchAndBoundCuttingStock";
+import { AdaptiveCuttingStock } from "@/algorithms/adaptiveCuttingStock";
 import type { MultiBarCuttingRequest, CuttingStockResult } from "@/types/CuttingStock";
 
 export interface WorkerMessage {
-    type: "greedy" | "dynamic";
+    type: "greedy" | "dynamic" | "true-dynamic" | "branch-bound" | "adaptive";
     requests: MultiBarCuttingRequest[];
     dia: number;
 }
 
 export interface WorkerResponse {
-    type: "greedy" | "dynamic";
-    result?: CuttingStockResult;
+    type: "greedy" | "dynamic" | "true-dynamic" | "branch-bound" | "adaptive";
+    result?: CuttingStockResult | CuttingStockResult[];
     error?: string;
     progress?: {
         stage: string;
@@ -28,43 +31,76 @@ function sendProgress(type: "greedy" | "dynamic", stage: string, percentage: num
 }
 
 // Listen for messages from main thread
-self.onmessage = (event: MessageEvent<WorkerMessage>) => {
+self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
     const { type, requests, dia } = event.data;
 
     console.log(`[Worker ${type}] Starting calculation for dia ${dia} with ${requests.length} requests`);
 
     try {
-        let result: CuttingStockResult;
+        let result: CuttingStockResult | CuttingStockResult[];
 
-        if (type === "greedy") {
-            sendProgress(type, "Preprocessing data...", 10);
-            const greedy = new GreedyCuttingStock();
+        switch (type) {
+            case "greedy":
+                sendProgress(type, "Preprocessing data...", 10);
+                const greedy = new GreedyCuttingStock();
+                sendProgress(type, "Sorting segments...", 30);
+                sendProgress(type, "Running First Fit Decreasing...", 50);
+                result = greedy.solve(requests, dia);
+                sendProgress(type, "Generating results...", 90);
+                break;
 
-            sendProgress(type, "Sorting segments...", 30);
-            sendProgress(type, "Running First Fit Decreasing...", 50);
+            case "dynamic":
+                sendProgress(type, "Preprocessing data...", 10);
+                const dynamic = new DynamicCuttingStock();
+                sendProgress(type, "Generating patterns...", 30);
+                sendProgress(type, "Running dynamic programming...", 60);
+                result = dynamic.solve(requests, dia);
+                sendProgress(type, "Optimizing solution...", 90);
+                break;
 
-            result = greedy.solve(requests, dia);
-            console.log(`[Worker ${type}] Calculation complete, bars used: ${result.totalBarsUsed}`);
+            case "true-dynamic":
+                sendProgress(type, "Analyzing dataset...", 10);
+                const trueDynamic = new TrueDynamicCuttingStock();
+                sendProgress(type, "Generating optimal patterns...", 30);
+                sendProgress(type, "State space exploration...", 50);
+                sendProgress(type, "Finding optimal solution...", 70);
+                result = trueDynamic.solve(requests, dia);
+                sendProgress(type, "Finalizing results...", 90);
+                break;
 
-            sendProgress(type, "Generating results...", 90);
+            case "branch-bound":
+                sendProgress(type, "Initializing search tree...", 10);
+                const branchBound = new BranchAndBoundCuttingStock();
+                sendProgress(type, "Calculating bounds...", 30);
+                sendProgress(type, "Exploring solution space...", 50);
+                sendProgress(type, "Pruning suboptimal branches...", 70);
+                result = branchBound.solve(requests, dia);
+                sendProgress(type, "Verifying optimality...", 90);
+                break;
+
+            case "adaptive":
+                sendProgress(type, "Analyzing dataset characteristics...", 10);
+                const adaptive = new AdaptiveCuttingStock();
+                sendProgress(type, "Selecting optimal algorithm...", 20);
+                sendProgress(type, "Running recommended algorithms...", 40);
+                sendProgress(type, "Comparing solutions...", 80);
+                result = await adaptive.solve(requests, dia);
+                sendProgress(type, "Generating recommendations...", 95);
+                break;
+
+            default:
+                throw new Error(`Unknown algorithm type: ${type}`);
+        }
+
+        console.log(`[Worker ${type}] Calculation complete`);
+        if (Array.isArray(result)) {
+            console.log(`[Worker ${type}] Generated ${result.length} solutions`);
         } else {
-            sendProgress(type, "Preprocessing data...", 10);
-            console.log(`[Worker ${type}] Creating DynamicCuttingStock instance`);
-            const dynamic = new DynamicCuttingStock();
-
-            sendProgress(type, "Generating patterns...", 30);
-            console.log(`[Worker ${type}] Calling solve method`);
-            sendProgress(type, "Running dynamic programming...", 60);
-
-            result = dynamic.solve(requests, dia);
-            console.log(`[Worker ${type}] Calculation complete, bars used: ${result.totalBarsUsed}`);
-
-            sendProgress(type, "Optimizing solution...", 90);
+            console.log(`[Worker ${type}] Bars used: ${result.totalBarsUsed}`);
         }
 
         // Send final result back to main thread
         sendProgress(type, "Complete", 100);
-        console.log(`[Worker ${type}] Sending result back to main thread`);
         const response: WorkerResponse = {
             type,
             result,
