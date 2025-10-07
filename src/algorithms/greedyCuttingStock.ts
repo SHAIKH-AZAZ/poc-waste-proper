@@ -30,8 +30,8 @@ export class GreedyCuttingStock {
       return this.createEmptyResult(dia, startTime);
     }
 
-    // Extract and sort segments
-    const allSegments = this.preprocessor.extractAllSegments(diaRequests);
+    // Extract and sort segments with unique identifiers for greedy algorithm
+    const allSegments = this.preprocessor.extractAllSegmentsForGreedy(diaRequests);
     const sortedSegments = this.preprocessor.sortSegmentsByLength(allSegments);
 
     // Apply First Fit Decreasing algorithm
@@ -98,18 +98,18 @@ export class GreedyCuttingStock {
   private canPlaceInBin(bin: Bin, segment: BarSegment): boolean {
     // Use cutting length (which includes lap) for space calculation
     const requiredSpace = segment.length;
-    const tolerance = 0.01; // 1cm tolerance for cutting precision
-    
-    // Check if there's enough space
-    if (bin.remainingLength < requiredSpace + tolerance) {
+    const tolerance = 0; // 1mm tolerance for cutting precision
+
+    // Check if there's enough space (allow exact fits)
+    if (bin.remainingLength < requiredSpace - tolerance) {
       return false;
     }
-    
+
     // Check if any cut in this bin is from the same parent bar
     const hasSameParent = bin.cuts.some(
       (cut) => cut.parentBarCode === segment.parentBarCode
     );
-    
+
     return !hasSameParent;
   }
 
@@ -179,7 +179,7 @@ export class GreedyCuttingStock {
           // Lap exists if lapLength > 0 in input (for multi-bar cuts)
           // All segments except last have lap at end
           const hasLap = cut.lapLength > 0;
-          
+
           cuts.push({
             barCode: cut.parentBarCode,
             segmentId: cut.segmentId,
