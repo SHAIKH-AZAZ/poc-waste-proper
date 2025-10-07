@@ -98,7 +98,7 @@ export class GreedyCuttingStock {
   private canPlaceInBin(bin: Bin, segment: BarSegment): boolean {
     // Use cutting length (which includes lap) for space calculation
     const requiredSpace = segment.length;
-    const tolerance = 0.01; // 1cm tolerance for cutting precision
+    const tolerance = 0; // 1cm tolerance for cutting precision
     
     // Check if there's enough space
     if (bin.remainingLength < requiredSpace + tolerance) {
