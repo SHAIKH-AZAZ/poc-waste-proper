@@ -153,6 +153,65 @@ export class WorkerManager {
   }
 
   /**
+   * Run improved greedy algorithm in worker
+   */
+  async runImprovedGreedy(
+    requests: MultiBarCuttingRequest[],
+    dia: number,
+    onProgress?: (stage: string, percentage: number) => void
+  ): Promise<CuttingStockResult> {
+    if (!this.greedyWorker) {
+      this.initWorkers();
+    }
+
+    return new Promise((resolve, reject) => {
+      if (!this.greedyWorker) {
+        reject(new Error("Worker not available"));
+        return;
+      }
+
+      const handleMessage = (event: MessageEvent<WorkerResponse>) => {
+        if (event.data.type === "improved-greedy") {
+          // Handle progress updates
+          if (event.data.progress) {
+            onProgress?.(event.data.progress.stage, event.data.progress.percentage);
+            return;
+          }
+
+          // Handle final result
+          if (event.data.result || event.data.error) {
+            this.greedyWorker?.removeEventListener("message", handleMessage);
+            this.greedyWorker?.removeEventListener("error", handleError);
+
+            if (event.data.error) {
+              reject(new Error(event.data.error));
+            } else if (event.data.result) {
+              const result = Array.isArray(event.data.result) ? event.data.result[0] : event.data.result;
+              resolve(result);
+            }
+          }
+        }
+      };
+
+      const handleError = (error: ErrorEvent) => {
+        this.greedyWorker?.removeEventListener("message", handleMessage);
+        this.greedyWorker?.removeEventListener("error", handleError);
+        reject(error);
+      };
+
+      this.greedyWorker.addEventListener("message", handleMessage);
+      this.greedyWorker.addEventListener("error", handleError);
+
+      const message: WorkerMessage = {
+        type: "improved-greedy",
+        requests,
+        dia,
+      };
+      this.greedyWorker.postMessage(message);
+    });
+  }
+
+  /**
    * Run both algorithms in parallel
    */
   async runBoth(

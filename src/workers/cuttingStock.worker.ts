@@ -3,16 +3,17 @@ import { DynamicCuttingStock } from "@/algorithms/dynamicCuttingStock";
 import { TrueDynamicCuttingStock } from "@/algorithms/trueDynamicCuttingStock";
 import { BranchAndBoundCuttingStock } from "@/algorithms/branchAndBoundCuttingStock";
 import { AdaptiveCuttingStock } from "@/algorithms/adaptiveCuttingStock";
+import { ImprovedGreedyCuttingStock } from "@/algorithms/improvedGreedyCuttingStock";
 import type { MultiBarCuttingRequest, CuttingStockResult } from "@/types/CuttingStock";
 
 export interface WorkerMessage {
-    type: "greedy" | "dynamic" | "true-dynamic" | "branch-bound" | "adaptive";
+    type: "greedy" | "dynamic" | "true-dynamic" | "branch-bound" | "adaptive" | "improved-greedy";
     requests: MultiBarCuttingRequest[];
     dia: number;
 }
 
 export interface WorkerResponse {
-    type: "greedy" | "dynamic" | "true-dynamic" | "branch-bound" | "adaptive";
+    type: "greedy" | "dynamic" | "true-dynamic" | "branch-bound" | "adaptive" | "improved-greedy";
     result?: CuttingStockResult | CuttingStockResult[];
     error?: string;
     progress?: {
@@ -22,7 +23,7 @@ export interface WorkerResponse {
 }
 
 // Helper to send progress updates
-function sendProgress(type: "greedy" | "dynamic" | "true-dynamic" | "branch-bound" | "adaptive", stage: string, percentage: number) {
+function sendProgress(type: "greedy" | "dynamic" | "true-dynamic" | "branch-bound" | "adaptive" | "improved-greedy", stage: string, percentage: number) {
     const response: WorkerResponse = {
         type,
         progress: { stage, percentage },
@@ -86,6 +87,16 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
                 sendProgress(type, "Comparing solutions...", 80);
                 result = await adaptive.solve(requests, dia);
                 sendProgress(type, "Generating recommendations...", 95);
+                break;
+
+            case "improved-greedy":
+                sendProgress(type, "Analyzing segment combinations...", 10);
+                const improvedGreedy = new ImprovedGreedyCuttingStock();
+                sendProgress(type, "Finding optimal combinations...", 30);
+                sendProgress(type, "Applying smart allocation...", 60);
+                sendProgress(type, "Minimizing waste...", 80);
+                result = improvedGreedy.solve(requests, dia);
+                sendProgress(type, "Optimizing results...", 95);
                 break;
 
             default:
