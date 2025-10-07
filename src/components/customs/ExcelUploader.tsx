@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import FileUpload from "./FileUpload";
 import { sanitizeExcelData } from "@/utils/sanitizeData";
+import { analytics } from "@/utils/analytics";
 
 import { validateHeaders, getHeaderValidationMessage } from "@/utils/excelTemplate";
 import type { BarCuttingRaw } from "@/types/BarCuttingRow";
@@ -49,11 +50,19 @@ export default function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
       }
       
       onDataParsed(finalData, file.name);
+      
+      // Track successful file processing
+      analytics.fileUploaded(file.name, finalData.length, file.size);
+      
       console.log("Processed data:", finalData);
       console.log("Original data:", result.data);
     } catch (err) {
       console.error("Upload error:", err);
-      setError(err instanceof Error ? err.message : "Failed to process file");
+      const errorMessage = err instanceof Error ? err.message : "Failed to process file";
+      setError(errorMessage);
+      
+      // Track upload errors
+      analytics.algorithmError("file_upload", errorMessage, 0);
     } finally {
       setLoading(false);
     }

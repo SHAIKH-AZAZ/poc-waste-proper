@@ -12,6 +12,7 @@ import { transformToDisplayFormat, filterDisplayDataByDia } from "@/utils/barCod
 import { CuttingStockPreprocessor } from "@/utils/cuttingStockPreprocessor";
 import { getWorkerManager } from "@/utils/workerManager";
 import { exportAllDiasToExcel } from "@/utils/exportAllDias";
+import { analytics } from "@/utils/analytics";
 import type { BarCuttingRaw, BarCuttingDisplay } from "@/types/BarCuttingRow";
 import type { CuttingStockResult } from "@/types/CuttingStock";
 
@@ -49,6 +50,10 @@ export default function Home() {
     setDynamicResult(null);
     setGreedyProgress({ stage: "", percentage: 0 });
     setDynamicProgress({ stage: "", percentage: 0 });
+
+    // Track file upload analytics
+    analytics.fileUploaded(name, data.length, 0);
+    analytics.featureUsed("excel_upload", `${data.length} rows processed`);
   };
 
   // Filter display data based on selected Dia
@@ -57,6 +62,18 @@ export default function Home() {
     if (selectedDia === null) return displayData;
     return filterDisplayDataByDia(displayData, selectedDia);
   }, [displayData, selectedDia]);
+
+  // Track large dataset warnings
+  useMemo(() => {
+    if (displayData) {
+      const dataLength = displayData.length;
+      if (dataLength > 2000) {
+        analytics.performanceMetric("large_dataset_warning", dataLength, "very_large");
+      } else if (dataLength > 500) {
+        analytics.performanceMetric("large_dataset_warning", dataLength, "large");
+      }
+    }
+  }, [displayData]);
 
   // Calculate cutting stock when Dia is selected
   const handleDiaSelect = useCallback(async (dia: number | null) => {
@@ -70,10 +87,15 @@ export default function Home() {
     if (dia !== null && displayData) {
       setIsCalculating(true);
       
+      // Track diameter selection
+      analytics.diameterSelected(dia, displayData.length);
+      analytics.featureUsed("dia_filter", `Diameter ${dia}mm selected`);
+      
       try {
         // Preprocess data
         const preprocessor = new CuttingStockPreprocessor();
         const requests = preprocessor.convertToCuttingRequests(displayData);
+        const totalSegments = requests.reduce((sum, req) => sum + req.segments.length * req.quantity, 0);
         
         console.log("[Page] Starting calculation with", requests.length, "requests for dia", dia);
         
@@ -97,10 +119,34 @@ export default function Home() {
         console.log("[Page] Calculation complete. Greedy:", greedyRes, "Dynamic:", dynamicRes);
         setGreedyResult(greedyRes);
         setDynamicResult(dynamicRes);
+
+        // Track algorithm execution analytics
+        analytics.algorithmExecuted(
+          "greedy",
+          dia,
+          totalSegments,
+          greedyRes.executionTime,
+          greedyRes.totalBarsUsed,
+          greedyRes.totalWaste,
+          greedyRes.averageUtilization
+        );
+
+        analytics.algorithmExecuted(
+          "dynamic",
+          dia,
+          totalSegments,
+          dynamicRes.executionTime,
+          dynamicRes.totalBarsUsed,
+          dynamicRes.totalWaste,
+          dynamicRes.averageUtilization
+        );
       } catch (error) {
         console.error("[Page] Error calculating cutting stock:", error);
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
         setCalculationError(errorMessage);
+
+        // Track algorithm errors
+        analytics.algorithmError("cutting_stock", errorMessage, displayData.length);
       } finally {
         setIsCalculating(false);
       }
@@ -113,6 +159,15 @@ export default function Home() {
         ? `${fileName.replace('.xlsx', '').replace('.xls', '')}_Dia_${selectedDia}.json`
         : `${fileName.replace('.xlsx', '').replace('.xls', '')}.json`;
       downloadResults(filteredDisplayData, downloadFileName);
+
+      // Track download analytics
+      analytics.resultsDownloaded(
+        "json",
+        "filtered_data",
+        selectedDia || 0,
+        filteredDisplayData.length
+      );
+      analytics.featureUsed("results_comparison", `Downloaded ${filteredDisplayData.length} results`);
     }
   };
 
