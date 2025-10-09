@@ -74,7 +74,35 @@ export class DynamicCuttingStock {
     const patterns: CuttingPattern[] = [];
     const uniqueSegments = this.getUniqueSegments(segments);
 
-    // Generate patterns using recursive enumeration
+    // CRITICAL: First, generate single-segment patterns for ALL segments
+    // This ensures every segment type (including last segments of multi-bar cuts) has at least one pattern
+    for (const segment of uniqueSegments) {
+      const maxCount = Math.floor(this.STANDARD_LENGTH / segment.length);
+      for (let count = 1; count <= maxCount; count++) {
+        const totalLength = segment.length * count;
+        const waste = this.STANDARD_LENGTH - totalLength;
+        
+        patterns.push({
+          id: `single_${segment.segmentId}_${count}`,
+          cuts: [{
+            segmentId: segment.segmentId,
+            parentBarCode: segment.parentBarCode,
+            length: segment.length,
+            count: count,
+            segmentIndex: segment.segmentIndex,
+            lapLength: segment.lapLength,
+          }],
+          waste,
+          utilization: (totalLength / this.STANDARD_LENGTH) * 100,
+          standardBarLength: this.STANDARD_LENGTH,
+        });
+      }
+    }
+
+    console.log(`[Dynamic] Generated ${patterns.length} single-segment patterns`);
+
+    // Then generate multi-segment patterns using recursive enumeration
+    const multiPatternCount = patterns.length;
     this.generatePatternsRecursive(
       uniqueSegments,
       [],
@@ -84,6 +112,8 @@ export class DynamicCuttingStock {
       0,
       5 // Max depth to prevent explosion
     );
+
+    console.log(`[Dynamic] Generated ${patterns.length - multiPatternCount} multi-segment patterns`);
 
     return patterns;
   }
@@ -233,6 +263,49 @@ export class DynamicCuttingStock {
 
       if (!bestPattern) {
         console.warn("[Dynamic] No pattern found to satisfy remaining demand:", Array.from(remaining.entries()));
+        
+        // CRITICAL FIX: Generate single-segment patterns for remaining demand
+        // This ensures ALL segments are included, especially last segments of multi-bar cuts
+        const remainingSegmentIds = Array.from(remaining.entries())
+          .filter(([_, count]) => count > 0)
+          .map(([segmentId, _]) => segmentId);
+        
+        if (remainingSegmentIds.length > 0) {
+          console.log("[Dynamic] Generating fallback patterns for remaining segments:", remainingSegmentIds);
+          
+          // Find the segment info from original segments
+          for (const segmentId of remainingSegmentIds) {
+            const segment = segments.find(s => s.segmentId === segmentId);
+            if (segment) {
+              const demandCount = remaining.get(segmentId) || 0;
+              
+              // Create single-segment patterns for each remaining demand
+              for (let i = 0; i < demandCount; i++) {
+                const fallbackPattern: CuttingPattern = {
+                  id: `fallback_${segmentId}_${i}`,
+                  cuts: [{
+                    segmentId: segment.segmentId,
+                    parentBarCode: segment.parentBarCode,
+                    length: segment.length,
+                    count: 1,
+                    segmentIndex: segment.segmentIndex,
+                    lapLength: segment.lapLength,
+                  }],
+                  waste: this.STANDARD_LENGTH - segment.length,
+                  utilization: (segment.length / this.STANDARD_LENGTH) * 100,
+                  standardBarLength: this.STANDARD_LENGTH,
+                };
+                
+                usedPatterns.push(fallbackPattern);
+                console.log(`[Dynamic] Added fallback pattern for ${segmentId}: ${segment.length}m (waste: ${fallbackPattern.waste}m)`);
+              }
+              
+              // Mark as satisfied
+              remaining.set(segmentId, 0);
+            }
+          }
+        }
+        
         break;
       }
 
