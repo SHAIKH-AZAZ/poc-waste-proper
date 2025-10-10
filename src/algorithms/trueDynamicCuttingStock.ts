@@ -320,10 +320,12 @@ export class TrueDynamicCuttingStock {
     patterns: CuttingPattern[],
     maxPatterns: number
   ): void {
-    const capacity = Math.floor(this.STANDARD_LENGTH * 100); // Work in cm for precision
+    // Use decimeters (0.1m precision) instead of centimeters for better performance
+    // This reduces DP table size by 10x while maintaining sufficient precision
+    const capacity = Math.floor(this.STANDARD_LENGTH * 10); // 120 instead of 1200
     const items = segments.map(seg => ({
-      length: Math.floor(seg.length * 100),
-      value: Math.floor(seg.length * 100), // Value = length (maximize utilization)
+      length: Math.floor(seg.length * 10),
+      value: Math.floor(seg.length * 10), // Value = length (maximize utilization)
       segment: seg
     }));
 
@@ -422,7 +424,8 @@ export class TrueDynamicCuttingStock {
 
   private encodeState(demand: Map<string, number>): string {
     const sorted = Array.from(demand.entries()).sort();
-    return JSON.stringify(sorted);
+    // Use simple string concatenation instead of JSON.stringify for better performance
+    return sorted.map(([id, count]) => `${id}:${count}`).join('|');
   }
 
   private isMapEmpty(map: Map<string, number>): boolean {
