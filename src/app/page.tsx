@@ -7,6 +7,7 @@ import ExcelFormatGuide from "@/components/customs/ExcelFormatGuide";
 import DiaFilter from "@/components/customs/DiaFilter";
 import FileInfoCard from "@/components/customs/FileInfoCard";
 import CuttingStockResults from "@/components/customs/CuttingStockResults";
+import CuttingVisualization3D from "@/components/customs/CuttingVisualization3D";
 import { clearData, downloadResults } from "@/utils/dataUtils";
 import { transformToDisplayFormat, filterDisplayDataByDia } from "@/utils/barCodeUtils";
 import { CuttingStockPreprocessor } from "@/utils/cuttingStockPreprocessor";
@@ -196,7 +197,8 @@ export default function Home() {
   }, [displayData, fileName]);
 
   return (
-    <div className="flex flex-col items-center mx-auto mt-10">
+    <div className="min-h-screen bg-gray-900 text-white">
+      <div className="flex flex-col items-center mx-auto pt-10 px-4">
       <div>
         <HeadDemo />
       </div>
@@ -309,8 +311,17 @@ export default function Home() {
         />
       )}
 
+      {/* Visual Bar Cutting Diagrams */}
+      {selectedDia && greedyResult && greedyResult.patterns.length > 0 && (
+        <CuttingVisualization3D
+          patterns={greedyResult.patterns}
+          detailedCuts={greedyResult.detailedCuts}
+        />
+      )}
+
       {/* Filtered Data Preview */}
       {filteredDisplayData && <ExcelPreviewTable data={filteredDisplayData} selectedDia={selectedDia} />}
+      </div>
     </div>
   );
 }
