@@ -3,32 +3,32 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": " next dev ",
+    "dev": " next dev --webpack ",
     "build": "next build ",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
-    "@tabler/icons-react": "^3.35.0",
-    "@types/xlsx": "^0.0.35",
+    "@tabler/icons-react": "^3.36.0",
+    "@types/xlsx": "^0.0.36",
     "clsx": "^2.1.1",
-    "critters": "^0.0.23",
-    "motion": "^12.23.22",
-    "next": "15.5.4",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "critters": "^0.0.25",
+    "motion": "^12.23.26",
+    "next": "16.0.10",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
     "react-dropzone": "^14.3.8",
-    "tailwind-merge": "^3.3.1",
+    "tailwind-merge": "^3.4.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
+    "@types/node": "^25.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "15.5.4",
+    "eslint-config-next": "16.0.10",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
