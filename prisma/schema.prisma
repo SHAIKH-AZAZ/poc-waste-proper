@@ -1,0 +1,44 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id              Int     @id @default(autoincrement())
+  name            String
+  description     String?
+  fileName        String?
+  fileSize        Int?
+  uploadDate      DateTime @default(now())
+  status          String  @default("uploaded")  // uploaded, processing, completed
+  mongoDataId     String?  // Reference to MongoDB excel_data collection
+  results         CalculationResult[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([uploadDate])
+}
+
+model CalculationResult {
+  id                  Int     @id @default(autoincrement())
+  projectId           Int
+  project             Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  algorithm           String
+  dia                 Int
+  totalBarsUsed       Int
+  totalWaste          Decimal @db.Decimal(10, 3)
+  averageUtilization  Decimal @db.Decimal(5, 2)
+  executionTime       Decimal @db.Decimal(10, 2)
+  mongoResultId       String?  // Reference to MongoDB calculation_results collection
+  createdAt           DateTime @default(now())
+
+  @@index([projectId])
+  @@index([algorithm])
+}

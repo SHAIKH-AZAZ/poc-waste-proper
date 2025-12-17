@@ -1,5 +1,6 @@
 "use client";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { HeadDemo } from "@/components/customs/Heading";
 import ExcelUploader from "@/components/customs/ExcelUploader";
 import ExcelPreviewTable from "@/components/customs/ExcelPreviewTable";
@@ -12,10 +13,14 @@ import { transformToDisplayFormat, filterDisplayDataByDia } from "@/utils/barCod
 import { CuttingStockPreprocessor } from "@/utils/cuttingStockPreprocessor";
 import { getWorkerManager } from "@/utils/workerManager";
 import { exportAllDiasToExcel } from "@/utils/exportAllDias";
+import { sanitizeExcelData } from "@/utils/sanitizeData";
 import type { BarCuttingRaw, BarCuttingDisplay } from "@/types/BarCuttingRow";
 import type { CuttingStockResult } from "@/types/CuttingStock";
 
 export default function Home() {
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get("projectId");
+
   const [fileName, setFileName] = useState<string>("");
   const [, setParsedData] = useState<BarCuttingRaw[] | null>(null);
   const [displayData, setDisplayData] = useState<BarCuttingDisplay[] | null>(null);
@@ -28,6 +33,68 @@ export default function Home() {
   const [calculationError, setCalculationError] = useState<string | null>(null);
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
   const [downloadAllProgress, setDownloadAllProgress] = useState({ current: 0, total: 0, dia: 0 });
+  const [isLoadingProject, setIsLoadingProject] = useState(false);
+  const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
+
+  // Load project data when projectId is in URL
+  useEffect(() => {
+    const loadProjectData = async () => {
+      if (!projectId) return;
+
+      setIsLoadingProject(true);
+      setCalculationError(null);
+
+      try {
+        // First, get project info
+        const projectRes = await fetch("/api/projects");
+        const projectData = await projectRes.json();
+        
+        if (!projectData.success) {
+          throw new Error("Failed to fetch projects");
+        }
+
+        const project = projectData.projects.find((p: { id: number }) => p.id === parseInt(projectId));
+        
+        if (!project) {
+          throw new Error(`Project with ID ${projectId} not found`);
+        }
+
+        if (!project.mongoDataId) {
+          throw new Error("Project has no associated data");
+        }
+
+        // Fetch Excel data from MongoDB
+        const excelRes = await fetch(`/api/excel-data?mongoDataId=${project.mongoDataId}`);
+        const excelData = await excelRes.json();
+
+        if (!excelData.success) {
+          throw new Error(excelData.error || "Failed to fetch Excel data");
+        }
+
+        console.log(`[Page] Loaded project ${projectId} with ${excelData.data.length} rows`);
+
+        // Process the data
+        const sanitizedData = sanitizeExcelData(excelData.data);
+        const transformed = transformToDisplayFormat(sanitizedData);
+
+        setParsedData(sanitizedData);
+        setDisplayData(transformed);
+        setFileName(project.fileName || project.name);
+        setCurrentProjectId(parseInt(projectId));
+        setSelectedDia(null);
+        setGreedyResult(null);
+        setDynamicResult(null);
+
+      } catch (err) {
+        console.error("[Page] Error loading project:", err);
+        setCalculationError(err instanceof Error ? err.message : "Failed to load project");
+      } finally {
+        setIsLoadingProject(false);
+      }
+    };
+
+    loadProjectData();
+  }, [projectId]);
 
   const handleClearData = () => {
     clearData(setParsedData, setFileName);
@@ -146,11 +213,45 @@ export default function Home() {
         <HeadDemo />
       </div>
 
+      {/* Loading Project Indicator */}
+      {isLoadingProject && (
+        <div className="w-full max-w-7xl mx-auto p-6 bg-blue-50 border border-blue-200 rounded-xl shadow-lg mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-6 h-6 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+            <span className="text-blue-700 font-medium">Loading project data...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Project Info Banner */}
+      {currentProjectId && !isLoadingProject && (
+        <div className="w-full max-w-7xl mx-auto p-4 bg-green-50 border border-green-200 rounded-xl shadow-sm mb-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-green-600">✓</span>
+              <span className="text-green-700 font-medium">
+                Viewing Project #{currentProjectId}: {fileName}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                window.history.pushState({}, "", "/");
+                setCurrentProjectId(null);
+                handleClearData();
+              }}
+              className="text-sm text-green-600 hover:text-green-700 underline"
+            >
+              Upload New File
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Excel Format Guide */}
-      <ExcelFormatGuide />
+      {!currentProjectId && <ExcelFormatGuide />}
 
       {/* {uploading data} */}
-      <ExcelUploader onDataParsed={handleDataParsed} />
+      {!currentProjectId && <ExcelUploader onDataParsed={handleDataParsed} />}
 
       {/* Parsed Data Preview */}
 
