@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { Suspense, useState, useMemo, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { HeadDemo } from "@/components/customs/Heading";
 import ExcelUploader from "@/components/customs/ExcelUploader";
@@ -17,7 +17,7 @@ import { sanitizeExcelData } from "@/utils/sanitizeData";
 import type { BarCuttingRaw, BarCuttingDisplay } from "@/types/BarCuttingRow";
 import type { CuttingStockResult } from "@/types/CuttingStock";
 
-export default function Home() {
+function HomeContent() {
   const searchParams = useSearchParams();
   const projectId = searchParams.get("projectId");
 
@@ -358,5 +358,28 @@ export default function Home() {
       {/* Filtered Data Preview */}
       {filteredDisplayData && <ExcelPreviewTable data={filteredDisplayData} selectedDia={selectedDia} />}
     </div>
+  );
+}
+
+// Loading fallback for Suspense
+function HomeLoading() {
+  return (
+    <div className="flex flex-col items-center mx-auto mt-10">
+      <div className="w-full max-w-7xl mx-auto p-6 bg-gray-50 border border-gray-200 rounded-xl shadow-lg">
+        <div className="flex items-center gap-3">
+          <div className="w-6 h-6 border-3 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-gray-600 font-medium">Loading...</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main export wrapped in Suspense for useSearchParams
+export default function Home() {
+  return (
+    <Suspense fallback={<HomeLoading />}>
+      <HomeContent />
+    </Suspense>
   );
 }
