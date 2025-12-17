@@ -106,7 +106,7 @@ function HomeContent() {
     setDynamicProgress({ stage: "", percentage: 0 });
   };
 
-  const handleDataParsed = (data: BarCuttingRaw[], name: string) => {
+  const handleDataParsed = (data: BarCuttingRaw[], name: string, projectId?: number) => {
     setParsedData(data);
     const transformed = transformToDisplayFormat(data);
     setDisplayData(transformed);
@@ -116,6 +116,11 @@ function HomeContent() {
     setDynamicResult(null);
     setGreedyProgress({ stage: "", percentage: 0 });
     setDynamicProgress({ stage: "", percentage: 0 });
+    // Set project ID so calculations can be saved
+    if (projectId) {
+      setCurrentProjectId(projectId);
+      console.log(`[Page] New upload - Project ID set to: ${projectId}`);
+    }
   };
 
   // Filter display data based on selected Dia
@@ -124,6 +129,40 @@ function HomeContent() {
     if (selectedDia === null) return displayData;
     return filterDisplayDataByDia(displayData, selectedDia);
   }, [displayData, selectedDia]);
+
+  // Save calculation result to database
+  const saveResultToDatabase = useCallback(async (
+    algorithm: string,
+    dia: number,
+    result: CuttingStockResult
+  ) => {
+    if (!currentProjectId) {
+      console.log("[Page] No project ID, skipping save");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/results", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: currentProjectId,
+          algorithm,
+          dia,
+          result
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        console.log(`[Page] Saved ${algorithm} result to database:`, data.resultId);
+      } else {
+        console.error(`[Page] Failed to save ${algorithm} result:`, data.error);
+      }
+    } catch (err) {
+      console.error(`[Page] Error saving ${algorithm} result:`, err);
+    }
+  }, [currentProjectId]);
 
   // Calculate cutting stock when Dia is selected
   const handleDiaSelect = useCallback(async (dia: number | null) => {
@@ -164,6 +203,16 @@ function HomeContent() {
         console.log("[Page] Calculation complete. Greedy:", greedyRes, "Dynamic:", dynamicRes);
         setGreedyResult(greedyRes);
         setDynamicResult(dynamicRes);
+
+        // Auto-save results to database if project is loaded
+        if (currentProjectId) {
+          if (greedyRes) {
+            await saveResultToDatabase("greedy", dia, greedyRes);
+          }
+          if (dynamicRes) {
+            await saveResultToDatabase("dynamic", dia, dynamicRes);
+          }
+        }
       } catch (error) {
         console.error("[Page] Error calculating cutting stock:", error);
         const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
@@ -172,7 +221,7 @@ function HomeContent() {
         setIsCalculating(false);
       }
     }
-  }, [displayData]);
+  }, [displayData, currentProjectId, saveResultToDatabase]);
 
   const handleDownloadResults = () => {
     if (filteredDisplayData) {

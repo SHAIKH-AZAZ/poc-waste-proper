@@ -8,7 +8,7 @@ import { validateHeaders, getHeaderValidationMessage } from "@/utils/excelTempla
 import type { BarCuttingRaw } from "@/types/BarCuttingRow";
 
 interface ExcelUploaderProps {
-  onDataParsed: (data: BarCuttingRaw[], fileName: string) => void;
+  onDataParsed: (data: BarCuttingRaw[], fileName: string, projectId?: number) => void;
 }
 
 export default function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
@@ -48,9 +48,10 @@ export default function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
         throw new Error("No valid data found in Excel file. Please check column headers and data format.");
       }
       
-      onDataParsed(finalData, file.name);
+      onDataParsed(finalData, file.name, result.projectId);
       console.log("Processed data:", finalData);
       console.log("Original data:", result.data);
+      console.log("Project ID:", result.projectId);
     } catch (err) {
       console.error("Upload error:", err);
       setError(err instanceof Error ? err.message : "Failed to process file");

@@ -32,6 +32,27 @@ export async function POST(req: NextRequest) {
     console.log(`[Results] Saving result for project ${projectId}, algorithm: ${algorithm}, dia: ${dia}`);
 
     // ============================================
+    // CHECK: Skip if result already exists for this project + algorithm + dia
+    // ============================================
+    const existingResult = await prisma.calculationResult.findFirst({
+      where: {
+        projectId,
+        algorithm,
+        dia
+      }
+    });
+
+    if (existingResult) {
+      console.log(`[Results] Skipping - result already exists for project ${projectId}, algorithm: ${algorithm}, dia: ${dia}`);
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        resultId: existingResult.id,
+        message: "Result already exists, skipped saving"
+      });
+    }
+
+    // ============================================
     // STEP 1: Store Detailed Data in MongoDB
     // ============================================
     const db = await getMongoDb();
