@@ -35,6 +35,7 @@ function HomeContent() {
   const [downloadAllProgress, setDownloadAllProgress] = useState({ current: 0, total: 0, dia: 0 });
   const [isLoadingProject, setIsLoadingProject] = useState(false);
   const [currentProjectId, setCurrentProjectId] = useState<number | null>(null);
+  const [resultsFromCache, setResultsFromCache] = useState(false);
 
   // Load project data when projectId is in URL
   useEffect(() => {
@@ -164,6 +165,82 @@ function HomeContent() {
     }
   }, [currentProjectId]);
 
+  // Load saved results from database
+  const loadSavedResults = useCallback(async (dia: number): Promise<{ greedy: CuttingStockResult | null; dynamic: CuttingStockResult | null }> => {
+    if (!currentProjectId) return { greedy: null, dynamic: null };
+
+    try {
+      const response = await fetch(`/api/results?projectId=${currentProjectId}`);
+      const data = await response.json();
+      
+      if (!data.success || !data.results) {
+        return { greedy: null, dynamic: null };
+      }
+
+      // Find results for this specific dia
+      const greedyResult = data.results.find(
+        (r: { algorithm: string; dia: number }) => r.algorithm === "greedy" && r.dia === dia
+      );
+      const dynamicResult = data.results.find(
+        (r: { algorithm: string; dia: number }) => r.algorithm === "dynamic" && r.dia === dia
+      );
+
+      // Convert database format to CuttingStockResult format
+      const convertToResult = (
+        dbResult: {
+          algorithm?: string;
+          dia?: number;
+          totalBarsUsed: number;
+          totalWaste: string | number;
+          averageUtilization: string | number;
+          executionTime: string | number;
+          patterns?: unknown[];
+          detailedCuts?: unknown[];
+        },
+        algorithm: "greedy" | "dynamic",
+        diaValue: number
+      ): CuttingStockResult | null => {
+        if (!dbResult) return null;
+
+        const totalBars = dbResult.totalBarsUsed;
+        const totalWaste = parseFloat(String(dbResult.totalWaste));
+        const avgUtil = parseFloat(String(dbResult.averageUtilization));
+        const patterns = (dbResult.patterns || []) as CuttingStockResult["patterns"];
+        const detailedCuts = (dbResult.detailedCuts || []) as CuttingStockResult["detailedCuts"];
+
+        return {
+          algorithm,
+          dia: diaValue,
+          totalBarsUsed: totalBars,
+          totalWaste,
+          averageUtilization: avgUtil,
+          executionTime: parseFloat(String(dbResult.executionTime)),
+          patterns,
+          detailedCuts,
+          summary: {
+            totalStandardBars: totalBars,
+            totalWasteLength: totalWaste,
+            totalWastePercentage: totalBars > 0 ? (totalWaste / (totalBars * 12000)) * 100 : 0,
+            averageUtilization: avgUtil,
+            patternCount: patterns.length,
+            totalCutsProduced: detailedCuts.reduce(
+              (sum, d) => sum + (d.cuts?.length || 0),
+              0
+            ),
+          },
+        };
+      };
+
+      return {
+        greedy: convertToResult(greedyResult, "greedy", dia),
+        dynamic: convertToResult(dynamicResult, "dynamic", dia),
+      };
+    } catch (err) {
+      console.error("[Page] Error loading saved results:", err);
+      return { greedy: null, dynamic: null };
+    }
+  }, [currentProjectId]);
+
   // Calculate cutting stock when Dia is selected
   const handleDiaSelect = useCallback(async (dia: number | null) => {
     setSelectedDia(dia);
@@ -177,6 +254,23 @@ function HomeContent() {
       setIsCalculating(true);
       
       try {
+        // First, try to load saved results from database
+        if (currentProjectId) {
+          console.log(`[Page] Checking for saved results for dia ${dia}...`);
+          const savedResults = await loadSavedResults(dia);
+          
+          if (savedResults.greedy || savedResults.dynamic) {
+            console.log("[Page] Found saved results, loading from database");
+            setGreedyResult(savedResults.greedy);
+            setDynamicResult(savedResults.dynamic);
+            setResultsFromCache(true);
+            setIsCalculating(false);
+            return; // Don't run calculation, use saved results
+          }
+          setResultsFromCache(false);
+          console.log("[Page] No saved results found, running calculation...");
+        }
+
         // Preprocess data
         const preprocessor = new CuttingStockPreprocessor();
         const requests = preprocessor.convertToCuttingRequests(displayData);
@@ -221,7 +315,7 @@ function HomeContent() {
         setIsCalculating(false);
       }
     }
-  }, [displayData, currentProjectId, saveResultToDatabase]);
+  }, [displayData, currentProjectId, saveResultToDatabase, loadSavedResults]);
 
   const handleDownloadResults = () => {
     if (filteredDisplayData) {
@@ -388,6 +482,36 @@ function HomeContent() {
                 Dismiss
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cached Results Indicator */}
+      {selectedDia && resultsFromCache && (greedyResult || dynamicResult) && (
+        <div className="w-full max-w-7xl mx-auto p-3 bg-blue-50 border border-blue-200 rounded-xl shadow-sm mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-blue-500">💾</span>
+              <span className="text-blue-700 text-sm">
+                Loaded saved results for Dia {selectedDia}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setResultsFromCache(false);
+                setGreedyResult(null);
+                setDynamicResult(null);
+                // Re-trigger calculation
+                const dia = selectedDia;
+                setSelectedDia(null);
+                setTimeout(() => {
+                  setSelectedDia(dia);
+                }, 100);
+              }}
+              className="text-xs text-blue-600 hover:text-blue-800 underline"
+            >
+              Recalculate
+            </button>
           </div>
         </div>
       )}
