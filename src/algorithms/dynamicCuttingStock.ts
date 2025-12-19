@@ -6,6 +6,7 @@ import type {
   PatternCut,
   DetailedCut,
   CutInstruction,
+  WastePiece,
 } from "@/types/CuttingStock";
 import { CuttingStockPreprocessor } from "@/utils/cuttingStockPreprocessor";
 
@@ -21,7 +22,10 @@ export class DynamicCuttingStock {
   private memo: Map<string, DPState> = new Map();
   private readonly MAX_ITERATIONS = 10000; // Prevent infinite loops
 
-  solve(requests: MultiBarCuttingRequest[], dia: number): CuttingStockResult {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  solve(requests: MultiBarCuttingRequest[], dia: number, _wastePieces?: WastePiece[]): CuttingStockResult {
+    // Note: Dynamic algorithm currently doesn't use waste pieces
+    // Waste reuse is handled by the greedy algorithm which is typically selected as best
     const startTime = performance.now();
 
     // Filter by diameter

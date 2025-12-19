@@ -1,24 +1,39 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { IconFile, IconTrash, IconEye, IconCalendar, IconDatabase, IconRefresh } from "@tabler/icons-react";
+import {
+  IconFile,
+  IconTrash,
+  IconEye,
+  IconCalendar,
+  IconDatabase,
+  IconRefresh,
+  IconPlus,
+  IconPackage,
+  IconChevronRight,
+} from "@tabler/icons-react";
+
+interface Sheet {
+  id: number;
+  sheetNumber: number;
+  fileName: string;
+  status: string;
+  uploadedAt: string;
+  _count: {
+    results: number;
+  };
+}
 
 interface Project {
   id: number;
   name: string;
-  fileName: string | null;
-  fileSize: number | null;
-  uploadDate: string;
+  description: string | null;
   status: string;
-  mongoDataId: string | null;
-  resultCount: number;
-  results: {
-    id: number;
-    algorithm: string;
-    dia: number;
-    totalBarsUsed: number;
-    totalWaste: number;
-  }[];
+  createdAt: string;
+  sheets: Sheet[];
+  sheetCount: number;
+  totalCalculations: number;
+  wasteCount: number;
 }
 
 export default function ProjectsPage() {
@@ -26,6 +41,9 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newProjectName, setNewProjectName] = useState("");
+  const [creating, setCreating] = useState(false);
 
   const fetchProjects = async () => {
     setLoading(true);
@@ -45,8 +63,33 @@ export default function ProjectsPage() {
     }
   };
 
+  const createProject = async () => {
+    if (!newProjectName.trim()) return;
+
+    setCreating(true);
+    try {
+      const res = await fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newProjectName.trim() }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setShowCreateModal(false);
+        setNewProjectName("");
+        fetchProjects();
+      } else {
+        throw new Error(data.error || "Failed to create project");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create project");
+    } finally {
+      setCreating(false);
+    }
+  };
+
   const deleteProject = async (projectId: number) => {
-    if (!confirm("Are you sure you want to delete this project? This action cannot be undone.")) {
+    if (!confirm("Are you sure you want to delete this project and all its sheets? This action cannot be undone.")) {
       return;
     }
 
@@ -72,13 +115,6 @@ export default function ProjectsPage() {
     fetchProjects();
   }, []);
 
-  const formatFileSize = (bytes: number | null) => {
-    if (!bytes) return "N/A";
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
@@ -92,11 +128,14 @@ export default function ProjectsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
+      case "calculated":
         return "bg-green-100 text-green-800";
-      case "processing":
+      case "active":
+        return "bg-blue-100 text-blue-800";
+      case "uploaded":
         return "bg-yellow-100 text-yellow-800";
       default:
-        return "bg-blue-100 text-blue-800";
+        return "bg-gray-100 text-gray-800";
     }
   };
 
@@ -106,8 +145,8 @@ export default function ProjectsPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Uploaded Projects</h1>
-            <p className="mt-1 text-gray-500">View and manage your uploaded Excel sheets</p>
+            <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
+            <p className="mt-1 text-gray-500">Manage your cutting stock projects with multiple sheets</p>
           </div>
           <div className="flex gap-3">
             <button
@@ -118,13 +157,13 @@ export default function ProjectsPage() {
               <IconRefresh className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
               Refresh
             </button>
-            <Link
-              href="/"
+            <button
+              onClick={() => setShowCreateModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              <IconFile className="w-5 h-5" />
-              Upload New
-            </Link>
+              <IconPlus className="w-5 h-5" />
+              New Project
+            </button>
           </div>
         </div>
 
@@ -132,6 +171,9 @@ export default function ProjectsPage() {
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-red-700">{error}</p>
+            <button onClick={() => setError(null)} className="text-sm text-red-600 underline mt-1">
+              Dismiss
+            </button>
           </div>
         )}
 
@@ -150,99 +192,141 @@ export default function ProjectsPage() {
           <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-gray-200">
             <IconDatabase className="w-16 h-16 mx-auto text-gray-300 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No projects yet</h3>
-            <p className="text-gray-500 mb-6">Upload your first Excel sheet to get started</p>
-            <Link
-              href="/"
+            <p className="text-gray-500 mb-6">Create your first project to get started</p>
+            <button
+              onClick={() => setShowCreateModal(true)}
               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              <IconFile className="w-5 h-5" />
-              Upload Excel Sheet
-            </Link>
+              <IconPlus className="w-5 h-5" />
+              Create Project
+            </button>
           </div>
         )}
 
-        {/* Projects Grid */}
+        {/* Projects List */}
         {!loading && projects.length > 0 && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="space-y-6">
             {projects.map((project) => (
               <div
                 key={project.id}
-                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
+                className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
               >
-                {/* Card Header */}
+                {/* Project Header */}
                 <div className="p-5 border-b border-gray-100">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <IconFile className="w-5 h-5 text-blue-600" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                        <IconPackage className="w-6 h-6 text-blue-600" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900 truncate max-w-[180px]">
-                          {project.name}
-                        </h3>
-                        <p className="text-sm text-gray-500 truncate max-w-[180px]">
-                          {project.fileName || "Unknown file"}
-                        </p>
+                        <h3 className="text-lg font-semibold text-gray-900">{project.name}</h3>
+                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <IconCalendar className="w-4 h-4" />
+                            {formatDate(project.createdAt)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <IconFile className="w-4 h-4" />
+                            {project.sheetCount} sheet(s)
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <IconDatabase className="w-4 h-4" />
+                            {project.wasteCount} waste pieces
+                          </span>
+                        </div>
                       </div>
                     </div>
-                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(project.status)}`}>
-                      {project.status}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(project.status)}`}>
+                        {project.status}
+                      </span>
+                      <button
+                        onClick={() => deleteProject(project.id)}
+                        disabled={deleting === project.id}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                        title="Delete Project"
+                      >
+                        {deleting === project.id ? (
+                          <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <IconTrash className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Card Body */}
-                <div className="p-5 space-y-3">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <IconCalendar className="w-4 h-4" />
-                    <span>{formatDate(project.uploadDate)}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <IconDatabase className="w-4 h-4" />
-                    <span>Size: {formatFileSize(project.fileSize)}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <IconEye className="w-4 h-4" />
-                    <span>{project.resultCount} calculation(s)</span>
-                  </div>
-
-                  {/* Results Summary */}
-                  {project.results && project.results.length > 0 && (
-                    <div className="mt-3 pt-3 border-t border-gray-100">
-                      <p className="text-xs font-medium text-gray-500 mb-2">Recent Results:</p>
-                      <div className="space-y-1">
-                        {project.results.slice(0, 2).map((result) => (
-                          <div key={result.id} className="text-xs text-gray-600 flex justify-between">
-                            <span>Dia {result.dia} ({result.algorithm})</span>
-                            <span>{result.totalBarsUsed} bars</span>
-                          </div>
-                        ))}
+                {/* Sheets List */}
+                <div className="p-5">
+                  {project.sheets.length === 0 ? (
+                    <div className="text-center py-6 bg-gray-50 rounded-lg">
+                      <p className="text-gray-500 mb-3">No sheets uploaded yet</p>
+                      <Link
+                        href={`/project/${project.id}`}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        <IconPlus className="w-4 h-4" />
+                        Upload First Sheet
+                      </Link>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-medium text-gray-700">Sheets</h4>
+                        <Link
+                          href={`/project/${project.id}`}
+                          className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                        >
+                          View All <IconChevronRight className="w-4 h-4" />
+                        </Link>
                       </div>
+                      {project.sheets.slice(0, 3).map((sheet) => (
+                        <div
+                          key={sheet.id}
+                          className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center border border-gray-200">
+                              <span className="text-sm font-medium text-gray-600">#{sheet.sheetNumber}</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{sheet.fileName}</p>
+                              <p className="text-xs text-gray-500">{sheet._count.results} calculations</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusColor(sheet.status)}`}>
+                              {sheet.status}
+                            </span>
+                            <Link
+                              href={`/project/${project.id}/sheet/${sheet.id}`}
+                              className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            >
+                              <IconEye className="w-4 h-4" />
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                      {project.sheets.length > 3 && (
+                        <p className="text-sm text-gray-500 text-center pt-2">
+                          +{project.sheets.length - 3} more sheets
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
 
-                {/* Card Footer */}
-                <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex justify-between">
+                {/* Project Footer */}
+                <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
+                  <div className="text-sm text-gray-500">
+                    {project.totalCalculations} total calculations
+                  </div>
                   <Link
-                    href={`/?projectId=${project.id}`}
+                    href={`/project/${project.id}`}
                     className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700 font-medium"
                   >
-                    <IconEye className="w-4 h-4" />
-                    View Details
+                    Open Project <IconChevronRight className="w-4 h-4" />
                   </Link>
-                  <button
-                    onClick={() => deleteProject(project.id)}
-                    disabled={deleting === project.id}
-                    className="flex items-center gap-1 text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
-                  >
-                    {deleting === project.id ? (
-                      <div className="w-4 h-4 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-                    ) : (
-                      <IconTrash className="w-4 h-4" />
-                    )}
-                    Delete
-                  </button>
                 </div>
               </div>
             ))}
@@ -260,26 +344,65 @@ export default function ProjectsPage() {
               </div>
               <div className="text-center p-4 bg-green-50 rounded-lg">
                 <p className="text-2xl font-bold text-green-600">
-                  {projects.filter((p) => p.status === "completed").length}
+                  {projects.reduce((sum, p) => sum + p.sheetCount, 0)}
                 </p>
-                <p className="text-sm text-gray-600">Completed</p>
-              </div>
-              <div className="text-center p-4 bg-yellow-50 rounded-lg">
-                <p className="text-2xl font-bold text-yellow-600">
-                  {projects.filter((p) => p.status === "uploaded").length}
-                </p>
-                <p className="text-sm text-gray-600">Pending</p>
+                <p className="text-sm text-gray-600">Total Sheets</p>
               </div>
               <div className="text-center p-4 bg-purple-50 rounded-lg">
                 <p className="text-2xl font-bold text-purple-600">
-                  {projects.reduce((sum, p) => sum + p.resultCount, 0)}
+                  {projects.reduce((sum, p) => sum + p.totalCalculations, 0)}
                 </p>
                 <p className="text-sm text-gray-600">Total Calculations</p>
+              </div>
+              <div className="text-center p-4 bg-orange-50 rounded-lg">
+                <p className="text-2xl font-bold text-orange-600">
+                  {projects.reduce((sum, p) => sum + p.wasteCount, 0)}
+                </p>
+                <p className="text-sm text-gray-600">Waste Pieces</p>
               </div>
             </div>
           </div>
         )}
       </div>
+
+      {/* Create Project Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Create New Project</h2>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Project Name</label>
+              <input
+                type="text"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                placeholder="e.g., Building A - Floor 1-5"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                autoFocus
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setNewProjectName("");
+                }}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={createProject}
+                disabled={!newProjectName.trim() || creating}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {creating && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>}
+                Create Project
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

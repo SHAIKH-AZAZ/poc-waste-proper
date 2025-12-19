@@ -1,4 +1,4 @@
-import type { MultiBarCuttingRequest, CuttingStockResult } from "@/types/CuttingStock";
+import type { MultiBarCuttingRequest, CuttingStockResult, WastePiece } from "@/types/CuttingStock";
 import type { WorkerMessage, WorkerResponse } from "@/workers/cuttingStock.worker";
 
 export class WorkerManager {
@@ -32,7 +32,8 @@ export class WorkerManager {
   async runGreedy(
     requests: MultiBarCuttingRequest[],
     dia: number,
-    onProgress?: (stage: string, percentage: number) => void
+    onProgress?: (stage: string, percentage: number) => void,
+    wastePieces?: WastePiece[]
   ): Promise<CuttingStockResult> {
     if (!this.greedyWorker) {
       this.initWorkers();
@@ -81,6 +82,7 @@ export class WorkerManager {
         type: "greedy",
         requests,
         dia,
+        wastePieces,
       };
       this.greedyWorker.postMessage(message);
     });
@@ -92,7 +94,8 @@ export class WorkerManager {
   async runDynamic(
     requests: MultiBarCuttingRequest[],
     dia: number,
-    onProgress?: (stage: string, percentage: number) => void
+    onProgress?: (stage: string, percentage: number) => void,
+    wastePieces?: WastePiece[]
   ): Promise<CuttingStockResult> {
     if (!this.dynamicWorker) {
       this.initWorkers();
@@ -146,6 +149,7 @@ export class WorkerManager {
         type: "dynamic",
         requests,
         dia,
+        wastePieces,
       };
       console.log("[WorkerManager] Sending message to dynamic worker:", message);
       this.dynamicWorker.postMessage(message);
@@ -220,14 +224,15 @@ export class WorkerManager {
     onProgress?: {
       greedy?: (stage: string, percentage: number) => void;
       dynamic?: (stage: string, percentage: number) => void;
-    }
+    },
+    wastePieces?: WastePiece[]
   ): Promise<{
     greedy: CuttingStockResult;
     dynamic: CuttingStockResult;
   }> {
     const [greedy, dynamic] = await Promise.all([
-      this.runGreedy(requests, dia, onProgress?.greedy),
-      this.runDynamic(requests, dia, onProgress?.dynamic),
+      this.runGreedy(requests, dia, onProgress?.greedy, wastePieces),
+      this.runDynamic(requests, dia, onProgress?.dynamic, wastePieces),
     ]);
 
     return { greedy, dynamic };

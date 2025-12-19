@@ -11,34 +11,108 @@ datasource db {
 }
 
 model Project {
-  id              Int     @id @default(autoincrement())
+  id              Int       @id @default(autoincrement())
   name            String
   description     String?
-  fileName        String?
-  fileSize        Int?
-  uploadDate      DateTime @default(now())
-  status          String  @default("uploaded")  // uploaded, processing, completed
-  mongoDataId     String?  // Reference to MongoDB excel_data collection
-  results         CalculationResult[]
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  status          String    @default("active")  // active, completed, archived
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  @@index([uploadDate])
+  // Relations
+  sheets          Sheet[]
+  wasteInventory  WasteInventory[]
+
+  @@index([createdAt])
+}
+
+model Sheet {
+  id              Int       @id @default(autoincrement())
+  projectId       Int
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sheetNumber     Int       // 1, 2, 3... order within project
+  fileName        String
+  fileSize        Int?
+  mongoDataId     String?   // Reference to MongoDB excel_data collection
+  status          String    @default("uploaded")  // uploaded, calculated, completed
+  uploadedAt      DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relations
+  results         CalculationResult[]
+  wasteProduced   WasteInventory[]  @relation("WasteSource")
+  wasteUsed       WasteUsage[]
+
+  @@unique([projectId, sheetNumber])
+  @@index([projectId])
 }
 
 model CalculationResult {
-  id                  Int     @id @default(autoincrement())
-  projectId           Int
-  project             Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  algorithm           String
+  id                  Int       @id @default(autoincrement())
+  sheetId             Int
+  sheet               Sheet     @relation(fields: [sheetId], references: [id], onDelete: Cascade)
+  algorithm           String    // "greedy" or "dynamic" - only best one stored
   dia                 Int
-  totalBarsUsed       Int
-  totalWaste          Decimal @db.Decimal(10, 3)
-  averageUtilization  Decimal @db.Decimal(5, 2)
-  executionTime       Decimal @db.Decimal(10, 2)
-  mongoResultId       String?  // Reference to MongoDB calculation_results collection
-  createdAt           DateTime @default(now())
+  totalBarsUsed       Int       // New 12m bars used
+  wastePiecesReused   Int       @default(0)  // Number of waste pieces reused
+  totalWaste          Decimal   @db.Decimal(10, 3)
+  averageUtilization  Decimal   @db.Decimal(5, 2)
+  executionTime       Decimal   @db.Decimal(10, 2)
+  mongoResultId       String?   // Reference to MongoDB calculation_results collection
+  createdAt           DateTime  @default(now())
+
+  @@unique([sheetId, dia])  // One result per dia per sheet
+  @@index([sheetId])
+  @@index([dia])
+}
+
+model WasteInventory {
+  id                  Int       @id @default(autoincrement())
+  projectId           Int
+  project             Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  sourceSheetId       Int
+  sourceSheet         Sheet     @relation("WasteSource", fields: [sourceSheetId], references: [id], onDelete: Cascade)
+  
+  // Waste details
+  dia                 Int
+  length              Int       // Length in mm
+  quantity            Int       @default(1)
+  
+  // Origin tracking
+  sourceBarNumber     Int       // Which standard bar (Bar #1, #2, etc.)
+  sourcePatternId     String?   // Pattern ID from calculation
+  mongoCutsOriginId   String?   // MongoDB reference for cuts that produced this waste
+  
+  // Status
+  status              String    @default("available")  // available, used, discarded
+  
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
+  usages              WasteUsage[]
 
   @@index([projectId])
-  @@index([algorithm])
+  @@index([sourceSheetId])
+  @@index([dia])
+  @@index([status])
+}
+
+model WasteUsage {
+  id                  Int       @id @default(autoincrement())
+  wasteId             Int
+  waste               WasteInventory @relation(fields: [wasteId], references: [id], onDelete: Cascade)
+  usedInSheetId       Int
+  usedInSheet         Sheet     @relation(fields: [usedInSheetId], references: [id], onDelete: Cascade)
+  
+  // What it was used for
+  usedForBarCode      String
+  cutLength           Int       // mm
+  remainingLength     Int       // mm (after cut)
+  remainingStatus     String    // "discarded" or "added_to_inventory"
+  
+  createdAt           DateTime  @default(now())
+
+  @@index([wasteId])
+  @@index([usedInSheetId])
 }

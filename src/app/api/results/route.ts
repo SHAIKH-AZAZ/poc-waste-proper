@@ -6,147 +6,257 @@ import type { CuttingStockResult } from "@/types/CuttingStock";
 
 const prisma = new PrismaClient();
 
-// POST - Save calculation result
+// POST - Save the BEST calculation result (compares greedy vs dynamic)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const {
-      projectId,
-      algorithm,
+      sheetId,
       dia,
-      result
+      greedyResult,
+      dynamicResult,
+      wasteItems,
     }: {
-      projectId: number;
-      algorithm: string;
+      sheetId: number;
       dia: number;
-      result: CuttingStockResult;
+      greedyResult: CuttingStockResult | null;
+      dynamicResult: CuttingStockResult | null;
+      wasteItems?: {
+        dia: number;
+        length: number;
+        sourceBarNumber: number;
+        sourcePatternId: string;
+        cutsOnSourceBar: { barCode: string; length: number; element: string }[];
+      }[];
     } = body;
 
-    if (!projectId || !algorithm || !result) {
+    if (!sheetId || dia === undefined) {
       return NextResponse.json(
-        { error: "Missing required fields: projectId, algorithm, dia, result" },
+        { error: "Missing required fields: sheetId, dia" },
         { status: 400 }
       );
     }
 
-    console.log(`[Results] Saving result for project ${projectId}, algorithm: ${algorithm}, dia: ${dia}`);
+    // Get sheet info
+    const sheet = await prisma.sheet.findUnique({
+      where: { id: sheetId },
+      select: { projectId: true },
+    });
+
+    if (!sheet) {
+      return NextResponse.json({ error: "Sheet not found" }, { status: 404 });
+    }
+
+    console.log(`[Results] Processing results for sheet ${sheetId}, dia: ${dia}`);
 
     // ============================================
-    // CHECK: Skip if result already exists for this project + algorithm + dia
+    // STEP 1: Determine the BEST algorithm
     // ============================================
-    const existingResult = await prisma.calculationResult.findFirst({
-      where: {
-        projectId,
-        algorithm,
-        dia
+    let bestResult: CuttingStockResult | null = null;
+    let bestAlgorithm: string = "";
+
+    if (greedyResult && dynamicResult) {
+      // Compare: fewer bars = better
+      if (greedyResult.totalBarsUsed <= dynamicResult.totalBarsUsed) {
+        // If same bars, compare waste
+        if (greedyResult.totalBarsUsed === dynamicResult.totalBarsUsed) {
+          bestResult = greedyResult.totalWaste <= dynamicResult.totalWaste ? greedyResult : dynamicResult;
+          bestAlgorithm = greedyResult.totalWaste <= dynamicResult.totalWaste ? "greedy" : "dynamic";
+        } else {
+          bestResult = greedyResult;
+          bestAlgorithm = "greedy";
+        }
+      } else {
+        bestResult = dynamicResult;
+        bestAlgorithm = "dynamic";
       }
+      console.log(`[Results] Best algorithm: ${bestAlgorithm} (${bestResult.totalBarsUsed} bars, ${bestResult.totalWaste}mm waste)`);
+    } else if (greedyResult) {
+      bestResult = greedyResult;
+      bestAlgorithm = "greedy";
+    } else if (dynamicResult) {
+      bestResult = dynamicResult;
+      bestAlgorithm = "dynamic";
+    }
+
+    if (!bestResult) {
+      return NextResponse.json({ error: "No valid results provided" }, { status: 400 });
+    }
+
+    // ============================================
+    // STEP 2: Check if result already exists
+    // ============================================
+    const existingResult = await prisma.calculationResult.findUnique({
+      where: {
+        sheetId_dia: { sheetId, dia },
+      },
     });
 
     if (existingResult) {
-      console.log(`[Results] Skipping - result already exists for project ${projectId}, algorithm: ${algorithm}, dia: ${dia}`);
+      console.log(`[Results] Result already exists for sheet ${sheetId}, dia ${dia}`);
       return NextResponse.json({
         success: true,
         skipped: true,
         resultId: existingResult.id,
-        message: "Result already exists, skipped saving"
+        algorithm: existingResult.algorithm,
+        message: "Result already exists",
       });
     }
 
     // ============================================
-    // STEP 1: Store Detailed Data in MongoDB
+    // STEP 3: Store Detailed Data in MongoDB
     // ============================================
     const db = await getMongoDb();
     const resultsCollection = db.collection("calculation_results");
 
     const mongoResult = await resultsCollection.insertOne({
-      projectId,
-      algorithm,
+      projectId: sheet.projectId,
+      sheetId,
+      algorithm: bestAlgorithm,
       dia,
-      patterns: result.patterns,
-      detailedCuts: result.detailedCuts,
-      createdAt: new Date()
+      patterns: bestResult.patterns,
+      detailedCuts: bestResult.detailedCuts,
+      summary: bestResult.summary,
+      createdAt: new Date(),
     });
 
-    console.log(`[Results] Stored detailed data in MongoDB: ${mongoResult.insertedId}`);
+    console.log(`[Results] Stored in MongoDB: ${mongoResult.insertedId}`);
 
     // ============================================
-    // STEP 2: Store Metadata in PostgreSQL
+    // STEP 4: Store Metadata in PostgreSQL
     // ============================================
     const pgResult = await prisma.calculationResult.create({
       data: {
-        projectId,
-        algorithm,
+        sheetId,
+        algorithm: bestAlgorithm,
         dia,
-        totalBarsUsed: result.totalBarsUsed,
-        totalWaste: result.totalWaste,
-        averageUtilization: result.averageUtilization,
-        executionTime: result.executionTime,
-        mongoResultId: mongoResult.insertedId.toString()
+        totalBarsUsed: bestResult.totalBarsUsed,
+        wastePiecesReused: 0, // Will be updated if waste was used
+        totalWaste: bestResult.totalWaste,
+        averageUtilization: bestResult.averageUtilization,
+        executionTime: bestResult.executionTime,
+        mongoResultId: mongoResult.insertedId.toString(),
+      },
+    });
+
+    console.log(`[Results] Stored in PostgreSQL: ${pgResult.id}`);
+
+    // ============================================
+    // STEP 5: Save Waste to Inventory (>= 2m only)
+    // ============================================
+    console.log(`[Results] Received ${wasteItems?.length || 0} waste items to process`);
+    
+    if (wasteItems && wasteItems.length > 0) {
+      const wasteOriginsCollection = db.collection("waste_origins");
+      let savedWasteCount = 0;
+
+      for (const item of wasteItems) {
+        console.log(`[Results] Processing waste: dia=${item.dia}, length=${item.length}mm`);
+        // Only save waste >= 2000mm (2m)
+        if (item.length >= 2000) {
+          // Store origin in MongoDB
+          const originResult = await wasteOriginsCollection.insertOne({
+            projectId: sheet.projectId,
+            sheetId,
+            sourceBarNumber: item.sourceBarNumber,
+            sourcePatternId: item.sourcePatternId,
+            cutsOnSourceBar: item.cutsOnSourceBar,
+            createdAt: new Date(),
+          });
+
+          // Store in PostgreSQL
+          await prisma.wasteInventory.create({
+            data: {
+              projectId: sheet.projectId,
+              sourceSheetId: sheetId,
+              dia: item.dia,
+              length: item.length,
+              sourceBarNumber: item.sourceBarNumber,
+              sourcePatternId: item.sourcePatternId,
+              mongoCutsOriginId: originResult.insertedId.toString(),
+              status: "available",
+            },
+          });
+
+          savedWasteCount++;
+        }
       }
-    });
 
-    console.log(`[Results] Stored metadata in PostgreSQL: ${pgResult.id}`);
+      console.log(`[Results] Saved ${savedWasteCount} waste items (discarded ${wasteItems.length - savedWasteCount} < 2m)`);
+    }
 
     // ============================================
-    // STEP 3: Update Project Status
+    // STEP 6: Update Sheet Status
     // ============================================
-    await prisma.project.update({
-      where: { id: projectId },
-      data: { status: "completed" }
+    await prisma.sheet.update({
+      where: { id: sheetId },
+      data: { status: "calculated" },
     });
-
-    console.log(`[Results] Updated project status to completed`);
 
     return NextResponse.json({
       success: true,
       resultId: pgResult.id,
+      algorithm: bestAlgorithm,
       mongoResultId: mongoResult.insertedId.toString(),
-      message: "Result saved successfully"
+      comparison: {
+        greedy: greedyResult ? { bars: greedyResult.totalBarsUsed, waste: greedyResult.totalWaste } : null,
+        dynamic: dynamicResult ? { bars: dynamicResult.totalBarsUsed, waste: dynamicResult.totalWaste } : null,
+        winner: bestAlgorithm,
+      },
+      message: `Saved ${bestAlgorithm} result (best of both)`,
     });
-
   } catch (err: unknown) {
     console.error("[Results] Error:", err);
     const errorMessage = err instanceof Error ? err.message : "Failed to save result";
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
-// GET - Fetch results for a project
+// GET - Fetch results for a sheet
 export async function GET(req: NextRequest) {
   try {
+    const sheetId = req.nextUrl.searchParams.get("sheetId");
     const projectId = req.nextUrl.searchParams.get("projectId");
-    const algorithm = req.nextUrl.searchParams.get("algorithm");
 
-    if (!projectId) {
+    if (!sheetId && !projectId) {
       return NextResponse.json(
-        { error: "projectId required" },
+        { error: "sheetId or projectId required" },
         { status: 400 }
       );
     }
 
-    console.log(`[Results] Fetching results for project ${projectId}, algorithm: ${algorithm || "all"}`);
+    console.log(`[Results] Fetching results for sheet: ${sheetId || "all"}, project: ${projectId || "N/A"}`);
 
-    // ============================================
-    // STEP 1: Get Metadata from PostgreSQL
-    // ============================================
-    const where: any = { projectId: parseInt(projectId) };
-    if (algorithm) {
-      where.algorithm = algorithm;
+    // Build where clause
+    let where = {};
+    if (sheetId) {
+      where = { sheetId: parseInt(sheetId) };
+    } else if (projectId) {
+      // Get all sheets for project first
+      const sheets = await prisma.sheet.findMany({
+        where: { projectId: parseInt(projectId) },
+        select: { id: true },
+      });
+      where = { sheetId: { in: sheets.map((s) => s.id) } };
     }
 
     const pgResults = await prisma.calculationResult.findMany({
       where,
-      orderBy: { createdAt: "desc" }
+      include: {
+        sheet: {
+          select: {
+            id: true,
+            sheetNumber: true,
+            fileName: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
     });
 
-    console.log(`[Results] Found ${pgResults.length} results in PostgreSQL`);
+    console.log(`[Results] Found ${pgResults.length} results`);
 
-    // ============================================
-    // STEP 2: Get Detailed Data from MongoDB
-    // ============================================
+    // Get detailed data from MongoDB
     const db = await getMongoDb();
     const resultsCollection = db.collection("calculation_results");
 
@@ -156,31 +266,88 @@ export async function GET(req: NextRequest) {
           return pgResult;
         }
 
-        const mongoData = await resultsCollection.findOne({
-          _id: new ObjectId(pgResult.mongoResultId)
-        });
+        try {
+          const mongoData = await resultsCollection.findOne({
+            _id: new ObjectId(pgResult.mongoResultId),
+          });
 
-        return {
-          ...pgResult,
-          patterns: mongoData?.patterns || [],
-          detailedCuts: mongoData?.detailedCuts || []
-        };
+          return {
+            ...pgResult,
+            patterns: mongoData?.patterns || [],
+            detailedCuts: mongoData?.detailedCuts || [],
+            summary: mongoData?.summary || null,
+          };
+        } catch {
+          return pgResult;
+        }
       })
     );
 
-    console.log(`[Results] Enriched ${enrichedResults.length} results with MongoDB data`);
-
     return NextResponse.json({
       success: true,
-      results: enrichedResults
+      results: enrichedResults,
     });
-
   } catch (err: unknown) {
     console.error("[Results] Error:", err);
     const errorMessage = err instanceof Error ? err.message : "Failed to fetch results";
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
+  }
+}
+
+
+// DELETE - Delete results for a sheet/dia to allow recalculation
+export async function DELETE(req: NextRequest) {
+  try {
+    const sheetId = req.nextUrl.searchParams.get("sheetId");
+    const dia = req.nextUrl.searchParams.get("dia");
+
+    if (!sheetId) {
+      return NextResponse.json({ error: "sheetId required" }, { status: 400 });
+    }
+
+    console.log(`[Results] Deleting results for sheet ${sheetId}, dia: ${dia || "all"}`);
+
+    // Build where clause
+    const where: { sheetId: number; dia?: number } = {
+      sheetId: parseInt(sheetId),
+    };
+    if (dia) {
+      where.dia = parseInt(dia);
+    }
+
+    // Get results to delete (for MongoDB cleanup)
+    const resultsToDelete = await prisma.calculationResult.findMany({
+      where,
+      select: { id: true, mongoResultId: true },
+    });
+
+    // Delete from PostgreSQL
+    await prisma.calculationResult.deleteMany({ where });
+
+    // Delete from MongoDB
+    const db = await getMongoDb();
+    for (const result of resultsToDelete) {
+      if (result.mongoResultId) {
+        try {
+          await db.collection("calculation_results").deleteOne({
+            _id: new ObjectId(result.mongoResultId),
+          });
+        } catch {
+          // Ignore invalid ObjectId
+        }
+      }
+    }
+
+    console.log(`[Results] Deleted ${resultsToDelete.length} results`);
+
+    return NextResponse.json({
+      success: true,
+      deleted: resultsToDelete.length,
+      message: `Deleted ${resultsToDelete.length} results`,
+    });
+  } catch (err: unknown) {
+    console.error("[Results] Error:", err);
+    const errorMessage = err instanceof Error ? err.message : "Failed to delete results";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }

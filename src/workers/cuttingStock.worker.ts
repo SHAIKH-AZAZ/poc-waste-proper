@@ -4,12 +4,13 @@ import { TrueDynamicCuttingStock } from "@/algorithms/trueDynamicCuttingStock";
 import { BranchAndBoundCuttingStock } from "@/algorithms/branchAndBoundCuttingStock";
 import { AdaptiveCuttingStock } from "@/algorithms/adaptiveCuttingStock";
 import { ImprovedGreedyCuttingStock } from "@/algorithms/improvedGreedyCuttingStock";
-import type { MultiBarCuttingRequest, CuttingStockResult } from "@/types/CuttingStock";
+import type { MultiBarCuttingRequest, CuttingStockResult, WastePiece } from "@/types/CuttingStock";
 
 export interface WorkerMessage {
     type: "greedy" | "dynamic" | "true-dynamic" | "branch-bound" | "adaptive" | "improved-greedy";
     requests: MultiBarCuttingRequest[];
     dia: number;
+    wastePieces?: WastePiece[];  // Available waste pieces to reuse
 }
 
 export interface WorkerResponse {
@@ -33,9 +34,12 @@ function sendProgress(type: "greedy" | "dynamic" | "true-dynamic" | "branch-boun
 
 // Listen for messages from main thread
 self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
-    const { type, requests, dia } = event.data;
+    const { type, requests, dia, wastePieces } = event.data;
 
     console.log(`[Worker ${type}] Starting calculation for dia ${dia} with ${requests.length} requests`);
+    if (wastePieces && wastePieces.length > 0) {
+        console.log(`[Worker ${type}] Using ${wastePieces.length} waste pieces for reuse`);
+    }
 
     try {
         let result: CuttingStockResult | CuttingStockResult[];
@@ -46,7 +50,7 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
                 const greedy = new GreedyCuttingStock();
                 sendProgress(type, "Sorting segments...", 30);
                 sendProgress(type, "Running First Fit Decreasing...", 50);
-                result = greedy.solve(requests, dia);
+                result = greedy.solve(requests, dia, wastePieces);
                 sendProgress(type, "Generating results...", 90);
                 break;
 
@@ -55,7 +59,7 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
                 const dynamic = new DynamicCuttingStock();
                 sendProgress(type, "Generating patterns...", 30);
                 sendProgress(type, "Running dynamic programming...", 60);
-                result = dynamic.solve(requests, dia);
+                result = dynamic.solve(requests, dia, wastePieces);
                 sendProgress(type, "Optimizing solution...", 90);
                 break;
 
