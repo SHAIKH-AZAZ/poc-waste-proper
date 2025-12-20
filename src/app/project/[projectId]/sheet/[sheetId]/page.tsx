@@ -320,96 +320,101 @@ export default function SheetPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-slate-500">Loading sheet data...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           <Link
             href={`/project/${projectId}`}
-            className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 mb-4"
+            className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors mb-4 group"
           >
-            <IconArrowLeft className="w-4 h-4" />
+            <IconArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             Back to Project
           </Link>
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
-              <span className="text-xl font-bold text-blue-600">#{sheetInfo?.sheetNumber}</span>
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <span className="text-2xl font-bold text-white">#{sheetInfo?.sheetNumber}</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{sheetInfo?.fileName}</h1>
-              <p className="text-gray-500">Sheet #{sheetInfo?.sheetNumber} • {sheetInfo?.status}</p>
+              <h1 className="text-2xl font-bold text-slate-900">{sheetInfo?.fileName}</h1>
+              <p className="text-slate-500 mt-1">Sheet #{sheetInfo?.sheetNumber} • <span className="capitalize">{sheetInfo?.status}</span></p>
             </div>
           </div>
         </div>
 
         {/* Error */}
         {calculationError && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-red-600 text-lg">!</span>
+            </div>
             <p className="text-red-700">{calculationError}</p>
           </div>
         )}
 
         {/* Waste Prompt Modal */}
         {showWastePrompt && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6 animate-in fade-in zoom-in duration-200">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <IconRecycle className="w-5 h-5 text-green-600" />
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                  <IconRecycle className="w-6 h-6 text-white" />
                 </div>
-                <h2 className="text-xl font-semibold text-gray-900">Reuse Waste from Previous Sheets?</h2>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Reuse Waste?</h2>
+                  <p className="text-sm text-slate-500">Available waste for Dia {selectedDia}mm</p>
+                </div>
               </div>
 
-              <p className="text-gray-600 mb-4">
-                Available waste pieces for Dia {selectedDia}mm:
-              </p>
-
-              <div className="bg-gray-50 rounded-lg p-4 mb-4 max-h-48 overflow-y-auto">
+              <div className="bg-slate-50 rounded-xl p-4 mb-4 max-h-48 overflow-y-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-gray-500">
-                      <th className="pb-2">Length</th>
-                      <th className="pb-2">Source</th>
+                    <tr className="text-left text-slate-500">
+                      <th className="pb-2 font-medium">Length</th>
+                      <th className="pb-2 font-medium">Source</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-200">
+                  <tbody className="divide-y divide-slate-200">
                     {wasteForCurrentDia.slice(0, 10).map((w, i) => (
                       <tr key={i}>
-                        <td className="py-2 font-medium">{formatLength(w.length)}</td>
-                        <td className="py-2 text-gray-600">Sheet #{w.sourceSheetId}</td>
+                        <td className="py-2.5 font-semibold text-slate-900">{formatLength(w.length)}</td>
+                        <td className="py-2.5 text-slate-600">Sheet #{w.sourceSheetId}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
                 {wasteForCurrentDia.length > 10 && (
-                  <p className="text-sm text-gray-500 mt-2">+{wasteForCurrentDia.length - 10} more pieces</p>
+                  <p className="text-sm text-slate-500 mt-3 text-center">+{wasteForCurrentDia.length - 10} more pieces</p>
                 )}
               </div>
 
-              <div className="bg-blue-50 rounded-lg p-3 mb-6">
+              <div className="bg-blue-50 rounded-xl p-4 mb-6 border border-blue-100">
                 <p className="text-sm text-blue-800">
-                  <strong>Total:</strong> {wasteForCurrentDia.length} pieces,{" "}
-                  {formatLength(wasteForCurrentDia.reduce((sum, w) => sum + w.length, 0))} available
+                  <span className="font-bold">{wasteForCurrentDia.length}</span> pieces available,{" "}
+                  <span className="font-bold">{formatLength(wasteForCurrentDia.reduce((sum, w) => sum + w.length, 0))}</span> total length
                 </p>
               </div>
 
               <div className="flex gap-3">
                 <button
                   onClick={() => runCalculation(selectedDia!, false, [])}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-3 border-2 border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all font-medium"
                 >
-                  No, Use New Bars Only
+                  Use New Bars Only
                 </button>
                 <button
                   onClick={() => runCalculation(selectedDia!, true, wasteForCurrentDia)}
-                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:from-emerald-600 hover:to-green-700 transition-all font-medium shadow-lg shadow-emerald-500/20"
                 >
                   Yes, Reuse Waste
                 </button>
@@ -451,10 +456,12 @@ export default function SheetPage() {
 
         {/* Waste Usage Indicator */}
         {useWaste && selectedDia && (
-          <div className="w-full max-w-7xl mx-auto p-4 bg-green-50 border border-green-200 rounded-xl shadow-sm mb-6">
-            <div className="flex items-center gap-2">
-              <IconRecycle className="w-5 h-5 text-green-600" />
-              <span className="text-green-700 font-medium">
+          <div className="w-full max-w-7xl mx-auto p-4 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl shadow-sm mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <IconRecycle className="w-4 h-4 text-emerald-600" />
+              </div>
+              <span className="text-emerald-700 font-medium">
                 Using {wasteForCurrentDia.length} waste pieces from previous sheets
               </span>
             </div>

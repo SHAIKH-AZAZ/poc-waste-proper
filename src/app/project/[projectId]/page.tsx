@@ -177,38 +177,38 @@ export default function ProjectPage() {
     switch (status) {
       case "calculated":
       case "completed":
-        return "bg-green-100 text-green-800";
+        return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-600/20";
       case "uploaded":
-        return "bg-yellow-100 text-yellow-800";
+        return "bg-amber-100 text-amber-700 ring-1 ring-amber-600/20";
       case "available":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-100 text-blue-700 ring-1 ring-blue-600/20";
       case "used":
-        return "bg-gray-100 text-gray-800";
+        return "bg-slate-100 text-slate-600 ring-1 ring-slate-500/20";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-slate-100 text-slate-600 ring-1 ring-slate-500/20";
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
           <Link
             href="/projects"
-            className="inline-flex items-center gap-1 text-sm text-gray-600 hover:text-gray-900 mb-4"
+            className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors mb-4 group"
           >
-            <IconArrowLeft className="w-4 h-4" />
+            <IconArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             Back to Projects
           </Link>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center">
-                <IconPackage className="w-7 h-7 text-blue-600" />
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <IconPackage className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">{projectName || `Project #${projectId}`}</h1>
-                <p className="text-gray-500">
+                <h1 className="text-2xl font-bold text-slate-900">{projectName || `Project #${projectId}`}</h1>
+                <p className="text-slate-500 mt-1">
                   {sheets.length} sheet(s) • {wasteSummary?.availablePieces || 0} waste pieces available
                 </p>
               </div>
@@ -217,11 +217,11 @@ export default function ProjectPage() {
               <button
                 onClick={fetchProjectData}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all"
               >
                 <IconRefresh className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
               </button>
-              <label className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer">
+              <label className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all cursor-pointer shadow-lg shadow-blue-500/20 font-medium">
                 <IconUpload className="w-5 h-5" />
                 {uploading ? "Uploading..." : "Upload Sheet"}
                 <input
@@ -244,11 +244,11 @@ export default function ProjectPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-lg w-fit">
+        <div className="flex gap-2 mb-6 bg-slate-100/80 p-1.5 rounded-xl w-fit">
           <button
             onClick={() => setActiveTab("sheets")}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === "sheets" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              activeTab === "sheets" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
             }`}
           >
             <span className="flex items-center gap-2">
@@ -258,8 +258,8 @@ export default function ProjectPage() {
           </button>
           <button
             onClick={() => setActiveTab("waste")}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === "waste" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
+            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              activeTab === "waste" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
             }`}
           >
             <span className="flex items-center gap-2">
@@ -271,8 +271,11 @@ export default function ProjectPage() {
 
         {/* Loading */}
         {loading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="flex items-center justify-center py-16">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-slate-500">Loading project data...</p>
+            </div>
           </div>
         )}
 
@@ -280,22 +283,27 @@ export default function ProjectPage() {
         {!loading && activeTab === "sheets" && (
           <div className="space-y-4">
             {sheets.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
-                <IconFile className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No sheets yet</h3>
-                <p className="text-gray-500 mb-4">Upload your first Excel sheet to start</p>
+              <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-slate-200">
+                <IconFile className="w-16 h-16 mx-auto text-slate-300 mb-4" />
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">No sheets yet</h3>
+                <p className="text-slate-500 mb-6 max-w-sm mx-auto">Upload your first Excel sheet to start optimizing</p>
+                <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors cursor-pointer font-medium">
+                  <IconUpload className="w-5 h-5" />
+                  Upload Sheet
+                  <input type="file" accept=".xlsx,.xls" onChange={handleFileUpload} disabled={uploading} className="hidden" />
+                </label>
               </div>
             ) : (
               sheets.map((sheet) => (
-                <div key={sheet.id} className="bg-white rounded-xl border border-gray-200 p-5">
+                <div key={sheet.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all p-5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                        <span className="text-lg font-bold text-gray-600">#{sheet.sheetNumber}</span>
+                      <div className="w-14 h-14 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center">
+                        <span className="text-xl font-bold text-slate-600">#{sheet.sheetNumber}</span>
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900">{sheet.fileName}</h3>
-                        <div className="flex items-center gap-3 mt-1 text-sm text-gray-500">
+                        <h3 className="font-semibold text-slate-900 text-lg">{sheet.fileName}</h3>
+                        <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
                           <span>{formatDate(sheet.uploadedAt)}</span>
                           <span>•</span>
                           <span>{sheet._count.results} calculations</span>
@@ -305,18 +313,18 @@ export default function ProjectPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 text-sm font-medium rounded-full ${getStatusColor(sheet.status)}`}>
+                      <span className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${getStatusColor(sheet.status)}`}>
                         {sheet.status}
                       </span>
                       <Link
                         href={`/project/${projectId}/sheet/${sheet.id}`}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        className="p-2.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
                       >
                         <IconEye className="w-5 h-5" />
                       </Link>
                       <button
                         onClick={() => deleteSheet(sheet.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
                       >
                         <IconTrash className="w-5 h-5" />
                       </button>
@@ -325,15 +333,16 @@ export default function ProjectPage() {
 
                   {/* Results Summary */}
                   {sheet.results && sheet.results.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-gray-100">
-                      <p className="text-sm font-medium text-gray-700 mb-2">Calculation Results:</p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div className="mt-4 pt-4 border-t border-slate-100">
+                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Calculation Results</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
                         {sheet.results.map((result) => (
-                          <div key={result.id} className="p-2 bg-gray-50 rounded-lg text-sm">
-                            <div className="font-medium text-gray-900">Dia {result.dia}</div>
-                            <div className="text-gray-500">
-                              {result.totalBarsUsed} bars • {result.algorithm}
+                          <div key={result.id} className="p-3 bg-slate-50 rounded-lg border border-slate-100 hover:border-blue-200 transition-colors">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-bold text-slate-900">Dia {result.dia}</span>
+                              <span className="text-[10px] font-medium text-slate-400 uppercase">{result.algorithm}</span>
                             </div>
+                            <div className="text-xs text-slate-500">{result.totalBarsUsed} bars</div>
                           </div>
                         ))}
                       </div>
@@ -347,39 +356,39 @@ export default function ProjectPage() {
 
         {/* Waste Tab */}
         {!loading && activeTab === "waste" && (
-          <div>
+          <div className="space-y-6">
             {/* Waste Summary */}
             {wasteSummary && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <div className="bg-white p-4 rounded-xl border border-gray-200 text-center">
-                  <p className="text-2xl font-bold text-blue-600">{wasteSummary.totalPieces}</p>
-                  <p className="text-sm text-gray-600">Total Pieces</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                  <p className="text-3xl font-bold text-blue-600">{wasteSummary.totalPieces}</p>
+                  <p className="text-sm text-slate-500 mt-1">Total Pieces</p>
                 </div>
-                <div className="bg-white p-4 rounded-xl border border-gray-200 text-center">
-                  <p className="text-2xl font-bold text-green-600">{wasteSummary.availablePieces}</p>
-                  <p className="text-sm text-gray-600">Available</p>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                  <p className="text-3xl font-bold text-emerald-600">{wasteSummary.availablePieces}</p>
+                  <p className="text-sm text-slate-500 mt-1">Available</p>
                 </div>
-                <div className="bg-white p-4 rounded-xl border border-gray-200 text-center">
-                  <p className="text-2xl font-bold text-gray-600">{wasteSummary.usedPieces}</p>
-                  <p className="text-sm text-gray-600">Used</p>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                  <p className="text-3xl font-bold text-slate-600">{wasteSummary.usedPieces}</p>
+                  <p className="text-sm text-slate-500 mt-1">Used</p>
                 </div>
-                <div className="bg-white p-4 rounded-xl border border-gray-200 text-center">
-                  <p className="text-2xl font-bold text-purple-600">{formatLength(wasteSummary.totalAvailableLength)}</p>
-                  <p className="text-sm text-gray-600">Available Length</p>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                  <p className="text-3xl font-bold text-purple-600">{formatLength(wasteSummary.totalAvailableLength)}</p>
+                  <p className="text-sm text-slate-500 mt-1">Available Length</p>
                 </div>
               </div>
             )}
 
             {/* Waste by Dia */}
             {wasteSummary && Object.keys(wasteSummary.byDia).length > 0 && (
-              <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Waste by Diameter</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                <h3 className="font-semibold text-slate-900 mb-4">Waste by Diameter</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {Object.entries(wasteSummary.byDia).map(([dia, data]) => (
-                    <div key={dia} className="p-3 bg-gray-50 rounded-lg">
-                      <div className="font-medium text-gray-900">Dia {dia}mm</div>
-                      <div className="text-sm text-gray-500">
-                        {data.available} available • {formatLength(data.totalLength)}
+                    <div key={dia} className="p-4 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl border border-slate-200">
+                      <div className="text-lg font-bold text-slate-900">Dia {dia}mm</div>
+                      <div className="text-sm text-slate-500">
+                        <span className="text-emerald-600 font-medium">{data.available}</span> available • {formatLength(data.totalLength)}
                       </div>
                     </div>
                   ))}
@@ -388,41 +397,42 @@ export default function ProjectPage() {
             )}
 
             {/* Waste List */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="p-4 border-b border-gray-100">
-                <h3 className="font-semibold text-gray-900">Waste Inventory Details</h3>
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <div className="p-5 border-b border-slate-100">
+                <h3 className="font-semibold text-slate-900">Waste Inventory Details</h3>
               </div>
               {waste.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
+                <div className="p-12 text-center text-slate-500">
+                  <IconRecycle className="w-12 h-12 mx-auto text-slate-300 mb-3" />
                   No waste pieces yet. Run calculations on sheets to generate waste inventory.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-4 py-3 text-left font-medium text-gray-700">ID</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-700">Dia</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-700">Length</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-700">Source</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-700">Origin (Cuts Made)</th>
-                        <th className="px-4 py-3 text-left font-medium text-gray-700">Status</th>
+                        <th className="px-5 py-4 text-left font-semibold text-slate-600">ID</th>
+                        <th className="px-5 py-4 text-left font-semibold text-slate-600">Dia</th>
+                        <th className="px-5 py-4 text-left font-semibold text-slate-600">Length</th>
+                        <th className="px-5 py-4 text-left font-semibold text-slate-600">Source</th>
+                        <th className="px-5 py-4 text-left font-semibold text-slate-600">Origin (Cuts Made)</th>
+                        <th className="px-5 py-4 text-left font-semibold text-slate-600">Status</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-slate-100">
                       {waste.map((item) => (
-                        <tr key={item.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 font-mono text-gray-600">W-{item.id}</td>
-                          <td className="px-4 py-3">{item.dia}mm</td>
-                          <td className="px-4 py-3 font-medium">{formatLength(item.length)}</td>
-                          <td className="px-4 py-3">
-                            <div className="text-gray-900">Sheet #{item.sourceSheet.sheetNumber}</div>
-                            <div className="text-xs text-gray-500">{item.sourceSheet.fileName}</div>
+                        <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-5 py-4 font-mono text-xs bg-slate-100 rounded">W-{item.id}</td>
+                          <td className="px-5 py-4 font-semibold">{item.dia}mm</td>
+                          <td className="px-5 py-4 font-bold text-blue-600">{formatLength(item.length)}</td>
+                          <td className="px-5 py-4">
+                            <div className="text-slate-900 font-medium">Sheet #{item.sourceSheet.sheetNumber}</div>
+                            <div className="text-xs text-slate-500">{item.sourceSheet.fileName}</div>
                           </td>
-                          <td className="px-4 py-3">
-                            <div className="text-gray-600">Bar #{item.sourceBarNumber}</div>
+                          <td className="px-5 py-4">
+                            <div className="text-slate-600">Bar #{item.sourceBarNumber}</div>
                             {item.cutsOnSourceBar && item.cutsOnSourceBar.length > 0 && (
-                              <div className="text-xs text-gray-500 mt-1">
+                              <div className="text-xs text-slate-400 mt-1">
                                 {item.cutsOnSourceBar.slice(0, 3).map((cut, i) => (
                                   <span key={i}>
                                     {cut.barCode} ({formatLength(cut.length)})
@@ -433,8 +443,8 @@ export default function ProjectPage() {
                               </div>
                             )}
                           </td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(item.status)}`}>
+                          <td className="px-5 py-4">
+                            <span className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${getStatusColor(item.status)}`}>
                               {item.status}
                             </span>
                           </td>
