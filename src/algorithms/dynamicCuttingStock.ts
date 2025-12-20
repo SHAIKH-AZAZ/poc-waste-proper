@@ -218,14 +218,18 @@ export class DynamicCuttingStock {
 
     const usedPatterns: CuttingPattern[] = [];
     const remaining = new Map(segmentCounts);
+    let iterations = 0;
 
-    // Greedy pattern selection
-    while (!this.isMapEmpty(remaining)) {
+    // Greedy pattern selection with fallback
+    while (!this.isMapEmpty(remaining) && iterations < this.MAX_ITERATIONS) {
+      iterations++;
       let bestPattern: CuttingPattern | null = null;
       let bestScore = -1;
+      let bestAdjustedPattern: CuttingPattern | null = null;
 
       // Find pattern that satisfies most remaining demand
       for (const pattern of sortedPatterns) {
+        // First try exact match
         if (this.canApplyPattern(remaining, pattern)) {
           const score = this.calculatePatternScore(remaining, pattern);
           if (score > bestScore) {
@@ -235,14 +239,34 @@ export class DynamicCuttingStock {
         }
       }
 
+      // If no exact match, try to create a partial pattern
       if (!bestPattern) {
+        // Find any pattern that has at least one useful cut
+        for (const pattern of sortedPatterns) {
+          const adjustedPattern = this.adjustPatternToRemaining(pattern, remaining);
+          if (adjustedPattern && adjustedPattern.cuts.length > 0) {
+            const score = this.calculatePatternScore(remaining, adjustedPattern);
+            if (score > bestScore) {
+              bestScore = score;
+              bestAdjustedPattern = adjustedPattern;
+            }
+          }
+        }
+      }
+
+      const patternToUse = bestPattern || bestAdjustedPattern;
+
+      if (!patternToUse) {
         console.warn("[Dynamic] No pattern found to satisfy remaining demand:", Array.from(remaining.entries()));
+        // Fallback: create single-cut patterns for remaining segments
+        const fallbackPatterns = this.createFallbackPatterns(remaining, segments);
+        usedPatterns.push(...fallbackPatterns);
         break;
       }
 
       // Apply pattern
-      usedPatterns.push(bestPattern);
-      for (const cut of bestPattern.cuts) {
+      usedPatterns.push(patternToUse);
+      for (const cut of patternToUse.cuts) {
         const current = remaining.get(cut.segmentId) || 0;
         remaining.set(cut.segmentId, Math.max(0, current - cut.count));
       }
@@ -255,6 +279,109 @@ export class DynamicCuttingStock {
       barsUsed: usedPatterns.length,
       patterns: usedPatterns,
     };
+  }
+
+  /**
+   * Adjust pattern to only include cuts we can satisfy
+   */
+  private adjustPatternToRemaining(
+    pattern: CuttingPattern,
+    remaining: Map<string, number>
+  ): CuttingPattern | null {
+    const adjustedCuts: PatternCut[] = [];
+    let usedLength = 0;
+
+    for (const cut of pattern.cuts) {
+      const available = remaining.get(cut.segmentId) || 0;
+      if (available > 0) {
+        const adjustedCount = Math.min(cut.count, available);
+        adjustedCuts.push({ ...cut, count: adjustedCount });
+        usedLength += cut.length * adjustedCount;
+      }
+    }
+
+    if (adjustedCuts.length === 0) {
+      return null;
+    }
+
+    return {
+      id: `adjusted_${pattern.id}`,
+      cuts: adjustedCuts,
+      waste: this.STANDARD_LENGTH - usedLength,
+      utilization: (usedLength / this.STANDARD_LENGTH) * 100,
+      standardBarLength: this.STANDARD_LENGTH,
+    };
+  }
+
+  /**
+   * Create fallback single-cut patterns for remaining segments
+   */
+  private createFallbackPatterns(
+    remaining: Map<string, number>,
+    segments: BarSegment[]
+  ): CuttingPattern[] {
+    const patterns: CuttingPattern[] = [];
+    const segmentMap = new Map<string, BarSegment>();
+    
+    for (const seg of segments) {
+      segmentMap.set(seg.segmentId, seg);
+    }
+
+    // Group remaining segments that can fit together
+    const remainingList: { segmentId: string; count: number; segment: BarSegment }[] = [];
+    for (const [segmentId, count] of remaining.entries()) {
+      if (count > 0) {
+        const segment = segmentMap.get(segmentId);
+        if (segment) {
+          remainingList.push({ segmentId, count, segment });
+        }
+      }
+    }
+
+    // Sort by length descending (FFD approach)
+    remainingList.sort((a, b) => b.segment.length - a.segment.length);
+
+    // Create patterns using FFD
+    while (remainingList.some(r => r.count > 0)) {
+      const cuts: PatternCut[] = [];
+      let usedLength = 0;
+      const remainingLength = this.STANDARD_LENGTH;
+
+      for (const item of remainingList) {
+        while (item.count > 0 && item.segment.length <= remainingLength - usedLength) {
+          // Check if we already have this cut in the pattern
+          const existingCut = cuts.find(c => c.segmentId === item.segmentId);
+          if (existingCut) {
+            existingCut.count++;
+          } else {
+            cuts.push({
+              segmentId: item.segmentId,
+              parentBarCode: item.segment.parentBarCode,
+              length: item.segment.length,
+              count: 1,
+              segmentIndex: item.segment.segmentIndex,
+              lapLength: item.segment.lapLength,
+            });
+          }
+          usedLength += item.segment.length;
+          item.count--;
+        }
+      }
+
+      if (cuts.length > 0) {
+        patterns.push({
+          id: `fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          cuts,
+          waste: this.STANDARD_LENGTH - usedLength,
+          utilization: (usedLength / this.STANDARD_LENGTH) * 100,
+          standardBarLength: this.STANDARD_LENGTH,
+        });
+      } else {
+        break; // No more cuts can be made
+      }
+    }
+
+    return patterns;
   }
 
   /**

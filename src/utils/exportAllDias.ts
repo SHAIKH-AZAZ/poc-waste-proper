@@ -27,7 +27,7 @@ export async function exportAllDiasToExcel(
     ["Generated:", new Date().toLocaleString()],
     ["Total Diameters:", uniqueDias.length],
     [],
-    ["Dia", "Greedy Bars", "Greedy Waste (m)", "Dynamic Bars", "Dynamic Waste (m)", "Best Algorithm"],
+    ["Dia", "Greedy Bars", "Greedy Waste (m)", "Greedy Waste Reused", "Dynamic Bars", "Dynamic Waste (m)", "Best Algorithm"],
   ];
 
   // Process each diameter
@@ -50,10 +50,16 @@ export async function exportAllDiasToExcel(
           ? "Dynamic"
           : "Equal";
 
+      // Count waste pieces reused in greedy result
+      const greedyWasteReused = greedy.detailedCuts.filter(
+        (d) => (d as { isFromWaste?: boolean }).isFromWaste || d.patternId?.startsWith("waste_")
+      ).length;
+
       summaryData.push([
         dia,
         greedy.totalBarsUsed,
         parseFloat(greedy.totalWaste.toFixed(3)),
+        greedyWasteReused,
         dynamic.totalBarsUsed,
         parseFloat(dynamic.totalWaste.toFixed(3)),
         bestAlgorithm,
@@ -81,6 +87,7 @@ export async function exportAllDiasToExcel(
     { wch: 8 },
     { wch: 15 },
     { wch: 18 },
+    { wch: 20 },
     { wch: 15 },
     { wch: 18 },
     { wch: 20 },
@@ -102,9 +109,11 @@ function addDiaSheet(
 ): void {
   const STANDARD_BAR_LENGTH = 12.0;
 
-  // Create header row
+  // Create header row - added "Source" column to show if bar is from waste inventory
   const headers = [
     "Bar #",
+    "Source",
+    "Bar Length (m)",
     "BarCode",
     "Effective Length (m)",
     "Lap Length (m)",
@@ -119,13 +128,37 @@ function addDiaSheet(
     // Group cuts by BarCode
     const cutGroups = groupCutsByBarCode(detail.cuts);
 
+    // Check if this bar is from waste inventory
+    const detailWithWaste = detail as typeof detail & { 
+      isFromWaste?: boolean; 
+      wasteSource?: { 
+        wasteId: string; 
+        sourceSheetId: number; 
+        sourceBarNumber: number; 
+        originalLength: number; 
+      } 
+    };
+    
+    const isFromWaste = detailWithWaste.isFromWaste || detail.patternId?.startsWith("waste_");
+    const wasteSource = detailWithWaste.wasteSource;
+    
+    // Determine bar length (waste pieces have different lengths)
+    const barLength = wasteSource 
+      ? wasteSource.originalLength / 1000  // Convert mm to m
+      : STANDARD_BAR_LENGTH;
+
     // Calculate total used length and waste for this bar
     let totalUsedLength = 0;
     cutGroups.forEach((cut) => {
       totalUsedLength += cut.length;
     });
-    const barWaste = STANDARD_BAR_LENGTH - totalUsedLength;
-    const barUtilization = (totalUsedLength / STANDARD_BAR_LENGTH) * 100;
+    const barWaste = barLength - totalUsedLength;
+    const barUtilization = (totalUsedLength / barLength) * 100;
+
+    // Source description
+    const sourceDesc = isFromWaste 
+      ? `Waste (Sheet ${wasteSource?.sourceSheetId || "?"}, Bar #${wasteSource?.sourceBarNumber || "?"})`
+      : "New 12m Bar";
 
     // Add each cut as a separate row
     cutGroups.forEach((cut, index) => {
@@ -134,7 +167,11 @@ function addDiaSheet(
       // Bar # only on first cut
       if (index === 0) {
         row.push(detail.barNumber);
+        row.push(sourceDesc);
+        row.push(parseFloat(barLength.toFixed(3)));
       } else {
+        row.push("");
+        row.push("");
         row.push("");
       }
 
@@ -160,12 +197,14 @@ function addDiaSheet(
   // Create worksheet
   const worksheet = XLSX.utils.aoa_to_sheet(data);
   worksheet["!cols"] = [
-    { wch: 8 },
-    { wch: 15 },
-    { wch: 18 },
-    { wch: 15 },
-    { wch: 12 },
-    { wch: 15 },
+    { wch: 8 },   // Bar #
+    { wch: 28 },  // Source
+    { wch: 14 },  // Bar Length
+    { wch: 25 },  // BarCode
+    { wch: 18 },  // Effective Length
+    { wch: 15 },  // Lap Length
+    { wch: 12 },  // Waste
+    { wch: 15 },  // Utilization
   ];
 
   // Truncate sheet name if too long (Excel limit is 31 characters)

@@ -55,32 +55,42 @@ export async function POST(req: NextRequest) {
     let bestResult: CuttingStockResult | null = null;
     let bestAlgorithm: string = "";
 
-    if (greedyResult && dynamicResult) {
-      // Compare: fewer bars = better
-      if (greedyResult.totalBarsUsed <= dynamicResult.totalBarsUsed) {
-        // If same bars, compare waste
-        if (greedyResult.totalBarsUsed === dynamicResult.totalBarsUsed) {
-          bestResult = greedyResult.totalWaste <= dynamicResult.totalWaste ? greedyResult : dynamicResult;
-          bestAlgorithm = greedyResult.totalWaste <= dynamicResult.totalWaste ? "greedy" : "dynamic";
-        } else {
-          bestResult = greedyResult;
-          bestAlgorithm = "greedy";
-        }
-      } else {
-        bestResult = dynamicResult;
+    // Check if results are valid (0 bars means algorithm failed)
+    const greedyValid = greedyResult && greedyResult.totalBarsUsed > 0;
+    const dynamicValid = dynamicResult && dynamicResult.totalBarsUsed > 0;
+
+    console.log(`[Results] Greedy: ${greedyResult?.totalBarsUsed || 0} bars (valid: ${greedyValid})`);
+    console.log(`[Results] Dynamic: ${dynamicResult?.totalBarsUsed || 0} bars (valid: ${dynamicValid})`);
+
+    if (greedyValid && dynamicValid) {
+      // Both valid - compare: fewer bars = better (primary criterion)
+      if (greedyResult!.totalBarsUsed < dynamicResult!.totalBarsUsed) {
+        bestResult = greedyResult!;
+        bestAlgorithm = "greedy";
+      } else if (dynamicResult!.totalBarsUsed < greedyResult!.totalBarsUsed) {
+        bestResult = dynamicResult!;
         bestAlgorithm = "dynamic";
+      } else {
+        // Same bars, compare waste (secondary criterion)
+        bestResult = greedyResult!.totalWaste <= dynamicResult!.totalWaste ? greedyResult! : dynamicResult!;
+        bestAlgorithm = greedyResult!.totalWaste <= dynamicResult!.totalWaste ? "greedy" : "dynamic";
       }
-      console.log(`[Results] Best algorithm: ${bestAlgorithm} (${bestResult.totalBarsUsed} bars, ${bestResult.totalWaste}mm waste)`);
-    } else if (greedyResult) {
-      bestResult = greedyResult;
+    } else if (greedyValid) {
+      // Only greedy is valid
+      bestResult = greedyResult!;
       bestAlgorithm = "greedy";
-    } else if (dynamicResult) {
-      bestResult = dynamicResult;
+    } else if (dynamicValid) {
+      // Only dynamic is valid
+      bestResult = dynamicResult!;
       bestAlgorithm = "dynamic";
     }
 
+    if (bestResult) {
+      console.log(`[Results] Best algorithm: ${bestAlgorithm} (${bestResult.totalBarsUsed} bars, ${bestResult.totalWaste}mm waste)`);
+    }
+
     if (!bestResult) {
-      return NextResponse.json({ error: "No valid results provided" }, { status: 400 });
+      return NextResponse.json({ error: "No valid results provided (both algorithms returned 0 bars)" }, { status: 400 });
     }
 
     // ============================================
