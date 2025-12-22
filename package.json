@@ -7,7 +7,14 @@
     "build": "prisma generate && next build --webpack",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "db:start": "docker-compose up -d",
+    "db:stop": "docker-compose down",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma db push --force-reset && prisma generate",
+    "db:setup": "docker-compose up -d && sleep 3 && prisma db push && prisma generate"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",

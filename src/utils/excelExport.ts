@@ -195,6 +195,14 @@ function createComparisonSheet(
   greedyResult: CuttingStockResult,
   dynamicResult: CuttingStockResult
 ): XLSX.WorkSheet {
+  // Count waste pieces reused
+  const greedyWasteReused = greedyResult.detailedCuts.filter(
+    (d) => d.isFromWaste || d.patternId?.startsWith("waste_")
+  ).length;
+  const dynamicWasteReused = dynamicResult.detailedCuts.filter(
+    (d) => d.isFromWaste || d.patternId?.startsWith("waste_")
+  ).length;
+
   // Summary comparison
   const summaryData = [
     ["SUMMARY COMPARISON", "", "", ""],
@@ -204,6 +212,18 @@ function createComparisonSheet(
       greedyResult.totalBarsUsed,
       dynamicResult.totalBarsUsed,
       dynamicResult.totalBarsUsed - greedyResult.totalBarsUsed,
+    ],
+    [
+      "New 12m Bars",
+      greedyResult.totalBarsUsed - greedyWasteReused,
+      dynamicResult.totalBarsUsed - dynamicWasteReused,
+      (dynamicResult.totalBarsUsed - dynamicWasteReused) - (greedyResult.totalBarsUsed - greedyWasteReused),
+    ],
+    [
+      "Waste Pieces Reused",
+      greedyWasteReused,
+      dynamicWasteReused,
+      dynamicWasteReused - greedyWasteReused,
     ],
     [
       "Total Waste (m)",
@@ -259,11 +279,14 @@ function createComparisonSheet(
     const greedyBar = greedyResult.detailedCuts[i];
     const dynamicBar = dynamicResult.detailedCuts[i];
 
+    const greedySource = greedyBar?.isFromWaste ? " [WASTE]" : "";
+    const dynamicSource = dynamicBar?.isFromWaste ? " [WASTE]" : "";
+
     const greedyCuts = greedyBar
-      ? `${greedyBar.cuts.length} cuts, ${greedyBar.waste.toFixed(3)}m waste`
+      ? `${greedyBar.cuts.length} cuts, ${greedyBar.waste.toFixed(3)}m waste${greedySource}`
       : "N/A";
     const dynamicCuts = dynamicBar
-      ? `${dynamicBar.cuts.length} cuts, ${dynamicBar.waste.toFixed(3)}m waste`
+      ? `${dynamicBar.cuts.length} cuts, ${dynamicBar.waste.toFixed(3)}m waste${dynamicSource}`
       : "N/A";
 
     const difference =
@@ -304,14 +327,26 @@ function createComparisonSheet(
     ]);
   }
 
+  // Add note about waste reuse
+  if (greedyWasteReused > 0 || dynamicWasteReused > 0) {
+    summaryData.push([]);
+    summaryData.push(["NOTE", "", "", ""]);
+    summaryData.push([
+      "Waste Reuse",
+      greedyWasteReused > 0 ? `Greedy reused ${greedyWasteReused} waste pieces` : "Greedy: No waste reused",
+      dynamicWasteReused > 0 ? `Dynamic reused ${dynamicWasteReused} waste pieces` : "Dynamic: No waste reused (not supported)",
+      "",
+    ]);
+  }
+
   // Create worksheet
   const worksheet = XLSX.utils.aoa_to_sheet(summaryData);
 
   // Set column widths
   worksheet["!cols"] = [
     { wch: 25 },
-    { wch: 25 },
-    { wch: 25 },
+    { wch: 35 },
+    { wch: 35 },
     { wch: 25 },
   ];
 
