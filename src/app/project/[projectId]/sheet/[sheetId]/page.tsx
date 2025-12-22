@@ -157,21 +157,122 @@ export default function SheetPage() {
       setUseWaste(false);
 
       if (dia !== null && displayData) {
-        // Check if waste is available for this dia
-        const wasteForDia = availableWaste.find((w) => w.dia === dia);
-        console.log(`[Sheet] Checking waste for dia ${dia}:`, wasteForDia);
-        
-        if (wasteForDia && wasteForDia.pieces.length > 0) {
-          // Show waste prompt if there's available waste from OTHER sheets
-          setWasteForCurrentDia(wasteForDia.pieces);
-          setShowWastePrompt(true);
-        } else {
-          // No waste available, run calculation directly
+        // STEP 1: Check if result already exists in database
+        try {
+          const existingRes = await fetch(`/api/results?sheetId=${sheetId}`);
+          const existingData = await existingRes.json();
+          
+          if (existingData.success && existingData.results) {
+            const existingResult = existingData.results.find(
+              (r: { dia: number }) => r.dia === dia
+            );
+            
+            if (existingResult) {
+              console.log(`[Sheet] Found existing result for dia ${dia} in database`);
+              // Load existing result - convert to CuttingStockResult format
+              const loadedResult: CuttingStockResult = {
+                algorithm: existingResult.algorithm,
+                dia: existingResult.dia,
+                patterns: existingResult.patterns || [],
+                totalBarsUsed: existingResult.totalBarsUsed,
+                totalWaste: existingResult.totalWaste,
+                averageUtilization: existingResult.averageUtilization,
+                executionTime: existingResult.executionTime,
+                summary: existingResult.summary || {
+                  totalStandardBars: existingResult.totalBarsUsed,
+                  totalWasteLength: existingResult.totalWaste,
+                  totalWastePercentage: 0,
+                  averageUtilization: existingResult.averageUtilization,
+                  patternCount: existingResult.patterns?.length || 0,
+                  totalCutsProduced: 0,
+                },
+                detailedCuts: existingResult.detailedCuts || [],
+              };
+              
+              // Set as the result for the winning algorithm
+              if (existingResult.algorithm === "greedy") {
+                setGreedyResult(loadedResult);
+              } else {
+                setDynamicResult(loadedResult);
+              }
+              
+              // Check if waste was used (by looking at detailedCuts)
+              const usedWasteCount = loadedResult.detailedCuts?.filter(
+                (d) => d.isFromWaste
+              ).length || 0;
+              if (usedWasteCount > 0) {
+                setUseWaste(true);
+                setWasteForCurrentDia([]); // We don't have the original waste pieces, just indicate it was used
+              }
+              
+              return; // Don't recalculate
+            }
+          }
+        } catch (err) {
+          console.error(`[Sheet] Error checking existing results:`, err);
+          // Continue to calculation if check fails
+        }
+
+        // STEP 2: No existing result - check for available waste
+        try {
+          const wasteRes = await fetch(`/api/waste?projectId=${projectId}&status=available`);
+          const wasteData = await wasteRes.json();
+          
+          let freshWasteForDia: WastePiece[] = [];
+          
+          if (wasteData.success && wasteData.waste) {
+            // Filter out waste from current sheet and get only matching dia
+            freshWasteForDia = wasteData.waste
+              .filter((w: { 
+                dia: number; 
+                sourceSheetId?: number; 
+                sourceSheet?: { id: number };
+              }) => {
+                const sourceId = w.sourceSheetId || w.sourceSheet?.id;
+                return w.dia === dia && sourceId !== parseInt(sheetId);
+              })
+              .map((w: { 
+                id: number; 
+                dia: number; 
+                length: number; 
+                sourceSheetId?: number; 
+                sourceBarNumber?: number;
+                sourceSheet?: { id: number; sheetNumber: number; fileName: string };
+                cutsOnSourceBar?: { barCode: string; length: number; element: string }[];
+              }) => ({
+                id: String(w.id),
+                projectId: parseInt(projectId),
+                sourceSheetId: w.sourceSheetId || w.sourceSheet?.id || 0,
+                sourceSheetName: w.sourceSheet?.fileName || `Sheet #${w.sourceSheet?.sheetNumber}`,
+                sourceBarNumber: w.sourceBarNumber || 0,
+                sourcePatternId: "",
+                cutsOnSourceBar: w.cutsOnSourceBar || [],
+                dia: w.dia,
+                length: w.length,
+                status: "available",
+                createdAt: new Date(),
+              }));
+            
+            console.log(`[Sheet] Fresh waste check for dia ${dia}: ${freshWasteForDia.length} pieces available`);
+          }
+
+          if (freshWasteForDia.length > 0) {
+            // Show waste prompt if there's available waste from OTHER sheets
+            setWasteForCurrentDia(freshWasteForDia);
+            setShowWastePrompt(true);
+          } else {
+            // No waste available, run calculation directly
+            console.log(`[Sheet] No waste available for dia ${dia}, running with new bars only`);
+            runCalculation(dia, false, []);
+          }
+        } catch (err) {
+          console.error(`[Sheet] Error checking waste:`, err);
+          // On error, just run without waste
           runCalculation(dia, false, []);
         }
       }
     },
-    [displayData, availableWaste, sheetInfo]
+    [displayData, sheetInfo, projectId, sheetId]
   );
 
   // Run calculation
@@ -233,6 +334,15 @@ export default function SheetPage() {
 
       console.log(`[Sheet] Best result detailedCuts:`, bestResult?.detailedCuts?.length || 0);
 
+      // Find which waste pieces were ACTUALLY used by the algorithm
+      const actuallyUsedWasteIds = new Set<string>();
+      bestResult?.detailedCuts?.forEach((cut) => {
+        if (cut.isFromWaste && cut.wasteSource?.wasteId) {
+          actuallyUsedWasteIds.add(cut.wasteSource.wasteId);
+        }
+      });
+      console.log(`[Sheet] Actually used waste pieces: ${actuallyUsedWasteIds.size}`);
+
       // Extract waste from each bar's cutting pattern (only from NEW bars, not reused waste)
       const wasteItems = bestResult?.detailedCuts?.map((cut, index) => {
         // Check if this cut is from a waste piece (waste pieces have pattern IDs starting with "waste_")
@@ -261,10 +371,12 @@ export default function SheetPage() {
 
       console.log(`[Sheet] Waste items >= 2m: ${wasteItems.length}`);
 
-      // Mark used waste pieces as used
-      if (usedWastePieces && usedWastePieces.length > 0) {
-        console.log(`[Sheet] Marking ${usedWastePieces.length} waste pieces as used`);
-        for (const waste of usedWastePieces) {
+      // Mark ONLY the actually used waste pieces as used (not all available ones)
+      if (usedWastePieces && usedWastePieces.length > 0 && actuallyUsedWasteIds.size > 0) {
+        const piecesToMark = usedWastePieces.filter(w => actuallyUsedWasteIds.has(w.id));
+        console.log(`[Sheet] Marking ${piecesToMark.length} of ${usedWastePieces.length} waste pieces as used`);
+        
+        for (const waste of piecesToMark) {
           try {
             await fetch("/api/waste", {
               method: "PATCH",

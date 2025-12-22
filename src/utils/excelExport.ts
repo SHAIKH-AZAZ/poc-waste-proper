@@ -45,9 +45,11 @@ export function exportToExcel(
  * Format: Each bar's cuts listed vertically (one cut per row)
  */
 function createAlgorithmSheet(result: CuttingStockResult): XLSX.WorkSheet {
-  // Create header row
+  // Create header row - added "Source" and "Bar Length" columns
   const headers = [
     "Bar #",
+    "Source",
+    "Bar Length (m)",
     "BarCode",
     "Effective Length (m)",
     "Lap Length (m)",
@@ -63,24 +65,42 @@ function createAlgorithmSheet(result: CuttingStockResult): XLSX.WorkSheet {
     // Group cuts by BarCode to get unique cuts
     const cutGroups = groupCutsByBarCode(detail.cuts);
 
+    // Check if this bar is from waste inventory
+    const isFromWaste = detail.isFromWaste || detail.patternId?.startsWith("waste_");
+    const wasteSource = detail.wasteSource;
+    
+    // Determine bar length (waste pieces have different lengths)
+    const barLength = wasteSource 
+      ? wasteSource.originalLength / 1000  // Convert mm to m
+      : STANDARD_BAR_LENGTH;
+
     // Calculate total used length and waste for this bar
     // Note: cut.length already includes lap (cutting length = effective + lap)
     let totalUsedLength = 0;
     cutGroups.forEach((cut) => {
       totalUsedLength += cut.length;
     });
-    const barWaste = STANDARD_BAR_LENGTH - totalUsedLength;
-    const barUtilization = (totalUsedLength / STANDARD_BAR_LENGTH) * 100;
+    const barWaste = barLength - totalUsedLength;
+    const barUtilization = (totalUsedLength / barLength) * 100;
+
+    // Source description
+    const sourceDesc = isFromWaste 
+      ? `Waste (Sheet ${wasteSource?.sourceSheetId || "?"}, Bar #${wasteSource?.sourceBarNumber || "?"})`
+      : "New 12m Bar";
 
     // Add each cut as a separate row
     cutGroups.forEach((cut, index) => {
       const row: (string | number)[] = [];
 
-      // Bar # only on first cut
+      // Bar #, Source, Bar Length only on first cut
       if (index === 0) {
         row.push(detail.barNumber);
+        row.push(sourceDesc);
+        row.push(parseFloat(barLength.toFixed(3)));
       } else {
         row.push(""); // Empty for subsequent cuts
+        row.push("");
+        row.push("");
       }
 
       // BarCode, Effective Length, and Lap Length for all cuts
@@ -107,12 +127,14 @@ function createAlgorithmSheet(result: CuttingStockResult): XLSX.WorkSheet {
 
   // Set column widths
   worksheet["!cols"] = [
-    { wch: 8 },  // Bar #
-    { wch: 15 }, // BarCode
-    { wch: 18 }, // Effective Length
-    { wch: 15 }, // Lap Length
-    { wch: 12 }, // Waste
-    { wch: 15 }, // Utilization
+    { wch: 8 },   // Bar #
+    { wch: 28 },  // Source
+    { wch: 14 },  // Bar Length
+    { wch: 20 },  // BarCode
+    { wch: 18 },  // Effective Length
+    { wch: 15 },  // Lap Length
+    { wch: 12 },  // Waste
+    { wch: 15 },  // Utilization
   ];
 
   return worksheet;
