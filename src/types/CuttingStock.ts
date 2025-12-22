@@ -87,6 +87,13 @@ export interface DetailedCut {
   cuts: CutInstruction[];
   waste: number;
   utilization: number;
+  isFromWaste?: boolean;
+  wasteSource?: {
+    wasteId: string;
+    sourceSheetId: number;
+    sourceBarNumber: number;
+    originalLength: number;
+  };
 }
 
 export interface CutInstruction {

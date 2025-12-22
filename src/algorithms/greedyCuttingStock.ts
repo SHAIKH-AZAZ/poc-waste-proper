@@ -16,6 +16,7 @@ interface Bin {
   cuts: PatternCut[];
   usedLength: number;
   remainingLength: number;
+  totalLength: number;          // Total length of this bin (12m for new, variable for waste)
   isWastePiece?: boolean;       // True if this bin is from waste inventory
   wasteSourceInfo?: {           // Info about the waste piece used
     wasteId: string;
@@ -188,7 +189,8 @@ export class GreedyCuttingStock {
 
     // Use cutting length (which includes lap) for space tracking
     bin.usedLength += segment.length;
-    bin.remainingLength = this.STANDARD_LENGTH - bin.usedLength;
+    // Use the bin's actual total length (not always 12m for waste pieces)
+    bin.remainingLength = bin.totalLength - bin.usedLength;
   }
 
   /**
@@ -200,6 +202,7 @@ export class GreedyCuttingStock {
       cuts: [],
       usedLength: 0,
       remainingLength: this.STANDARD_LENGTH,
+      totalLength: this.STANDARD_LENGTH,
       isWastePiece: false,
     };
   }
@@ -214,6 +217,7 @@ export class GreedyCuttingStock {
       cuts: [],
       usedLength: 0,
       remainingLength: lengthInMeters,
+      totalLength: lengthInMeters,  // Track actual waste piece length
       isWastePiece: true,
       wasteSourceInfo: {
         wasteId: waste.id,
@@ -279,13 +283,9 @@ export class GreedyCuttingStock {
         cuts,
         waste: pattern.waste,
         utilization: pattern.utilization,
+        isFromWaste: bin?.isWastePiece ?? false,
+        wasteSource: bin?.wasteSourceInfo,
       };
-
-      // Add waste source info if this is from a waste piece
-      if (bin?.isWastePiece && bin.wasteSourceInfo) {
-        (detailedCut as DetailedCut & { isFromWaste: boolean; wasteSource: typeof bin.wasteSourceInfo }).isFromWaste = true;
-        (detailedCut as DetailedCut & { wasteSource: typeof bin.wasteSourceInfo }).wasteSource = bin.wasteSourceInfo;
-      }
 
       return detailedCut;
     });

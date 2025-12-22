@@ -286,6 +286,12 @@ function DetailedResultCard({
                   <span className="text-[10px] text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded font-medium">LAP</span>
                   <span className="text-gray-500">= Requires lap joint</span>
                 </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded text-[10px] font-medium">
+                    ♻️ Waste
+                  </span>
+                  <span className="text-gray-500">= From waste inventory</span>
+                </div>
               </div>
             </div>
             <table className="min-w-full border border-gray-300 bg-white">
@@ -293,6 +299,9 @@ function DetailedResultCard({
                 <tr>
                   <th className="border border-gray-300 px-3 py-2 text-center text-sm font-semibold text-gray-700 w-20">
                     Bar #
+                  </th>
+                  <th className="border border-gray-300 px-3 py-2 text-center text-sm font-semibold text-gray-700 w-28">
+                    Source
                   </th>
                   <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">
                     Cuts (BarCode → Length)
@@ -307,21 +316,48 @@ function DetailedResultCard({
               </thead>
               <tbody>
                 {result.detailedCuts.map((detail, index) => {
-                  // Calculate actual waste: 12m - sum of cutting lengths
-                  // Note: cut.length already includes lap length (cutting length = effective + lap)
-                  const STANDARD_BAR = 12.0;
+                  // Calculate actual waste based on bar length
+                  const barLength = detail.isFromWaste && detail.wasteSource 
+                    ? detail.wasteSource.originalLength / 1000 
+                    : 12.0;
                   const totalUsed = detail.cuts.reduce((sum, cut) => 
                     sum + cut.length, 0
                   );
-                  const actualWaste = STANDARD_BAR - totalUsed;
-                  const actualUtilization = (totalUsed / STANDARD_BAR) * 100;
+                  const actualWaste = barLength - totalUsed;
+                  const actualUtilization = (totalUsed / barLength) * 100;
 
                   return (
-                    <tr key={index} className="hover:bg-blue-50 transition-colors">
+                    <tr 
+                      key={index} 
+                      className={`hover:bg-blue-50 transition-colors ${detail.isFromWaste ? 'bg-purple-50/50' : ''}`}
+                    >
                       <td className="border border-gray-300 px-3 py-3 text-center">
-                        <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-700 font-bold text-sm rounded-full">
+                        <span className={`inline-flex items-center justify-center w-8 h-8 font-bold text-sm rounded-full ${
+                          detail.isFromWaste 
+                            ? 'bg-purple-100 text-purple-700' 
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
                           {detail.barNumber}
                         </span>
+                      </td>
+                      <td className="border border-gray-300 px-3 py-3 text-center">
+                        {detail.isFromWaste && detail.wasteSource ? (
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">
+                              ♻️ Waste
+                            </span>
+                            <span className="text-[10px] text-gray-500">
+                              Sheet #{detail.wasteSource.sourceSheetId}, Bar #{detail.wasteSource.sourceBarNumber}
+                            </span>
+                            <span className="text-[10px] text-gray-400">
+                              ({(detail.wasteSource.originalLength / 1000).toFixed(2)}m)
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                            🆕 New 12m
+                          </span>
+                        )}
                       </td>
                       <td className="border border-gray-300 px-4 py-3">
                         <CutsDisplay cuts={detail.cuts} />
@@ -339,7 +375,7 @@ function DetailedResultCard({
                           <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
                             <div 
                               className={`h-full ${actualUtilization > 95 ? 'bg-green-500' : actualUtilization > 85 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                              style={{ width: `${actualUtilization}%` }}
+                              style={{ width: `${Math.min(actualUtilization, 100)}%` }}
                             />
                           </div>
                         </div>

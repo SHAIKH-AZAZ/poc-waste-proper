@@ -86,7 +86,15 @@ export default function SheetPage() {
       if (wasteData.success && wasteData.waste) {
         // Filter out waste from current sheet and group by dia
         const wasteByDia: Record<number, WastePiece[]> = {};
-        wasteData.waste.forEach((w: { id: number; dia: number; length: number; sourceSheetId?: number; sourceSheet?: { id: number; sheetNumber: number; fileName: string } }) => {
+        wasteData.waste.forEach((w: { 
+          id: number; 
+          dia: number; 
+          length: number; 
+          sourceSheetId?: number; 
+          sourceBarNumber?: number;
+          sourceSheet?: { id: number; sheetNumber: number; fileName: string };
+          cutsOnSourceBar?: { barCode: string; length: number; element: string }[];
+        }) => {
           // Exclude waste from current sheet
           const sourceId = w.sourceSheetId || w.sourceSheet?.id;
           if (sourceId === parseInt(sheetId)) return;
@@ -96,10 +104,10 @@ export default function SheetPage() {
             id: String(w.id),
             projectId: parseInt(projectId),
             sourceSheetId: sourceId || 0,
-            sourceSheetName: w.sourceSheet?.fileName || "",
-            sourceBarNumber: 0,
+            sourceSheetName: w.sourceSheet?.fileName || `Sheet #${w.sourceSheet?.sheetNumber}`,
+            sourceBarNumber: w.sourceBarNumber || 0,
             sourcePatternId: "",
-            cutsOnSourceBar: [],
+            cutsOnSourceBar: w.cutsOnSourceBar || [],
             dia: w.dia,
             length: w.length,
             status: "available",
@@ -381,14 +389,19 @@ export default function SheetPage() {
                   <thead>
                     <tr className="text-left text-slate-500">
                       <th className="pb-2 font-medium">Length</th>
-                      <th className="pb-2 font-medium">Source</th>
+                      <th className="pb-2 font-medium">Source Sheet</th>
+                      <th className="pb-2 font-medium">From Bar #</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {wasteForCurrentDia.slice(0, 10).map((w, i) => (
                       <tr key={i}>
                         <td className="py-2.5 font-semibold text-slate-900">{formatLength(w.length)}</td>
-                        <td className="py-2.5 text-slate-600">Sheet #{w.sourceSheetId}</td>
+                        <td className="py-2.5 text-slate-600">
+                          <div>Sheet #{w.sourceSheetId}</div>
+                          {w.sourceSheetName && <div className="text-xs text-slate-400 truncate max-w-[120px]">{w.sourceSheetName}</div>}
+                        </td>
+                        <td className="py-2.5 text-slate-600">Bar #{w.sourceBarNumber || "?"}</td>
                       </tr>
                     ))}
                   </tbody>
