@@ -9,6 +9,7 @@ import type {
   WastePiece,
 } from "@/types/CuttingStock";
 import { CuttingStockPreprocessor } from "@/utils/cuttingStockPreprocessor";
+import { DYNAMIC_MAX_ITERATIONS, DYNAMIC_PATTERN_MAX_DEPTH } from "@/constants/config";
 
 interface DPState {
   remainingSegments: Map<string, number>; // segmentId -> count
@@ -20,7 +21,6 @@ export class DynamicCuttingStock {
   private readonly STANDARD_LENGTH = 12.0;
   private preprocessor = new CuttingStockPreprocessor();
   private memo: Map<string, DPState> = new Map();
-  private readonly MAX_ITERATIONS = 10000; // Prevent infinite loops
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   solve(requests: MultiBarCuttingRequest[], dia: number, _wastePieces?: WastePiece[]): CuttingStockResult {
@@ -86,7 +86,7 @@ export class DynamicCuttingStock {
       this.STANDARD_LENGTH,
       patterns,
       0,
-      5 // Max depth to prevent explosion
+      DYNAMIC_PATTERN_MAX_DEPTH
     );
 
     return patterns;
@@ -221,7 +221,7 @@ export class DynamicCuttingStock {
     let iterations = 0;
 
     // Greedy pattern selection with fallback
-    while (!this.isMapEmpty(remaining) && iterations < this.MAX_ITERATIONS) {
+    while (!this.isMapEmpty(remaining) && iterations < DYNAMIC_MAX_ITERATIONS) {
       iterations++;
       let bestPattern: CuttingPattern | null = null;
       let bestScore = -1;

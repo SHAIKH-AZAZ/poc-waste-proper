@@ -21,6 +21,7 @@ interface Bin {
   wasteSourceInfo?: {           // Info about the waste piece used
     wasteId: string;
     sourceSheetId: number;
+    sourceSheetNumber?: number;
     sourceBarNumber: number;
     originalLength: number;
   };
@@ -222,6 +223,7 @@ export class GreedyCuttingStock {
       wasteSourceInfo: {
         wasteId: waste.id,
         sourceSheetId: waste.sourceSheetId,
+        sourceSheetNumber: waste.sourceSheetNumber,
         sourceBarNumber: waste.sourceBarNumber,
         originalLength: waste.length,
       },

@@ -347,7 +347,7 @@ function DetailedResultCard({
                               ♻️ Waste
                             </span>
                             <span className="text-[10px] text-gray-500">
-                              Sheet #{detail.wasteSource.sourceSheetId}, Bar #{detail.wasteSource.sourceBarNumber}
+                              Sheet #{detail.wasteSource.sourceSheetNumber || detail.wasteSource.sourceSheetId}, Bar #{detail.wasteSource.sourceBarNumber}
                             </span>
                             <span className="text-[10px] text-gray-400">
                               ({(detail.wasteSource.originalLength / 1000).toFixed(2)}m)

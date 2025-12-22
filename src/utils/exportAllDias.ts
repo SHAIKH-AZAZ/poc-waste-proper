@@ -133,7 +133,8 @@ function addDiaSheet(
       isFromWaste?: boolean; 
       wasteSource?: { 
         wasteId: string; 
-        sourceSheetId: number; 
+        sourceSheetId: number;
+        sourceSheetNumber?: number;
         sourceBarNumber: number; 
         originalLength: number; 
       } 
@@ -157,7 +158,7 @@ function addDiaSheet(
 
     // Source description
     const sourceDesc = isFromWaste 
-      ? `Waste (Sheet ${wasteSource?.sourceSheetId || "?"}, Bar #${wasteSource?.sourceBarNumber || "?"})`
+      ? `Waste (Sheet #${wasteSource?.sourceSheetNumber || wasteSource?.sourceSheetId || "?"}, Bar #${wasteSource?.sourceBarNumber || "?"})`
       : "New 12m Bar";
 
     // Add each cut as a separate row

@@ -91,6 +91,7 @@ export interface DetailedCut {
   wasteSource?: {
     wasteId: string;
     sourceSheetId: number;
+    sourceSheetNumber?: number;  // Display number (#1, #2, etc.)
     sourceBarNumber: number;
     originalLength: number;
   };
@@ -117,8 +118,9 @@ export interface WastePiece {
   projectId: number;
   
   // Origin tracking
-  sourceSheetId: number;
-  sourceSheetName: string;
+  sourceSheetId: number;        // Database ID
+  sourceSheetNumber: number;    // Display number (#1, #2, etc.)
+  sourceSheetName: string;      // Filename
   sourceBarNumber: number;      // Which 12m standard bar (Bar #1, #2, etc.)
   sourcePatternId: string;
   

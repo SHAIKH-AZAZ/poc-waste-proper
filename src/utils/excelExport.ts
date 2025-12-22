@@ -85,7 +85,7 @@ function createAlgorithmSheet(result: CuttingStockResult): XLSX.WorkSheet {
 
     // Source description
     const sourceDesc = isFromWaste 
-      ? `Waste (Sheet ${wasteSource?.sourceSheetId || "?"}, Bar #${wasteSource?.sourceBarNumber || "?"})`
+      ? `Waste (Sheet #${wasteSource?.sourceSheetNumber || wasteSource?.sourceSheetId || "?"}, Bar #${wasteSource?.sourceBarNumber || "?"})`
       : "New 12m Bar";
 
     // Add each cut as a separate row

@@ -105,6 +105,7 @@ export default function SheetPage() {
             id: String(w.id),
             projectId: parseInt(projectId),
             sourceSheetId: sourceId || 0,
+            sourceSheetNumber: w.sourceSheet?.sheetNumber || 0,
             sourceSheetName: w.sourceSheet?.fileName || `Sheet #${w.sourceSheet?.sheetNumber}`,
             sourceBarNumber: w.sourceBarNumber || 0,
             sourcePatternId: "",
@@ -244,13 +245,14 @@ export default function SheetPage() {
                 id: String(w.id),
                 projectId: parseInt(projectId),
                 sourceSheetId: w.sourceSheetId || w.sourceSheet?.id || 0,
+                sourceSheetNumber: w.sourceSheet?.sheetNumber || 0,
                 sourceSheetName: w.sourceSheet?.fileName || `Sheet #${w.sourceSheet?.sheetNumber}`,
                 sourceBarNumber: w.sourceBarNumber || 0,
                 sourcePatternId: "",
                 cutsOnSourceBar: w.cutsOnSourceBar || [],
                 dia: w.dia,
                 length: w.length,
-                status: "available",
+                status: "available" as const,
                 createdAt: new Date(),
               }));
             
@@ -511,7 +513,7 @@ export default function SheetPage() {
                       <tr key={i}>
                         <td className="py-2.5 font-semibold text-slate-900">{formatLength(w.length)}</td>
                         <td className="py-2.5 text-slate-600">
-                          <div>Sheet #{w.sourceSheetId}</div>
+                          <div>Sheet #{w.sourceSheetNumber || w.sourceSheetId}</div>
                           {w.sourceSheetName && <div className="text-xs text-slate-400 truncate max-w-[120px]">{w.sourceSheetName}</div>}
                         </td>
                         <td className="py-2.5 text-slate-600">Bar #{w.sourceBarNumber || "?"}</td>
