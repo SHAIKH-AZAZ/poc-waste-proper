@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { PrismaClient } from "@prisma/client";
 import { getMongoDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
+import { WASTE_MIN_LENGTH_MM } from "@/constants/config";
 
 const prisma = new PrismaClient();
 
@@ -159,8 +160,8 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Waste] Adding ${wasteItems.length} waste items for sheet ${sheetId}`);
 
-    // Filter waste >= 2000mm (2m)
-    const validWaste = wasteItems.filter((w) => w.length >= 2000);
+    // Filter waste >= minimum threshold
+    const validWaste = wasteItems.filter((w) => w.length >= WASTE_MIN_LENGTH_MM);
     console.log(`[Waste] ${validWaste.length} items >= 2m (discarding ${wasteItems.length - validWaste.length} smaller pieces)`);
 
     const db = await getMongoDb();
@@ -251,8 +252,8 @@ export async function PATCH(req: NextRequest) {
       },
     });
 
-    // If remaining >= 2m, add as new waste
-    if (remainingStatus === "added_to_inventory" && remainingLength >= 2000) {
+    // If remaining >= minimum threshold, add as new waste
+    if (remainingStatus === "added_to_inventory" && remainingLength >= WASTE_MIN_LENGTH_MM) {
       const originalWaste = await prisma.wasteInventory.findUnique({
         where: { id: wasteId },
       });

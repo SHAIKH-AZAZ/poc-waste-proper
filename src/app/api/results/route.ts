@@ -3,6 +3,7 @@ import { PrismaClient } from "@prisma/client";
 import { getMongoDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import type { CuttingStockResult } from "@/types/CuttingStock";
+import { WASTE_MIN_LENGTH_MM } from "@/constants/config";
 
 const prisma = new PrismaClient();
 
@@ -162,8 +163,8 @@ export async function POST(req: NextRequest) {
 
       for (const item of wasteItems) {
         console.log(`[Results] Processing waste: dia=${item.dia}, length=${item.length}mm`);
-        // Only save waste >= 2000mm (2m)
-        if (item.length >= 2000) {
+        // Only save waste >= minimum threshold
+        if (item.length >= WASTE_MIN_LENGTH_MM) {
           // Store origin in MongoDB
           const originResult = await wasteOriginsCollection.insertOne({
             projectId: sheet.projectId,

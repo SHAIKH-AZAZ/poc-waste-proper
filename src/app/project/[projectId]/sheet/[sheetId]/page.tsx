@@ -14,6 +14,7 @@ import { sanitizeExcelData } from "@/utils/sanitizeData";
 import type { BarCuttingDisplay } from "@/types/BarCuttingRow";
 import type { CuttingStockResult, WastePiece } from "@/types/CuttingStock";
 import { exportAllDiasToExcel } from "@/utils/exportAllDias";
+import { WASTE_MIN_LENGTH_MM } from "@/constants/config";
 
 interface AvailableWasteForDia {
   dia: number;
@@ -367,7 +368,7 @@ export default function SheetPage() {
             element: "",
           })) || [],
         };
-      }).filter((w): w is NonNullable<typeof w> => w !== null && w.length >= 2000) || [];
+      }).filter((w): w is NonNullable<typeof w> => w !== null && w.length >= WASTE_MIN_LENGTH_MM) || [];
 
       console.log(`[Sheet] Waste items >= 2m: ${wasteItems.length}`);
 
