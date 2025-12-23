@@ -8,12 +8,7 @@ declare global {
   var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 
-const MONGODB_URI = process.env.MONGODB_URI;
 const MONGODB_DB = process.env.MONGODB_DB || "cutting_stock";
-
-if (!MONGODB_URI) {
-  throw new Error("Please define MONGODB_URI in environment variables");
-}
 
 const options = {
   maxPoolSize: 5,
@@ -24,35 +19,36 @@ const options = {
   serverSelectionTimeoutMS: 10000,
 };
 
-let clientPromise: Promise<MongoClient>;
+function getMongoClient(): Promise<MongoClient> {
+  const MONGODB_URI = process.env.MONGODB_URI;
+  
+  if (!MONGODB_URI) {
+    throw new Error("Please define MONGODB_URI in environment variables");
+  }
 
-if (process.env.NODE_ENV === "development") {
-  // In development, use global to preserve across hot reloads
   if (!global._mongoClientPromise) {
     const client = new MongoClient(MONGODB_URI, options);
     global._mongoClientPromise = client.connect();
     global._mongoClient = client;
   }
-  clientPromise = global._mongoClientPromise;
-} else {
-  // In production, also use singleton (not per-request)
-  if (!global._mongoClientPromise) {
-    const client = new MongoClient(MONGODB_URI, options);
-    global._mongoClientPromise = client.connect();
-    global._mongoClient = client;
-  }
-  clientPromise = global._mongoClientPromise;
+  
+  return global._mongoClientPromise;
 }
 
 export async function getMongoDb(): Promise<Db> {
-  const client = await clientPromise;
+  const client = await getMongoClient();
   return client.db(MONGODB_DB);
 }
 
 export async function connectToDatabase() {
-  const client = await clientPromise;
+  const client = await getMongoClient();
   const db = client.db(MONGODB_DB);
   return { client, db };
 }
 
-export { clientPromise };
+// For backwards compatibility
+export const clientPromise = {
+  then: (resolve: (client: MongoClient) => void, reject: (err: Error) => void) => {
+    getMongoClient().then(resolve).catch(reject);
+  }
+};

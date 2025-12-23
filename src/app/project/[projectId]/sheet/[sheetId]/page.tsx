@@ -161,16 +161,27 @@ export default function SheetPage() {
       if (dia !== null && displayData) {
         // STEP 1: Check if result already exists in database
         try {
+          console.log(`[Sheet] Checking for existing result for dia ${dia}...`);
           const existingRes = await fetch(`/api/results?sheetId=${sheetId}`);
           const existingData = await existingRes.json();
           
-          if (existingData.success && existingData.results) {
+          console.log(`[Sheet] API response:`, existingData);
+          
+          if (existingData.success && existingData.results && existingData.results.length > 0) {
             const existingResult = existingData.results.find(
               (r: { dia: number }) => r.dia === dia
             );
             
+            console.log(`[Sheet] Found result for dia ${dia}:`, existingResult ? "YES" : "NO");
+            
             if (existingResult) {
-              console.log(`[Sheet] Found existing result for dia ${dia} in database`);
+              console.log(`[Sheet] Loading existing result for dia ${dia} from database`);
+              console.log(`[Sheet] Result details:`, {
+                algorithm: existingResult.algorithm,
+                totalBarsUsed: existingResult.totalBarsUsed,
+                detailedCutsCount: existingResult.detailedCuts?.length || 0,
+              });
+              
               // Load existing result - convert to CuttingStockResult format
               const loadedResult: CuttingStockResult = {
                 algorithm: existingResult.algorithm,
@@ -207,6 +218,7 @@ export default function SheetPage() {
                 setWasteForCurrentDia([]); // We don't have the original waste pieces, just indicate it was used
               }
               
+              console.log(`[Sheet] Loaded existing result, skipping recalculation`);
               return; // Don't recalculate
             }
           }
@@ -215,6 +227,7 @@ export default function SheetPage() {
           // Continue to calculation if check fails
         }
 
+        console.log(`[Sheet] No existing result found, proceeding to calculation...`);
         // STEP 2: No existing result - check for available waste
         try {
           const wasteRes = await fetch(`/api/waste?projectId=${projectId}&status=available`);
