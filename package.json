@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --webpack",
     "build": "prisma generate && next build --webpack",
-    "start": "prisma db push && next start",
+    "start": "node scripts/start.js",
+    "start:next": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:start": "docker-compose up -d",
