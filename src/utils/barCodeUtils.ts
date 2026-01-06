@@ -58,13 +58,24 @@ export function filterDisplayDataByDia(data: BarCuttingDisplay[], dia: number): 
 
 /**
  * Gets summary for display data
+ * totalBars = sum of all "Total Bars" (repetitions)
+ * totalCuttingLength = sum of (Total Bars × Cutting Length) for each row
+ * totalLapLength = sum of (Total Bars × Lap Length) for each row
  */
 export function getDisplayDiaSummary(data: BarCuttingDisplay[], dia: number) {
   const filteredData = filterDisplayDataByDia(data, dia);
   
   const totalBars = filteredData.reduce((sum, row) => sum + (row["Total Bars"] || 0), 0);
-  const totalCuttingLength = filteredData.reduce((sum, row) => sum + (row["Cutting Length"] || 0), 0);
-  const totalLapLength = filteredData.reduce((sum, row) => sum + (row["Lap Length"] || 0), 0);
+  const totalCuttingLength = filteredData.reduce((sum, row) => {
+    const bars = row["Total Bars"] || 0;
+    const cuttingLength = row["Cutting Length"] || 0;
+    return sum + (bars * cuttingLength);
+  }, 0);
+  const totalLapLength = filteredData.reduce((sum, row) => {
+    const bars = row["Total Bars"] || 0;
+    const lapLength = row["Lap Length"] || 0;
+    return sum + (bars * lapLength);
+  }, 0);
   
   return {
     rowCount: filteredData.length,

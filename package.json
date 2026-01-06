@@ -22,6 +22,7 @@
     "@prisma/client": "^5.8.0",
     "@tabler/icons-react": "^3.36.0",
     "@types/xlsx": "^0.0.35",
+    "@vercel/analytics": "^1.6.1",
     "clsx": "^2.1.1",
     "critters": "^0.0.25",
     "dotenv": "^17.2.3",
