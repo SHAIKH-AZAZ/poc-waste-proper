@@ -2,6 +2,7 @@
 import React from "react";
 
 import type { BarCuttingDisplay } from "@/types/BarCuttingRow";
+import { IconTable } from "@tabler/icons-react";
 
 interface ExcelPreviewTableProps {
   data: BarCuttingDisplay[];
@@ -47,68 +48,80 @@ export default function ExcelPreviewTable({ data, selectedDia }: ExcelPreviewTab
     if (val === undefined || val === null || val === "" || Number.isNaN(val))
       return "—";
     if (typeof val === "object") return JSON.stringify(val);
-    
+
     // Format float values for Cutting Length and Lap Length
     if ((header === "Cutting Length" || header === "Lap Length") && typeof val === "number") {
       return val.toFixed(3);
     }
-    
+
     return val;
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto p-4 bg-white rounded-xl shadow-lg mb-8">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4 flex items-center text-center gap-2">
-        <span className="text-2xl">📊</span> 
-        Excel Data Preview
-        {selectedDia && (
-          <span className="text-lg bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
-            Filtered: Dia {selectedDia}
-          </span>
-        )}
-      </h2>
 
-      <div
-        className="overflow-x-auto overflow-y-auto rounded-lg border-2 border-gray-200 shadow-md scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100"
-        style={{ maxHeight: "600px" }}
-      >
-        <table className="border-collapse bg-white min-w-full">
-          <thead className="bg-gradient-to-r from-gray-100 to-gray-200 sticky top-0 z-10 shadow-md">
+    <div className="w-full max-w-7xl mx-auto bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden ring-1 ring-slate-100 flex flex-col h-[700px] animate-fade-in">
+      {/* Header */}
+      <div className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between flex-shrink-0">
+        <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 border border-blue-100">
+            <IconTable size={20} />
+          </div>
+          Excel Data Preview
+          {selectedDia && (
+            <span className="bg-green-50 text-green-700 px-2.5 py-1 rounded-full text-xs font-medium border border-green-100">
+              Filtered: Dia {selectedDia}
+            </span>
+          )}
+        </h2>
+        <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+          <span className="font-semibold text-slate-700">{data.length}</span> rows
+          <span className="w-px h-3 bg-slate-300 mx-1"></span>
+          <span className="font-semibold text-slate-700">{headers.length}</span> columns
+        </div>
+      </div>
+
+      {/* Table Container - Flex grow to fill remaining height */}
+      <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 relative">
+        <table className="border-collapse bg-white w-full">
+          <thead className="bg-slate-50 sticky top-0 z-20 shadow-sm">
             <tr>
+              {/* Row Number Column Header */}
+              <th className="sticky left-0 z-30 bg-slate-50 border-r border-b border-slate-200 w-12 px-2 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                #
+              </th>
               {headers.map((header, i) => (
                 <th
                   key={i}
-                  className="border-r border-gray-300 px-4 py-3 text-center font-bold text-gray-800 uppercase tracking-wide whitespace-nowrap"
+                  className="border-r border-b border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap bg-slate-50"
                   style={{
                     minWidth: `${getColumnWidth(i)}px`,
-                    width: `${getColumnWidth(i)}px`,
                   }}
                 >
-                  {header}
+                  <div className="flex items-center gap-1 group cursor-default">
+                    {header}
+                  </div>
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-slate-100">
             {data.map((row, i) => (
               <tr
                 key={i}
-                className={`${
-                  i % 2 === 0 ? "bg-white" : "bg-gray-50"
-                } hover:bg-blue-50 hover:shadow-sm transition-all duration-200 border-b border-gray-200`}
+                className="group hover:bg-blue-50/50 transition-colors duration-150"
               >
+                {/* Row Number */}
+                <td className="sticky left-0 bg-slate-50 group-hover:bg-blue-50/50 border-r border-slate-100 font-mono text-xs text-slate-400 text-center py-2 px-2 select-none z-10">
+                  {i + 1}
+                </td>
+
                 {Object.values(row).map((val, j) => (
                   <td
                     key={j}
-                    className={`border-r border-gray-200 px-4 py-3 text-sm text-gray-700 whitespace-nowrap ${
-                      getColumnType(j) === "number"
-                        ? "text-right font-mono"
-                        : "text-center"
-                    }`}
-                    style={{
-                      minWidth: `${getColumnWidth(j)}px`,
-                      width: `${getColumnWidth(j)}px`,
-                    }}
+                    className={`border-r border-slate-100 px-4 py-2.5 text-sm whitespace-nowrap ${getColumnType(j) === "number"
+                      ? "text-right font-mono text-slate-600"
+                      : "text-left text-slate-700 font-medium"
+                      }`}
                   >
                     {renderCell(val, headers[j]) as React.ReactNode}
                   </td>
@@ -119,20 +132,9 @@ export default function ExcelPreviewTable({ data, selectedDia }: ExcelPreviewTab
         </table>
       </div>
 
-      <div className="mt-4 flex justify-between items-center text-sm text-gray-600">
-        <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1">
-            <div className="w-3 h-3 bg-white border border-gray-300 rounded"></div>
-            Total Rows: {data.length}
-          </span>
-          <span className="flex items-center gap-1">
-            <div className="w-3 h-3 bg-gray-50 border border-gray-300 rounded"></div>
-            Columns: {headers.length}
-          </span>
-        </div>
-        <div className="text-xs text-gray-500">
-          Scroll horizontally to view all columns
-        </div>
+      {/* Footer */}
+      <div className="bg-slate-50 border-t border-slate-100 px-4 py-2 text-xs text-slate-400 flex justify-center flex-shrink-0">
+        Scroll safely • Data is strictly typed
       </div>
     </div>
   );

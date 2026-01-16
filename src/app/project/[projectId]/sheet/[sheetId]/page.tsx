@@ -531,6 +531,15 @@ export default function SheetPage() {
     }
   }, [displayData, sheetInfo]);
 
+  // Clear data (reset view)
+  const handleClearData = useCallback(() => {
+    setSelectedDia(null);
+    setGreedyResult(null);
+    setDynamicResult(null);
+    setUseWaste(false);
+    setCalculationError(null);
+  }, []);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 flex items-center justify-center">
@@ -648,8 +657,8 @@ export default function SheetPage() {
             rows={filteredDisplayData || displayData}
             headers={Object.keys(displayData[0] || {})}
             jsonData={filteredDisplayData || displayData}
-            clearData={() => { }}
-            downloadResults={() => { }}
+            clearData={handleClearData}
+            downloadResults={handleDownloadAllDias}
             selectedDia={selectedDia}
             totalRows={displayData.length}
             datasetSizeInfo={{
