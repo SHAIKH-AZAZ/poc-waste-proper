@@ -27,7 +27,7 @@ export async function exportAllDiasToExcel(
     ["Generated:", new Date().toLocaleString()],
     ["Total Diameters:", uniqueDias.length],
     [],
-    ["Dia", "Greedy Bars", "Greedy Waste (m)", "Greedy Waste Reused", "Dynamic Bars", "Dynamic Waste (m)", "Best Algorithm"],
+    ["Dia", "Greedy Bars", "Greedy Waste (m)", "Greedy Waste (%)", "Greedy Waste Reused", "Dynamic Bars", "Dynamic Waste (m)", "Dynamic Waste (%)", "Best Algorithm"],
   ];
 
   // Process each diameter
@@ -59,9 +59,11 @@ export async function exportAllDiasToExcel(
         dia,
         greedy.totalBarsUsed,
         parseFloat(greedy.totalWaste.toFixed(3)),
+        parseFloat(greedy.summary.totalWastePercentage.toFixed(2)),
         greedyWasteReused,
         dynamic.totalBarsUsed,
         parseFloat(dynamic.totalWaste.toFixed(3)),
+        parseFloat(dynamic.summary.totalWastePercentage.toFixed(2)),
         bestAlgorithm,
       ]);
 
@@ -89,6 +91,8 @@ export async function exportAllDiasToExcel(
     { wch: 18 },
     { wch: 20 },
     { wch: 15 },
+    { wch: 18 },
+    { wch: 18 },
     { wch: 18 },
     { wch: 20 },
   ];
@@ -118,6 +122,7 @@ function addDiaSheet(
     "Effective Length (m)",
     "Lap Length (m)",
     "Waste (m)",
+    "Waste (%)",
     "Utilization (%)",
   ];
 
@@ -185,8 +190,10 @@ function addDiaSheet(
       // Waste and Utilization only on first cut
       if (index === 0) {
         row.push(parseFloat(barWaste.toFixed(3)));
+        row.push(parseFloat((100 - barUtilization).toFixed(2))); // Waste %
         row.push(parseFloat(barUtilization.toFixed(2)));
       } else {
+        row.push("");
         row.push("");
         row.push("");
       }
@@ -205,6 +212,7 @@ function addDiaSheet(
     { wch: 18 },  // Effective Length
     { wch: 15 },  // Lap Length
     { wch: 12 },  // Waste
+    { wch: 12 },  // Waste %
     { wch: 15 },  // Utilization
   ];
 

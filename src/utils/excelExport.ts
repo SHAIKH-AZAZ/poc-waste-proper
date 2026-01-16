@@ -54,6 +54,7 @@ function createAlgorithmSheet(result: CuttingStockResult): XLSX.WorkSheet {
     "Effective Length (m)",
     "Lap Length (m)",
     "Waste (m)",
+    "Waste (%)",
     "Utilization (%)",
   ];
 
@@ -112,8 +113,10 @@ function createAlgorithmSheet(result: CuttingStockResult): XLSX.WorkSheet {
       // Waste and Utilization only on first cut
       if (index === 0) {
         row.push(parseFloat(barWaste.toFixed(3)));
+        row.push(parseFloat((100 - barUtilization).toFixed(2))); // Waste %
         row.push(parseFloat(barUtilization.toFixed(2)));
       } else {
+        row.push(""); // Empty for subsequent cuts
         row.push(""); // Empty for subsequent cuts
         row.push(""); // Empty for subsequent cuts
       }
@@ -134,6 +137,7 @@ function createAlgorithmSheet(result: CuttingStockResult): XLSX.WorkSheet {
     { wch: 18 },  // Effective Length
     { wch: 15 },  // Lap Length
     { wch: 12 },  // Waste
+    { wch: 12 },  // Waste %
     { wch: 15 },  // Utilization
   ];
 

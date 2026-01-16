@@ -183,8 +183,8 @@ export class TrueDynamicCuttingStock {
       // Solve current problem with existing patterns
       const currentSolution = this.solveSetCover(demand, patterns);
       
-      // Generate new pattern based on dual values (simplified)
-      const newPattern = this.generateImprovedPattern(segments, currentSolution.patterns);
+      // Generate new pattern based on unmet demand (Shadow Prices approximation)
+      const newPattern = this.generateImprovedPattern(segments, currentSolution.patterns, currentSolution.remainingSegments);
       
       if (!newPattern || this.patternExists(patterns, newPattern)) {
         console.log(`[ColumnGen] No improving pattern found, stopping`);
@@ -502,52 +502,122 @@ export class TrueDynamicCuttingStock {
 
   private generateImprovedPattern(
     segments: BarSegment[],
-    currentPatterns: CuttingPattern[]
+    currentPatterns: CuttingPattern[],
+    uncoveredDemand?: Map<string, number>
   ): CuttingPattern | null {
-    // Simplified pattern improvement - find underutilized segments
-    const segmentUsage = new Map<string, number>();
+    // ESTIMATE SHADOW PRICES (Dual Values)
+    // Strategy: Segments with UNMET demand get strict priority (High Shadow Price)
+    // Segments with met demand get standard price (Length)
     
-    for (const pattern of currentPatterns) {
-      for (const cut of pattern.cuts) {
-        const usage = segmentUsage.get(cut.segmentId) || 0;
-        segmentUsage.set(cut.segmentId, usage + cut.count);
-      }
-    }
-
-    // Find least used segments and try to combine them
+    const segmentPrices = new Map<string, number>();
     const uniqueSegments = this.getUniqueSegments(segments);
-    const sortedByUsage = uniqueSegments.sort((a, b) => {
-      const usageA = segmentUsage.get(a.segmentId) || 0;
-      const usageB = segmentUsage.get(b.segmentId) || 0;
-      return usageA - usageB;
-    });
-
-    // Try to create a pattern with underutilized segments
-    const cuts: PatternCut[] = [];
-    let remainingLength = this.STANDARD_LENGTH;
-
-    for (const segment of sortedByUsage) {
-      const maxCount = Math.floor(remainingLength / segment.length);
-      if (maxCount > 0) {
-        cuts.push({
-          segmentId: segment.segmentId,
-          parentBarCode: segment.parentBarCode,
-          length: segment.length,
-          count: Math.min(maxCount, 2), // Limit to 2 to allow mixing
-          segmentIndex: segment.segmentIndex,
-          lapLength: segment.lapLength,
-        });
-        remainingLength -= segment.length * Math.min(maxCount, 2);
-      }
+    
+    for (const segment of uniqueSegments) {
+        const remaining = uncoveredDemand?.get(segment.segmentId) || 0;
+        
+        // Base price is length (maximize utilization)
+        let price = segment.length;
+        
+        if (remaining > 0) {
+            // High priority! Shadow price increases with urgency.
+            // If we have a lot of remaining demand, we *really* need this segment.
+            price *= (1.0 + Math.log10(remaining + 1) * 2.0); 
+            // e.g. remaining=1 -> *1.6, remaining=10 -> *3.0, remaining=100 -> *5.0
+        } else {
+            // Already covered, but we can still use it to fill gaps if needed
+            // Reduce value slightly to prefer "needed" items
+            price *= 0.5;
+        }
+        
+        segmentPrices.set(segment.segmentId, price);
     }
-
-    if (cuts.length === 0) return null;
+    
+    // 2. Solve Knapsack Problem (Pricing Subproblem)
+    // Maximize Sum(Prices) subject to Length <= 12m
+    
+    const capacity = Math.floor(this.STANDARD_LENGTH * 1000); // mm
+    const items = uniqueSegments.map(seg => ({
+        segment: seg,
+        weight: Math.floor(seg.length * 1000),
+        value: Math.floor((segmentPrices.get(seg.segmentId) || 0) * 1000)
+    }));
+    
+    // Standard Knapsack DP
+    const dp: number[] = new Array(capacity + 1).fill(0);
+    const keep: number[][] = Array(items.length).fill(null).map(() => Array(capacity + 1).fill(0));
+    
+    // Unbounded Knapsack (can use item multiple times)
+    for (let w = 0; w <= capacity; w++) {
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.weight <= w) {
+                const newVal = dp[w - item.weight] + item.value;
+                if (newVal > dp[w]) {
+                    dp[w] = newVal;
+                    keep[i][w] = 1; // Mark that we used item i
+                } else if (dp[w] === newVal) {
+                    // Tie-breaking logic if needed
+                }
+            }
+        }
+    }
+    
+    // Reconstruct solution
+    const cuts: PatternCut[] = [];
+    let w = capacity;
+    
+    // Reconstruct
+    // For Unbounded Knapsack, we need to track what we added
+    const dp2: number[] = new Array(capacity + 1).fill(0);
+    const bestItemIndex: number[] = new Array(capacity + 1).fill(-1);
+    
+    for (let currentW = 1; currentW <= capacity; currentW++) {
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            if (item.weight <= currentW) {
+                const val = dp2[currentW - item.weight] + item.value;
+                if (val > dp2[currentW]) {
+                    dp2[currentW] = val;
+                    bestItemIndex[currentW] = i;
+                }
+            }
+        }
+    }
+    
+    // Backtrack from capacity
+    let currentCapacity = capacity;
+    const usedCounts = new Map<string, number>();
+    
+    while (currentCapacity > 0) {
+        const itemIdx = bestItemIndex[currentCapacity];
+        if (itemIdx === -1) break; // No more items fit
+        
+        const item = items[itemIdx];
+        const current = usedCounts.get(item.segment.segmentId) || 0;
+        usedCounts.set(item.segment.segmentId, current + 1);
+        currentCapacity -= item.weight;
+    }
+    
+    if (usedCounts.size === 0) return null;
+    
+    // Convert to PatternCut[]
+    for (const [segId, count] of usedCounts.entries()) {
+        const segment = uniqueSegments.find(s => s.segmentId === segId)!;
+        cuts.push({
+            segmentId: segment.segmentId,
+            parentBarCode: segment.parentBarCode,
+            length: segment.length,
+            count: count,
+            segmentIndex: segment.segmentIndex,
+            lapLength: segment.lapLength,
+        });
+    }
 
     const totalLength = cuts.reduce((sum, cut) => sum + cut.length * cut.count, 0);
     const waste = this.STANDARD_LENGTH - totalLength;
 
     return {
-      id: `improved_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      id: `col_gen_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       cuts,
       waste,
       utilization: (totalLength / this.STANDARD_LENGTH) * 100,

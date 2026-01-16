@@ -1,5 +1,5 @@
 import { GreedyCuttingStock } from "@/algorithms/greedyCuttingStock";
-import { DynamicCuttingStock } from "@/algorithms/dynamicCuttingStock";
+
 import { TrueDynamicCuttingStock } from "@/algorithms/trueDynamicCuttingStock";
 import { BranchAndBoundCuttingStock } from "@/algorithms/branchAndBoundCuttingStock";
 import { AdaptiveCuttingStock } from "@/algorithms/adaptiveCuttingStock";

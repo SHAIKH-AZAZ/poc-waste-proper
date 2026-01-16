@@ -4,6 +4,7 @@ import type { WorkerMessage, WorkerResponse } from "@/workers/cuttingStock.worke
 export class WorkerManager {
   private greedyWorker: Worker | null = null;
   private dynamicWorker: Worker | null = null;
+  private trueDynamicWorker: Worker | null = null;
 
   /**
    * Initialize workers
@@ -18,6 +19,10 @@ export class WorkerManager {
         { type: "module" }
       );
       this.dynamicWorker = new Worker(
+        new URL("@/workers/cuttingStock.worker.ts", import.meta.url),
+        { type: "module" }
+      );
+      this.trueDynamicWorker = new Worker(
         new URL("@/workers/cuttingStock.worker.ts", import.meta.url),
         { type: "module" }
       );
@@ -157,6 +162,63 @@ export class WorkerManager {
   }
 
   /**
+   * Run true dynamic algorithm in worker
+   */
+  async runTrueDynamic(
+    requests: MultiBarCuttingRequest[],
+    dia: number,
+    onProgress?: (stage: string, percentage: number) => void
+  ): Promise<CuttingStockResult> {
+    if (!this.trueDynamicWorker) {
+      this.initWorkers();
+    }
+
+    return new Promise((resolve, reject) => {
+      if (!this.trueDynamicWorker) {
+        reject(new Error("Worker not available"));
+        return;
+      }
+
+      const handleMessage = (event: MessageEvent<WorkerResponse>) => {
+        if (event.data.type === "true-dynamic") {
+          if (event.data.progress) {
+            onProgress?.(event.data.progress.stage, event.data.progress.percentage);
+            return;
+          }
+
+          if (event.data.result || event.data.error) {
+            this.trueDynamicWorker?.removeEventListener("message", handleMessage);
+            this.trueDynamicWorker?.removeEventListener("error", handleError);
+
+            if (event.data.error) {
+              reject(new Error(event.data.error));
+            } else if (event.data.result) {
+              const result = Array.isArray(event.data.result) ? event.data.result[0] : event.data.result;
+              resolve(result);
+            }
+          }
+        }
+      };
+
+      const handleError = (error: ErrorEvent) => {
+        this.trueDynamicWorker?.removeEventListener("message", handleMessage);
+        this.trueDynamicWorker?.removeEventListener("error", handleError);
+        reject(error);
+      };
+
+      this.trueDynamicWorker.addEventListener("message", handleMessage);
+      this.trueDynamicWorker.addEventListener("error", handleError);
+
+      const message: WorkerMessage = {
+        type: "true-dynamic",
+        requests,
+        dia,
+      };
+      this.trueDynamicWorker.postMessage(message);
+    });
+  }
+
+  /**
    * Run improved greedy algorithm in worker
    */
   async runImprovedGreedy(
@@ -249,6 +311,10 @@ export class WorkerManager {
     if (this.dynamicWorker) {
       this.dynamicWorker.terminate();
       this.dynamicWorker = null;
+    }
+    if (this.trueDynamicWorker) {
+        this.trueDynamicWorker.terminate();
+        this.trueDynamicWorker = null;
     }
   }
 }
