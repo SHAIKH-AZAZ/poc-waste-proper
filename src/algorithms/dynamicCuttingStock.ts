@@ -9,60 +9,84 @@ import type {
   WastePiece,
 } from "@/types/CuttingStock";
 import { CuttingStockPreprocessor } from "@/utils/cuttingStockPreprocessor";
-import { DYNAMIC_MAX_ITERATIONS, DYNAMIC_PATTERN_MAX_DEPTH } from "@/constants/config";
 
-interface DPState {
-  remainingSegments: Map<string, number>; // segmentId -> count
-  barsUsed: number;
-  patterns: CuttingPattern[];
-}
-
+/**
+ * Dynamic Cutting Stock Algorithm
+ * Uses Best Fit Decreasing (BFD) approach - places each segment in the bin
+ * that will have the least remaining space after placement.
+ * This typically produces better results than First Fit Decreasing (FFD).
+ */
 export class DynamicCuttingStock {
   private readonly STANDARD_LENGTH = 12.0;
   private preprocessor = new CuttingStockPreprocessor();
-  private memo: Map<string, DPState> = new Map();
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   solve(requests: MultiBarCuttingRequest[], dia: number, _wastePieces?: WastePiece[]): CuttingStockResult {
-    // Note: Dynamic algorithm currently doesn't use waste pieces
-    // Waste reuse is handled by the greedy algorithm which is typically selected as best
     const startTime = performance.now();
+    console.log(`[Dynamic] Starting BFD solve for dia ${dia} with ${requests.length} requests`);
 
     // Filter by diameter
     const diaRequests = this.preprocessor.filterByDia(requests, dia);
+    console.log(`[Dynamic] Filtered to ${diaRequests.length} requests for dia ${dia}`);
 
     if (diaRequests.length === 0) {
       return this.createEmptyResult(dia, startTime);
     }
 
-    // Extract segments
+    // Extract all segments
     const allSegments = this.preprocessor.extractAllSegments(diaRequests);
+    console.log(`[Dynamic] Extracted ${allSegments.length} segments`);
 
-    // Generate feasible patterns
-    const feasiblePatterns = this.generateFeasiblePatterns(allSegments);
-    console.log(`[Dynamic] Generated ${feasiblePatterns.length} feasible patterns`);
+    // Sort segments by length descending (largest first)
+    const sortedSegments = [...allSegments].sort((a, b) => b.length - a.length);
 
-    if (feasiblePatterns.length === 0) {
-      console.warn("[Dynamic] No feasible patterns generated! Returning empty result.");
-      return this.createEmptyResult(dia, startTime);
+    // Best Fit Decreasing algorithm
+    const bins: { segments: BarSegment[]; remaining: number }[] = [];
+
+    for (const segment of sortedSegments) {
+      // Find the bin with the least remaining space that can still fit this segment
+      let bestBinIndex = -1;
+      let bestRemainingAfter = Infinity;
+
+      for (let i = 0; i < bins.length; i++) {
+        const remainingAfter = bins[i].remaining - segment.length;
+        if (remainingAfter >= 0 && remainingAfter < bestRemainingAfter) {
+          bestBinIndex = i;
+          bestRemainingAfter = remainingAfter;
+        }
+      }
+
+      if (bestBinIndex >= 0) {
+        // Place in best fitting bin
+        bins[bestBinIndex].segments.push(segment);
+        bins[bestBinIndex].remaining -= segment.length;
+      } else {
+        // Create new bin
+        bins.push({
+          segments: [segment],
+          remaining: this.STANDARD_LENGTH - segment.length,
+        });
+      }
     }
 
-    // Solve using dynamic programming
-    const result = this.dpSolve(allSegments, feasiblePatterns);
+    console.log(`[Dynamic] BFD created ${bins.length} bins`);
+
+    // Convert bins to patterns
+    const patterns = this.binsToPatterns(bins);
 
     // Generate detailed cuts
-    const detailedCuts = this.generateDetailedCuts(result.patterns);
+    const detailedCuts = this.generateDetailedCuts(patterns);
 
     // Calculate summary
-    const summary = this.calculateSummary(result.patterns, allSegments.length);
+    const summary = this.calculateSummary(patterns, allSegments.length);
 
     const executionTime = performance.now() - startTime;
+    console.log(`[Dynamic] Complete in ${executionTime.toFixed(2)}ms, ${bins.length} bars used`);
 
     return {
       algorithm: "dynamic",
       dia,
-      patterns: result.patterns,
-      totalBarsUsed: result.barsUsed,
+      patterns,
+      totalBarsUsed: bins.length,
       totalWaste: summary.totalWasteLength,
       averageUtilization: summary.averageUtilization,
       executionTime,
@@ -72,354 +96,40 @@ export class DynamicCuttingStock {
   }
 
   /**
-   * Generate all feasible cutting patterns
+   * Convert bins to cutting patterns
    */
-  private generateFeasiblePatterns(segments: BarSegment[]): CuttingPattern[] {
-    const patterns: CuttingPattern[] = [];
-    const uniqueSegments = this.getUniqueSegments(segments);
+  private binsToPatterns(bins: { segments: BarSegment[]; remaining: number }[]): CuttingPattern[] {
+    return bins.map((bin, index) => {
+      // Group segments by segmentId for the pattern
+      const cutMap = new Map<string, PatternCut>();
 
-    // Generate patterns using recursive enumeration
-    this.generatePatternsRecursive(
-      uniqueSegments,
-      [],
-      0,
-      this.STANDARD_LENGTH,
-      patterns,
-      0,
-      DYNAMIC_PATTERN_MAX_DEPTH
-    );
-
-    return patterns;
-  }
-
-  /**
-   * Get unique segment types
-   */
-  private getUniqueSegments(segments: BarSegment[]): BarSegment[] {
-    const uniqueMap = new Map<string, BarSegment>();
-
-    for (const segment of segments) {
-      if (!uniqueMap.has(segment.segmentId)) {
-        uniqueMap.set(segment.segmentId, segment);
-      }
-    }
-
-    return Array.from(uniqueMap.values());
-  }
-
-  /**
-   * Recursively generate cutting patterns
-   */
-  private generatePatternsRecursive(
-    availableSegments: BarSegment[],
-    currentCuts: PatternCut[],
-    currentLength: number,
-    remainingLength: number,
-    patterns: CuttingPattern[],
-    depth: number,
-    maxDepth: number
-  ): void {
-    if (depth >= maxDepth || remainingLength < 0.1) {
-      if (currentCuts.length > 0) {
-        patterns.push(this.createPattern(currentCuts, remainingLength));
-      }
-      return;
-    }
-
-    // Try adding each segment type
-    for (let i = 0; i < availableSegments.length; i++) {
-      const segment = availableSegments[i];
-
-      // Use cutting length (which includes lap) for space calculation
-      if (segment.length <= remainingLength) {
-        // For pattern generation, we generate patterns with segment TYPES
-        // The same parent bar constraint will be applied during pattern USAGE, not generation
-        // This allows us to generate all feasible patterns
-        
-        // Find existing cut or create new one
-        const existingCutIndex = currentCuts.findIndex(
-          (c) => c.segmentId === segment.segmentId
-        );
-
-        if (existingCutIndex >= 0) {
-          currentCuts[existingCutIndex].count++;
+      for (const segment of bin.segments) {
+        const existing = cutMap.get(segment.segmentId);
+        if (existing) {
+          existing.count++;
         } else {
-          currentCuts.push({
+          cutMap.set(segment.segmentId, {
             segmentId: segment.segmentId,
             parentBarCode: segment.parentBarCode,
             length: segment.length,
             count: 1,
             segmentIndex: segment.segmentIndex,
-            lapLength: segment.lapLength, // Pass through actual lap length
+            lapLength: segment.lapLength,
           });
         }
-
-        // Recurse - use cutting length (which includes lap) for space tracking
-        this.generatePatternsRecursive(
-          availableSegments.slice(i),
-          currentCuts,
-          currentLength + segment.length,
-          remainingLength - segment.length,
-          patterns,
-          depth + 1,
-          maxDepth
-        );
-
-        // Backtrack
-        if (existingCutIndex >= 0) {
-          currentCuts[existingCutIndex].count--;
-          if (currentCuts[existingCutIndex].count === 0) {
-            currentCuts.splice(existingCutIndex, 1);
-          }
-        } else {
-          currentCuts.pop();
-        }
       }
-    }
+
+      const usedLength = this.STANDARD_LENGTH - bin.remaining;
+      
+      return {
+        id: `bfd_pattern_${index + 1}`,
+        cuts: Array.from(cutMap.values()),
+        waste: bin.remaining,
+        utilization: (usedLength / this.STANDARD_LENGTH) * 100,
+        standardBarLength: this.STANDARD_LENGTH,
+      };
+    });
   }
-
-  /**
-   * Create pattern from cuts
-   */
-  private createPattern(
-    cuts: PatternCut[],
-    remainingLength: number
-  ): CuttingPattern {
-    const usedLength = this.STANDARD_LENGTH - remainingLength;
-    return {
-      id: `pattern_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      cuts: cuts.map((c) => ({ ...c })),
-      waste: remainingLength,
-      utilization: (usedLength / this.STANDARD_LENGTH) * 100,
-      standardBarLength: this.STANDARD_LENGTH,
-    };
-  }
-
-  /**
-   * Solve using greedy pattern selection (simplified approach)
-   * Select patterns that maximize utilization and satisfy demand
-   */
-  private dpSolve(
-    segments: BarSegment[],
-    patterns: CuttingPattern[]
-  ): DPState {
-    // Count segments needed
-    const segmentCounts = new Map<string, number>();
-    for (const segment of segments) {
-      const count = segmentCounts.get(segment.segmentId) || 0;
-      segmentCounts.set(segment.segmentId, count + 1);
-    }
-
-    console.log("[Dynamic] Segment demand:", Array.from(segmentCounts.entries()));
-    console.log("[Dynamic] Available patterns:", patterns.length);
-
-    // Sort patterns by utilization (best first)
-    const sortedPatterns = [...patterns].sort((a, b) => b.utilization - a.utilization);
-
-    const usedPatterns: CuttingPattern[] = [];
-    const remaining = new Map(segmentCounts);
-    let iterations = 0;
-
-    // Greedy pattern selection with fallback
-    while (!this.isMapEmpty(remaining) && iterations < DYNAMIC_MAX_ITERATIONS) {
-      iterations++;
-      let bestPattern: CuttingPattern | null = null;
-      let bestScore = -1;
-      let bestAdjustedPattern: CuttingPattern | null = null;
-
-      // Find pattern that satisfies most remaining demand
-      for (const pattern of sortedPatterns) {
-        // First try exact match
-        if (this.canApplyPattern(remaining, pattern)) {
-          const score = this.calculatePatternScore(remaining, pattern);
-          if (score > bestScore) {
-            bestScore = score;
-            bestPattern = pattern;
-          }
-        }
-      }
-
-      // If no exact match, try to create a partial pattern
-      if (!bestPattern) {
-        // Find any pattern that has at least one useful cut
-        for (const pattern of sortedPatterns) {
-          const adjustedPattern = this.adjustPatternToRemaining(pattern, remaining);
-          if (adjustedPattern && adjustedPattern.cuts.length > 0) {
-            const score = this.calculatePatternScore(remaining, adjustedPattern);
-            if (score > bestScore) {
-              bestScore = score;
-              bestAdjustedPattern = adjustedPattern;
-            }
-          }
-        }
-      }
-
-      const patternToUse = bestPattern || bestAdjustedPattern;
-
-      if (!patternToUse) {
-        console.warn("[Dynamic] No pattern found to satisfy remaining demand:", Array.from(remaining.entries()));
-        // Fallback: create single-cut patterns for remaining segments
-        const fallbackPatterns = this.createFallbackPatterns(remaining, segments);
-        usedPatterns.push(...fallbackPatterns);
-        break;
-      }
-
-      // Apply pattern
-      usedPatterns.push(patternToUse);
-      for (const cut of patternToUse.cuts) {
-        const current = remaining.get(cut.segmentId) || 0;
-        remaining.set(cut.segmentId, Math.max(0, current - cut.count));
-      }
-    }
-
-    console.log("[Dynamic] Used", usedPatterns.length, "patterns");
-
-    return {
-      remainingSegments: remaining,
-      barsUsed: usedPatterns.length,
-      patterns: usedPatterns,
-    };
-  }
-
-  /**
-   * Adjust pattern to only include cuts we can satisfy
-   */
-  private adjustPatternToRemaining(
-    pattern: CuttingPattern,
-    remaining: Map<string, number>
-  ): CuttingPattern | null {
-    const adjustedCuts: PatternCut[] = [];
-    let usedLength = 0;
-
-    for (const cut of pattern.cuts) {
-      const available = remaining.get(cut.segmentId) || 0;
-      if (available > 0) {
-        const adjustedCount = Math.min(cut.count, available);
-        adjustedCuts.push({ ...cut, count: adjustedCount });
-        usedLength += cut.length * adjustedCount;
-      }
-    }
-
-    if (adjustedCuts.length === 0) {
-      return null;
-    }
-
-    return {
-      id: `adjusted_${pattern.id}`,
-      cuts: adjustedCuts,
-      waste: this.STANDARD_LENGTH - usedLength,
-      utilization: (usedLength / this.STANDARD_LENGTH) * 100,
-      standardBarLength: this.STANDARD_LENGTH,
-    };
-  }
-
-  /**
-   * Create fallback single-cut patterns for remaining segments
-   */
-  private createFallbackPatterns(
-    remaining: Map<string, number>,
-    segments: BarSegment[]
-  ): CuttingPattern[] {
-    const patterns: CuttingPattern[] = [];
-    const segmentMap = new Map<string, BarSegment>();
-    
-    for (const seg of segments) {
-      segmentMap.set(seg.segmentId, seg);
-    }
-
-    // Group remaining segments that can fit together
-    const remainingList: { segmentId: string; count: number; segment: BarSegment }[] = [];
-    for (const [segmentId, count] of remaining.entries()) {
-      if (count > 0) {
-        const segment = segmentMap.get(segmentId);
-        if (segment) {
-          remainingList.push({ segmentId, count, segment });
-        }
-      }
-    }
-
-    // Sort by length descending (FFD approach)
-    remainingList.sort((a, b) => b.segment.length - a.segment.length);
-
-    // Create patterns using FFD
-    while (remainingList.some(r => r.count > 0)) {
-      const cuts: PatternCut[] = [];
-      let usedLength = 0;
-      const remainingLength = this.STANDARD_LENGTH;
-
-      for (const item of remainingList) {
-        while (item.count > 0 && item.segment.length <= remainingLength - usedLength) {
-          // Check if we already have this cut in the pattern
-          const existingCut = cuts.find(c => c.segmentId === item.segmentId);
-          if (existingCut) {
-            existingCut.count++;
-          } else {
-            cuts.push({
-              segmentId: item.segmentId,
-              parentBarCode: item.segment.parentBarCode,
-              length: item.segment.length,
-              count: 1,
-              segmentIndex: item.segment.segmentIndex,
-              lapLength: item.segment.lapLength,
-            });
-          }
-          usedLength += item.segment.length;
-          item.count--;
-        }
-      }
-
-      if (cuts.length > 0) {
-        patterns.push({
-          id: `fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          cuts,
-          waste: this.STANDARD_LENGTH - usedLength,
-          utilization: (usedLength / this.STANDARD_LENGTH) * 100,
-          standardBarLength: this.STANDARD_LENGTH,
-        });
-      } else {
-        break; // No more cuts can be made
-      }
-    }
-
-    return patterns;
-  }
-
-  /**
-   * Check if map is empty (all values are 0)
-   */
-  private isMapEmpty(map: Map<string, number>): boolean {
-    for (const value of map.values()) {
-      if (value > 0) return false;
-    }
-    return true;
-  }
-
-  /**
-   * Check if pattern can be applied
-   */
-  private canApplyPattern(remaining: Map<string, number>, pattern: CuttingPattern): boolean {
-    for (const cut of pattern.cuts) {
-      const available = remaining.get(cut.segmentId) || 0;
-      if (available < cut.count) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  /**
-   * Calculate pattern score (how much demand it satisfies)
-   */
-  private calculatePatternScore(remaining: Map<string, number>, pattern: CuttingPattern): number {
-    let score = 0;
-    for (const cut of pattern.cuts) {
-      const demand = remaining.get(cut.segmentId) || 0;
-      score += Math.min(demand, cut.count);
-    }
-    return score;
-  }
-
-
 
   /**
    * Generate detailed cutting instructions
@@ -431,9 +141,6 @@ export class DynamicCuttingStock {
 
       for (const cut of pattern.cuts) {
         for (let i = 0; i < cut.count; i++) {
-          // Determine if this segment has lap
-          // Lap exists if lapLength > 0 in input (for multi-bar cuts)
-          // All segments except last have lap at end
           const hasLap = cut.lapLength > 0;
           
           cuts.push({
@@ -444,7 +151,7 @@ export class DynamicCuttingStock {
             position: currentPosition,
             segmentIndex: cut.segmentIndex,
             hasLap: hasLap,
-            lapLength: hasLap ? cut.lapLength : 0, // Use actual lap length if has lap
+            lapLength: hasLap ? cut.lapLength : 0,
           });
           currentPosition += cut.length;
         }
@@ -476,9 +183,7 @@ export class DynamicCuttingStock {
       totalWasteLength: Math.round(totalWaste * 1000) / 1000,
       totalWastePercentage:
         totalBars > 0
-          ? Math.round(
-              (totalWaste / (totalBars * this.STANDARD_LENGTH)) * 10000
-            ) / 100
+          ? Math.round((totalWaste / (totalBars * this.STANDARD_LENGTH)) * 10000) / 100
           : 0,
       averageUtilization: Math.round(avgUtilization * 100) / 100,
       patternCount: patterns.length,
@@ -489,10 +194,7 @@ export class DynamicCuttingStock {
   /**
    * Create empty result
    */
-  private createEmptyResult(
-    dia: number,
-    startTime: number
-  ): CuttingStockResult {
+  private createEmptyResult(dia: number, startTime: number): CuttingStockResult {
     return {
       algorithm: "dynamic",
       dia,

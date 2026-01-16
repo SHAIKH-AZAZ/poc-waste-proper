@@ -136,13 +136,20 @@ export async function POST(req: NextRequest) {
     // ============================================
     // STEP 4: Store Metadata in PostgreSQL
     // ============================================
+    // Count how many bars came from waste reuse
+    const wastePiecesReused = bestResult.detailedCuts?.filter(
+      (cut) => cut.isFromWaste
+    ).length || 0;
+    
+    console.log(`[Results] Waste pieces reused: ${wastePiecesReused}`);
+
     const pgResult = await prisma.calculationResult.create({
       data: {
         sheetId,
         algorithm: bestAlgorithm,
         dia,
         totalBarsUsed: bestResult.totalBarsUsed,
-        wastePiecesReused: 0, // Will be updated if waste was used
+        wastePiecesReused: wastePiecesReused,
         totalWaste: bestResult.totalWaste,
         averageUtilization: bestResult.averageUtilization,
         executionTime: bestResult.executionTime,

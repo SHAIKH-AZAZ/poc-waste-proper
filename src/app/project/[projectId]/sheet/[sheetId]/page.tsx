@@ -42,6 +42,7 @@ export default function SheetPage() {
   const [dynamicProgress, setDynamicProgress] = useState({ stage: "", percentage: 0 });
   const [calculationError, setCalculationError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [resultsFromCache, setResultsFromCache] = useState(false);
 
   // Waste reuse state
   const [availableWaste, setAvailableWaste] = useState<AvailableWasteForDia[]>([]);
@@ -157,6 +158,7 @@ export default function SheetPage() {
       setDynamicProgress({ stage: "", percentage: 0 });
       setCalculationError(null);
       setUseWaste(false);
+      setResultsFromCache(false);
 
       if (dia !== null && displayData) {
         // STEP 1: Check if result already exists in database
@@ -179,8 +181,15 @@ export default function SheetPage() {
               console.log(`[Sheet] Result details:`, {
                 algorithm: existingResult.algorithm,
                 totalBarsUsed: existingResult.totalBarsUsed,
+                wastePiecesReused: existingResult.wastePiecesReused,
                 detailedCutsCount: existingResult.detailedCuts?.length || 0,
               });
+              
+              // Log waste info from detailedCuts
+              const wasteBarCount = existingResult.detailedCuts?.filter(
+                (d: { isFromWaste?: boolean }) => d.isFromWaste
+              ).length || 0;
+              console.log(`[Sheet] Bars from waste in detailedCuts: ${wasteBarCount}`);
               
               // Load existing result - convert to CuttingStockResult format
               const loadedResult: CuttingStockResult = {
@@ -219,6 +228,7 @@ export default function SheetPage() {
               }
               
               console.log(`[Sheet] Loaded existing result, skipping recalculation`);
+              setResultsFromCache(true);
               return; // Don't recalculate
             }
           }
@@ -439,6 +449,36 @@ export default function SheetPage() {
 
   const formatLength = (mm: number) => `${(mm / 1000).toFixed(2)}m`;
 
+  // Delete existing result and recalculate
+  const handleRecalculate = useCallback(async () => {
+    if (!selectedDia) return;
+    
+    try {
+      // Delete existing result
+      console.log(`[Sheet] Deleting existing result for dia ${selectedDia}...`);
+      const deleteRes = await fetch(`/api/results?sheetId=${sheetId}&dia=${selectedDia}`, {
+        method: "DELETE",
+      });
+      const deleteData = await deleteRes.json();
+      console.log(`[Sheet] Delete response:`, deleteData);
+      
+      // Reset state and trigger recalculation
+      setResultsFromCache(false);
+      setGreedyResult(null);
+      setDynamicResult(null);
+      
+      // Re-trigger the dia selection to run calculation
+      const dia = selectedDia;
+      setSelectedDia(null);
+      setTimeout(() => {
+        handleDiaSelect(dia);
+      }, 100);
+    } catch (err) {
+      console.error(`[Sheet] Error deleting result:`, err);
+      setCalculationError("Failed to delete existing result");
+    }
+  }, [selectedDia, sheetId, handleDiaSelect]);
+
   // Download all dias
   const handleDownloadAllDias = useCallback(async () => {
     if (!displayData || !sheetInfo) return;
@@ -605,6 +645,28 @@ export default function SheetPage() {
               <span className="text-emerald-700 font-medium">
                 Using {wasteForCurrentDia.length} waste pieces from previous sheets
               </span>
+            </div>
+          </div>
+        )}
+
+        {/* Cached Results Indicator */}
+        {selectedDia && resultsFromCache && (greedyResult || dynamicResult) && (
+          <div className="w-full max-w-7xl mx-auto p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm mb-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <span className="text-blue-600">💾</span>
+                </div>
+                <span className="text-blue-700 font-medium">
+                  Loaded saved results for Dia {selectedDia}
+                </span>
+              </div>
+              <button
+                onClick={handleRecalculate}
+                className="px-4 py-2 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition-colors font-medium"
+              >
+                🔄 Recalculate
+              </button>
             </div>
           </div>
         )}
