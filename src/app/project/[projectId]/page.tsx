@@ -11,7 +11,17 @@ import {
   IconRefresh,
   IconEye,
   IconRecycle,
+  IconInfoCircle,
+  IconChartPie,
 } from "@tabler/icons-react";
+import {
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  Legend,
+} from "recharts";
 
 interface Sheet {
   id: number;
@@ -68,7 +78,9 @@ export default function ProjectPage() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"sheets" | "waste">("sheets");
+  const [activeTab, setActiveTab] = useState<"sheets" | "waste" | "dashboard">("sheets");
+  const [selectedWasteDia, setSelectedWasteDia] = useState<number | null>(null);
+  const [selectedWasteStatus, setSelectedWasteStatus] = useState<string | null>(null);
 
   const fetchProjectData = useCallback(async () => {
     setLoading(true);
@@ -189,6 +201,13 @@ export default function ProjectPage() {
     }
   };
 
+  // Filter waste by selected diameter and status
+  const filteredWaste = waste.filter(item => {
+    const diaMatch = selectedWasteDia ? item.dia === selectedWasteDia : true;
+    const statusMatch = selectedWasteStatus ? item.status === selectedWasteStatus : true;
+    return diaMatch && statusMatch;
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -259,7 +278,11 @@ export default function ProjectPage() {
             </span>
           </button>
           <button
-            onClick={() => setActiveTab("waste")}
+            onClick={() => {
+              setActiveTab("waste");
+              setSelectedWasteDia(null);
+              setSelectedWasteStatus(null);
+            }}
             className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "waste" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
               }`}
           >
@@ -268,6 +291,16 @@ export default function ProjectPage() {
               <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${activeTab === "waste" ? "bg-slate-100/50 text-slate-700" : "bg-slate-200 text-slate-600"}`}>
                 {wasteSummary?.availablePieces || 0}
               </span>
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "dashboard" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+              }`}
+          >
+            <span className="flex items-center gap-2">
+              <IconChartPie className="w-4 h-4" />
+              Dashboard
             </span>
           </button>
         </div>
@@ -403,18 +436,36 @@ export default function ProjectPage() {
             {/* Waste Summary */}
             {wasteSummary && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <button
+                  onClick={() => setSelectedWasteStatus(null)}
+                  className={`p-5 rounded-2xl border transition-all text-left ${selectedWasteStatus === null
+                    ? "bg-white border-blue-400 ring-2 ring-blue-400/10 shadow-md"
+                    : "bg-white border-slate-200 hover:border-blue-200 shadow-sm"
+                    }`}
+                >
                   <p className="text-3xl font-bold text-blue-600">{wasteSummary.totalPieces}</p>
                   <p className="text-sm text-slate-500 mt-1">Total Pieces</p>
-                </div>
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                </button>
+                <button
+                  onClick={() => setSelectedWasteStatus(selectedWasteStatus === "available" ? null : "available")}
+                  className={`p-5 rounded-2xl border transition-all text-left ${selectedWasteStatus === "available"
+                    ? "bg-emerald-50 border-emerald-400 ring-2 ring-emerald-400/10 shadow-md"
+                    : "bg-white border-slate-200 hover:border-emerald-200 shadow-sm"
+                    }`}
+                >
                   <p className="text-3xl font-bold text-emerald-600">{wasteSummary.availablePieces}</p>
                   <p className="text-sm text-slate-500 mt-1">Available</p>
-                </div>
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                </button>
+                <button
+                  onClick={() => setSelectedWasteStatus(selectedWasteStatus === "used" ? null : "used")}
+                  className={`p-5 rounded-2xl border transition-all text-left ${selectedWasteStatus === "used"
+                    ? "bg-slate-50 border-slate-400 ring-2 ring-slate-400/10 shadow-md"
+                    : "bg-white border-slate-200 hover:border-slate-300 shadow-sm"
+                    }`}
+                >
                   <p className="text-3xl font-bold text-slate-600">{wasteSummary.usedPieces}</p>
                   <p className="text-sm text-slate-500 mt-1">Used</p>
-                </div>
+                </button>
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                   <p className="text-3xl font-bold text-purple-600">{formatLength(wasteSummary.totalAvailableLength)}</p>
                   <p className="text-sm text-slate-500 mt-1">Available Length</p>
@@ -425,78 +476,371 @@ export default function ProjectPage() {
             {/* Waste by Dia */}
             {wasteSummary && Object.keys(wasteSummary.byDia).length > 0 && (
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                <h3 className="font-semibold text-slate-900 mb-4">Waste by Diameter</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  {Object.entries(wasteSummary.byDia).map(([dia, data]) => (
-                    <div key={dia} className="p-4 bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-xl border border-slate-200">
-                      <div className="text-lg font-bold text-slate-900">Dia {dia}mm</div>
-                      <div className="text-sm text-slate-500">
-                        <span className="text-emerald-600 font-medium">{data.available}</span> available • {formatLength(data.totalLength)}
-                      </div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+                  <h3 className="font-semibold text-slate-900">Waste by Diameter</h3>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Status Toggles */}
+                    <div className="flex bg-slate-100 p-1 rounded-lg">
+                      <button
+                        onClick={() => setSelectedWasteStatus(null)}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${selectedWasteStatus === null
+                          ? "bg-white text-slate-900 shadow-sm"
+                          : "text-slate-500 hover:text-slate-700"
+                          }`}
+                      >
+                        All
+                      </button>
+                      <button
+                        onClick={() => setSelectedWasteStatus("available")}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${selectedWasteStatus === "available"
+                          ? "bg-white text-emerald-600 shadow-sm"
+                          : "text-slate-500 hover:text-slate-700"
+                          }`}
+                      >
+                        Available
+                      </button>
+                      <button
+                        onClick={() => setSelectedWasteStatus("used")}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${selectedWasteStatus === "used"
+                          ? "bg-white text-slate-900 shadow-sm"
+                          : "text-slate-500 hover:text-slate-700"
+                          }`}
+                      >
+                        Used
+                      </button>
                     </div>
-                  ))}
+
+                    {(selectedWasteDia || selectedWasteStatus) && (
+                      <button
+                        onClick={() => {
+                          setSelectedWasteDia(null);
+                          setSelectedWasteStatus(null);
+                        }}
+                        className="text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded transition-colors"
+                      >
+                        Clear All Filters
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {Object.entries(wasteSummary.byDia).map(([diaString, data]) => {
+                    const dia = parseInt(diaString);
+                    const isSelected = selectedWasteDia === dia;
+                    return (
+                      <button
+                        key={dia}
+                        onClick={() => setSelectedWasteDia(isSelected ? null : dia)}
+                        className={`p-4 rounded-xl border transition-all text-left ${isSelected
+                          ? "bg-blue-50 border-blue-400 shadow-sm ring-1 ring-blue-400/20"
+                          : "bg-gradient-to-br from-slate-50 to-slate-100/50 border-slate-200 hover:border-blue-200 hover:bg-white"
+                          }`}
+                      >
+                        <div className={`text-lg font-bold ${isSelected ? "text-blue-700" : "text-slate-900"}`}>Dia {dia}mm</div>
+                        <div className="text-sm text-slate-500">
+                          <span className={`${isSelected ? "text-blue-600" : "text-emerald-600"} font-medium`}>{data.available}</span> available • {formatLength(data.totalLength)}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
 
             {/* Waste List */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-              <div className="p-5 border-b border-slate-100">
-                <h3 className="font-semibold text-slate-900">Waste Inventory Details</h3>
-              </div>
-              {waste.length === 0 ? (
-                <div className="p-12 text-center text-slate-500">
-                  <IconRecycle className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                  No waste pieces yet. Run calculations on sheets to generate waste inventory.
+            {selectedWasteDia ? (
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="p-5 border-b border-slate-100 flex justify-between items-center">
+                  <h3 className="font-semibold text-slate-900">
+                    Waste Inventory Details
+                    <span className="ml-2 text-blue-600">(Dia {selectedWasteDia}mm)</span>
+                    {selectedWasteStatus && <span className="ml-2 text-emerald-600">({selectedWasteStatus === 'available' ? 'Available Only' : 'Used Only'})</span>}
+                  </h3>
+                  <span className="text-xs text-slate-500 font-medium">Showing {filteredWaste.length} pieces</span>
                 </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-slate-50">
-                      <tr>
-                        <th className="px-5 py-4 text-left font-semibold text-slate-600">ID</th>
-                        <th className="px-5 py-4 text-left font-semibold text-slate-600">Dia</th>
-                        <th className="px-5 py-4 text-left font-semibold text-slate-600">Length</th>
-                        <th className="px-5 py-4 text-left font-semibold text-slate-600">Source</th>
-                        <th className="px-5 py-4 text-left font-semibold text-slate-600">Origin (Cuts Made)</th>
-                        <th className="px-5 py-4 text-left font-semibold text-slate-600">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {waste.map((item) => (
-                        <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-5 py-4 font-mono text-xs bg-slate-100 rounded">W-{item.id}</td>
-                          <td className="px-5 py-4 font-semibold">{item.dia}mm</td>
-                          <td className="px-5 py-4 font-bold text-blue-600">{formatLength(item.length)}</td>
-                          <td className="px-5 py-4">
-                            <div className="text-slate-900 font-medium">Sheet #{item.sourceSheet.sheetNumber}</div>
-                            <div className="text-xs text-slate-500">{item.sourceSheet.fileName}</div>
-                          </td>
-                          <td className="px-5 py-4">
-                            <div className="text-slate-600">Bar #{item.sourceBarNumber}</div>
-                            {item.cutsOnSourceBar && item.cutsOnSourceBar.length > 0 && (
-                              <div className="text-xs text-slate-400 mt-1">
-                                {item.cutsOnSourceBar.slice(0, 3).map((cut, i) => (
-                                  <span key={i}>
-                                    {cut.barCode} ({formatLength(cut.length)})
-                                    {i < Math.min(item.cutsOnSourceBar.length, 3) - 1 && ", "}
-                                  </span>
-                                ))}
-                                {item.cutsOnSourceBar.length > 3 && ` +${item.cutsOnSourceBar.length - 3} more`}
-                              </div>
-                            )}
-                          </td>
-                          <td className="px-5 py-4">
-                            <span className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${getStatusColor(item.status)}`}>
-                              {item.status}
-                            </span>
-                          </td>
+                {filteredWaste.length === 0 ? (
+                  <div className="p-12 text-center text-slate-500">
+                    <IconRecycle className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                    {`No waste pieces found for Dia ${selectedWasteDia}mm ${selectedWasteStatus ? `with status ${selectedWasteStatus}` : ''}.`}
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto max-h-[650px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+                    <table className="w-full text-sm border-separate border-spacing-0">
+                      <thead className="sticky top-0 z-20">
+                        <tr className="bg-slate-50/95 backdrop-blur-sm">
+                          <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 first:pl-8">ID</th>
+                          <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Dia</th>
+                          <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Length</th>
+                          <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Source Sheet</th>
+                          <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Origin (Bars)</th>
+                          <th className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 last:pr-8">Status</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {filteredWaste.map((item, idx) => (
+                          <tr
+                            key={item.id}
+                            className={`group transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'} hover:bg-blue-50/40`}
+                          >
+                            <td className="px-6 py-4 first:pl-8">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[10px] font-bold border border-slate-200 group-hover:bg-white transition-colors">
+                                W-{item.id}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                                <span className="font-semibold text-slate-700">{item.dia}mm</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className="font-bold text-indigo-600 tabular-nums">
+                                {formatLength(item.length)}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col gap-0.5">
+                                <div className="text-slate-900 font-semibold text-xs flex items-center gap-1.5">
+                                  <IconFile size={12} className="text-slate-400" />
+                                  Sheet #{item.sourceSheet.sheetNumber}
+                                </div>
+                                <div className="text-[10px] text-slate-400 font-medium truncate max-w-[150px]" title={item.sourceSheet.fileName}>
+                                  {item.sourceSheet.fileName}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex flex-col gap-1">
+                                <div className="text-slate-700 font-medium text-xs">Bar #{item.sourceBarNumber}</div>
+                                {item.cutsOnSourceBar && item.cutsOnSourceBar.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {item.cutsOnSourceBar.slice(0, 2).map((cut, i) => (
+                                      <span key={i} className="text-[9px] px-1.5 bg-white border border-slate-200 rounded text-slate-500 font-medium">
+                                        {formatLength(cut.length)}
+                                      </span>
+                                    ))}
+                                    {item.cutsOnSourceBar.length > 2 && (
+                                      <span className="text-[9px] text-slate-400 font-medium">
+                                        +{item.cutsOnSourceBar.length - 2} more
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-right last:pr-8">
+                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${item.status === 'available'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                : 'bg-slate-100 text-slate-500 border-slate-200'
+                                }`}>
+                                {item.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-slate-200 border-dashed p-12 text-center">
+                <IconInfoCircle className="w-12 h-12 mx-auto text-slate-300 mb-3" />
+                <h3 className="text-lg font-medium text-slate-900">Select a Diameter</h3>
+                <p className="text-slate-500 mt-1">Click on a diameter card above to view its detailed waste inventory.</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Dashboard Tab */}
+        {!loading && activeTab === "dashboard" && (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
+            {/* Aggregate Stats Bar */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {(() => {
+                let totalBars = 0;
+                let reusedPieces = 0;
+                let totalWaste = 0;
+                let totalUsedLength = 0;
+
+                sheets.forEach(s => {
+                  s.results.forEach(r => {
+                    totalBars += r.totalBarsUsed;
+                    reusedPieces += r.wastePiecesReused || 0;
+                    totalWaste += r.totalWaste;
+                  });
+                });
+
+                // Estimate total material processed
+                const newBarsCount = Math.max(0, totalBars - reusedPieces);
+                const totalMaterialValue = (newBarsCount * 12000) + (reusedPieces * 5000); // 5m avg for scrap used
+                totalUsedLength = Math.max(0, totalMaterialValue - totalWaste);
+
+                const materialData = [
+                  { name: "New Bars", value: newBarsCount, color: "#6366f1" },
+                  { name: "Reused Scrap", value: reusedPieces, color: "#10b981" },
+                ];
+
+                const efficiencyData = [
+                  { name: "Material Used", value: totalUsedLength, color: "#4f46e5" },
+                  { name: "Net Waste", value: totalWaste, color: "#cbd5e1" },
+                ];
+
+                if (totalBars === 0) {
+                  return (
+                    <div className="lg:col-span-3 text-center py-20 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                      <IconChartPie className="w-16 h-16 mx-auto text-slate-200 mb-4" />
+                      <h3 className="text-xl font-bold text-slate-900">No Analytics Yet</h3>
+                      <p className="text-slate-500 mt-2 max-w-sm mx-auto">Run calculations on your project sheets to see material composition and efficiency metrics.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <>
+                    {/* Material Composition Chart */}
+                    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col items-center">
+                      <div className="w-full flex justify-between items-center mb-6">
+                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Material Original</h3>
+                        <IconPackage size={20} className="text-slate-300" />
+                      </div>
+                      <div className="w-full h-64 relative">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={materialData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={65}
+                              outerRadius={85}
+                              paddingAngle={8}
+                              dataKey="value"
+                              animationBegin={0}
+                              animationDuration={1200}
+                              stroke="none"
+                            >
+                              {materialData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)' }}
+                              cursor={{ fill: 'transparent' }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                          <p className="text-3xl font-black text-slate-900">{totalBars}</p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Total Bars</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 w-full mt-6">
+                        {materialData.map(d => (
+                          <div key={d.name} className="bg-slate-50 p-3 rounded-2xl border border-slate-100 transition-colors hover:bg-white hover:border-blue-100">
+                            <p className="text-lg font-black text-slate-900">{d.value}</p>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tight flex items-center gap-1.5 mt-0.5">
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: d.color }}></span>
+                              {d.name}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Efficiency Chart */}
+                    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col items-center">
+                      <div className="w-full flex justify-between items-center mb-6">
+                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Efficiency Ratio</h3>
+                        <IconRecycle size={20} className="text-slate-300" />
+                      </div>
+                      <div className="w-full h-64 relative">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={efficiencyData}
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={65}
+                              outerRadius={85}
+                              paddingAngle={8}
+                              dataKey="value"
+                              animationBegin={200}
+                              animationDuration={1200}
+                              stroke="none"
+                            >
+                              {efficiencyData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={entry.color} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              formatter={(value: number) => formatLength(value)}
+                              contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)' }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                          <p className="text-3xl font-black text-indigo-600">
+                            {((totalUsedLength / (totalUsedLength + totalWaste)) * 100).toFixed(1)}%
+                          </p>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Utilization</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 w-full mt-6">
+                        {efficiencyData.map(d => (
+                          <div key={d.name} className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                            <p className="text-xs font-bold text-slate-900 truncate" title={formatLength(d.value)}>{formatLength(d.value)}</p>
+                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tight flex items-center gap-1.5 mt-0.5">
+                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: d.color }}></span>
+                              {d.name.split(' ')[1] || d.name}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Summary Card */}
+                    <div className="space-y-6">
+                      <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-8 rounded-3xl text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden group">
+                        <div className="absolute top-[-20%] right-[-20%] w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
+                        <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 mb-6">Savings Analysis</h4>
+                        <div className="space-y-6">
+                          <div>
+                            <p className="text-4xl font-black">{reusedPieces}</p>
+                            <p className="text-xs font-medium opacity-80 mt-1">Waste pieces saved from landfill</p>
+                          </div>
+                          <div>
+                            <p className="text-2xl font-bold">{((reusedPieces / totalBars) * 100).toFixed(1)}%</p>
+                            <p className="text-xs font-medium opacity-80 mt-1">Project reuse ratio</p>
+                          </div>
+                        </div>
+                        <div className="mt-8 pt-6 border-t border-white/10 flex items-center gap-3">
+                          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
+                            <IconRecycle size={20} />
+                          </div>
+                          <p className="text-[11px] font-semibold leading-tight opacity-90">
+                            You've optimized material use by prioritizing scrap reuse.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-emerald-200 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 border border-emerald-100">
+                            <span className="text-xs font-black">SAVE</span>
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Calculated Savings</p>
+                            <p className="text-xl font-black text-slate-900">
+                              {formatLength(reusedPieces * 12000 - totalWaste)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         )}

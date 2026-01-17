@@ -64,17 +64,29 @@ export async function POST(req: NextRequest) {
     console.log(`[Results] Dynamic: ${dynamicResult?.totalBarsUsed || 0} bars (valid: ${dynamicValid})`);
 
     if (greedyValid && dynamicValid) {
-      // Both valid - compare: fewer bars = better (primary criterion)
-      if (greedyResult!.totalBarsUsed < dynamicResult!.totalBarsUsed) {
+      // Both valid - compare: fewer NEW bars = better (primary criterion for cost savings)
+      const greedyNew = greedyResult!.summary.newBarsUsed ?? greedyResult!.totalBarsUsed;
+      const dynamicNew = dynamicResult!.summary.newBarsUsed ?? dynamicResult!.totalBarsUsed;
+
+      if (greedyNew < dynamicNew) {
         bestResult = greedyResult!;
         bestAlgorithm = "greedy";
-      } else if (dynamicResult!.totalBarsUsed < greedyResult!.totalBarsUsed) {
+      } else if (dynamicNew < greedyNew) {
         bestResult = dynamicResult!;
         bestAlgorithm = "dynamic";
       } else {
-        // Same bars, compare waste (secondary criterion)
-        bestResult = greedyResult!.totalWaste <= dynamicResult!.totalWaste ? greedyResult! : dynamicResult!;
-        bestAlgorithm = greedyResult!.totalWaste <= dynamicResult!.totalWaste ? "greedy" : "dynamic";
+        // Same new bars, compare total bars (reused + new)
+        if (greedyResult!.totalBarsUsed < dynamicResult!.totalBarsUsed) {
+          bestResult = greedyResult!;
+          bestAlgorithm = "greedy";
+        } else if (dynamicResult!.totalBarsUsed < greedyResult!.totalBarsUsed) {
+          bestResult = dynamicResult!;
+          bestAlgorithm = "dynamic";
+        } else {
+          // Same bars, compare waste (secondary criterion)
+          bestResult = greedyResult!.totalWaste <= dynamicResult!.totalWaste ? greedyResult! : dynamicResult!;
+          bestAlgorithm = greedyResult!.totalWaste <= dynamicResult!.totalWaste ? "greedy" : "dynamic";
+        }
       }
     } else if (greedyValid) {
       // Only greedy is valid
