@@ -45,11 +45,12 @@ export function exportToExcel(
  * Format: Each bar's cuts listed vertically (one cut per row)
  */
 function createAlgorithmSheet(result: CuttingStockResult): XLSX.WorkSheet {
-  // Create header row - added "Source" and "Bar Length" columns
+  // Create header row - added "Source", "Bar Length", and "Total Used" columns
   const headers = [
     "Bar #",
     "Source",
     "Bar Length (m)",
+    "Total Used (m)",
     "BarCode",
     "Effective Length (m)",
     "Lap Length (m)",
@@ -93,13 +94,15 @@ function createAlgorithmSheet(result: CuttingStockResult): XLSX.WorkSheet {
     cutGroups.forEach((cut, index) => {
       const row: (string | number)[] = [];
 
-      // Bar #, Source, Bar Length only on first cut
+      // Bar #, Source, Bar Length, Total Used only on first cut
       if (index === 0) {
         row.push(detail.barNumber);
         row.push(sourceDesc);
         row.push(parseFloat(barLength.toFixed(3)));
+        row.push(parseFloat(totalUsedLength.toFixed(3))); // Total used (with laps)
       } else {
         row.push(""); // Empty for subsequent cuts
+        row.push("");
         row.push("");
         row.push("");
       }
@@ -133,6 +136,7 @@ function createAlgorithmSheet(result: CuttingStockResult): XLSX.WorkSheet {
     { wch: 8 },   // Bar #
     { wch: 28 },  // Source
     { wch: 14 },  // Bar Length
+    { wch: 14 },  // Total Used
     { wch: 20 },  // BarCode
     { wch: 18 },  // Effective Length
     { wch: 15 },  // Lap Length
@@ -234,6 +238,20 @@ function createComparisonSheet(
       parseFloat(greedyResult.totalWaste.toFixed(3)),
       parseFloat(dynamicResult.totalWaste.toFixed(3)),
       parseFloat((dynamicResult.totalWaste - greedyResult.totalWaste).toFixed(3)),
+    ],
+    [
+      "Waste from New Bars (m)",
+      parseFloat(((greedyResult.summary as any).wasteFromNewBars ?? greedyResult.totalWaste).toFixed(3)),
+      parseFloat(((dynamicResult.summary as any).wasteFromNewBars ?? dynamicResult.totalWaste).toFixed(3)),
+      parseFloat((((dynamicResult.summary as any).wasteFromNewBars ?? dynamicResult.totalWaste) - 
+                  ((greedyResult.summary as any).wasteFromNewBars ?? greedyResult.totalWaste)).toFixed(3)),
+    ],
+    [
+      "Waste from Reused Pieces (m)",
+      parseFloat(((greedyResult.summary as any).wasteFromReusedPieces ?? 0).toFixed(3)),
+      parseFloat(((dynamicResult.summary as any).wasteFromReusedPieces ?? 0).toFixed(3)),
+      parseFloat((((dynamicResult.summary as any).wasteFromReusedPieces ?? 0) - 
+                  ((greedyResult.summary as any).wasteFromReusedPieces ?? 0)).toFixed(3)),
     ],
     [
       "Average Utilization (%)",

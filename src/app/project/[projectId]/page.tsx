@@ -247,24 +247,27 @@ export default function ProjectPage() {
         <div className="flex gap-2 mb-6 bg-slate-100/80 p-1.5 rounded-xl w-fit">
           <button
             onClick={() => setActiveTab("sheets")}
-            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              activeTab === "sheets" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-            }`}
+            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "sheets" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+              }`}
           >
             <span className="flex items-center gap-2">
               <IconFile className="w-4 h-4" />
-              Sheets ({sheets.length})
+              Sheets
+              <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${activeTab === "sheets" ? "bg-slate-100/50 text-slate-700" : "bg-slate-200 text-slate-600"}`}>
+                {sheets.length}
+              </span>
             </span>
           </button>
           <button
             onClick={() => setActiveTab("waste")}
-            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${
-              activeTab === "waste" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-            }`}
+            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "waste" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+              }`}
           >
             <span className="flex items-center gap-2">
-              <IconRecycle className="w-4 h-4" />
-              Waste Inventory ({wasteSummary?.availablePieces || 0})
+              Waste Inventory
+              <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${activeTab === "waste" ? "bg-slate-100/50 text-slate-700" : "bg-slate-200 text-slate-600"}`}>
+                {wasteSummary?.availablePieces || 0}
+              </span>
             </span>
           </button>
         </div>
@@ -295,56 +298,96 @@ export default function ProjectPage() {
               </div>
             ) : (
               sheets.map((sheet) => (
-                <div key={sheet.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-slate-300 transition-all p-5">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center">
-                        <span className="text-xl font-bold text-slate-600">#{sheet.sheetNumber}</span>
+                <div key={sheet.id} className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-blue-200 transition-all duration-300">
+                  <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm flex-shrink-0">
+                        <span className="text-lg font-bold text-indigo-600">#{sheet.sheetNumber}</span>
                       </div>
-                      <div>
-                        <h3 className="font-semibold text-slate-900 text-lg">{sheet.fileName}</h3>
-                        <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
-                          <span>{formatDate(sheet.uploadedAt)}</span>
-                          <span>•</span>
-                          <span>{sheet._count.results} calculations</span>
-                          <span>•</span>
-                          <span>{sheet._count.wasteProduced} waste pieces</span>
+                      <div className="min-w-0">
+                        <Link href={`/project/${projectId}/sheet/${sheet.id}`} className="block">
+                          <h3 className="font-bold text-slate-900 text-lg hover:text-blue-600 transition-colors truncate pr-4">
+                            {sheet.fileName}
+                          </h3>
+                        </Link>
+                        <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-slate-500">
+                          <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                            <IconFile size={14} className="text-slate-400" />
+                            {formatDate(sheet.uploadedAt)}
+                          </span>
+                          <span className="hidden sm:inline text-slate-300">|</span>
+                          <span className="flex items-center gap-1">
+                            <span className="font-semibold text-slate-700">{sheet._count.results}</span> calculations
+                          </span>
+                          <span className="hidden sm:inline text-slate-300">|</span>
+                          <span className="flex items-center gap-1">
+                            <span className="font-semibold text-slate-700">{sheet._count.wasteProduced}</span> waste pieces
+                          </span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1.5 text-xs font-semibold rounded-lg ${getStatusColor(sheet.status)}`}>
+
+                    <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-50">
+                      <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${sheet.status === 'calculated' || sheet.status === 'completed'
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                        : "bg-slate-50 text-slate-600 border-slate-100"
+                        }`}>
                         {sheet.status}
                       </span>
+
+                      <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
+
                       <Link
                         href={`/project/${projectId}/sheet/${sheet.id}`}
-                        className="p-2.5 text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        title="View Sheet"
                       >
                         <IconEye className="w-5 h-5" />
                       </Link>
                       <button
                         onClick={() => deleteSheet(sheet.id)}
-                        className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                        title="Delete Sheet"
                       >
                         <IconTrash className="w-5 h-5" />
                       </button>
                     </div>
                   </div>
 
-                  {/* Results Summary */}
+                  {/* Results Summary Grid */}
                   {sheet.results && sheet.results.length > 0 && (
-                    <div className="mt-4 pt-4 border-t border-slate-100">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Calculation Results</p>
-                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                        {sheet.results.map((result) => (
-                          <div key={result.id} className="p-3 bg-slate-50 rounded-lg border border-slate-100 hover:border-blue-200 transition-colors">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="font-bold text-slate-900">Dia {result.dia}</span>
-                              <span className="text-[10px] font-medium text-slate-400 uppercase">{result.algorithm}</span>
-                            </div>
-                            <div className="text-xs text-slate-500">{result.totalBarsUsed} bars</div>
-                          </div>
-                        ))}
+                    <div className="px-6 pb-6 mt-[-4px]">
+                      <div className="bg-slate-50/50 rounded-xl p-4 border border-slate-100">
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                          Calculation Results
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3">
+                          {sheet.results.map((result) => (
+                            <Link
+                              key={result.id}
+                              href={`/project/${projectId}/sheet/${sheet.id}`}
+                              className="group/card flex flex-col bg-white p-3 rounded-lg border border-slate-200 shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
+                            >
+                              <div className="flex justify-between items-start mb-2">
+                                <span className="font-bold text-slate-800 text-sm group-hover/card:text-blue-700 transition-colors">
+                                  Dia {result.dia}
+                                </span>
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tight ${result.algorithm.toLowerCase().includes('dynamic')
+                                  ? 'bg-purple-100 text-purple-700'
+                                  : 'bg-blue-100 text-blue-700'
+                                  }`}>
+                                  {result.algorithm.substring(0, 3)}
+                                </span>
+                              </div>
+                              <div className="mt-auto">
+                                <div className="text-xs text-slate-500 font-medium">
+                                  <span className="text-slate-900 font-bold">{result.totalBarsUsed}</span> bars
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}

@@ -397,7 +397,11 @@ export class ImprovedGreedyCuttingStock {
 
     return {
       totalStandardBars: totalBars,
+      newBarsUsed: totalBars,                          // All bars are new (no waste reuse in greedy)
+      wastePiecesReused: 0,                           // Greedy doesn't reuse waste
       totalWasteLength: Math.round(totalWaste * 1000) / 1000,
+      wasteFromNewBars: Math.round(totalWaste * 1000) / 1000,  // All waste is from new bars
+      wasteFromReusedPieces: 0,                       // No reused pieces
       totalWastePercentage:
         totalBars > 0
           ? Math.round((totalWaste / (totalBars * this.STANDARD_LENGTH)) * 10000) / 100

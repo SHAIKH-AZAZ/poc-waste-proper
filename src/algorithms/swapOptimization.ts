@@ -774,7 +774,22 @@ export class SwapOptimization {
    */
   private calculateSummary(patterns: CuttingPattern[], totalCuts: number, newBarsUsed?: number, wastePiecesUsed?: number) {
     const totalBars = patterns.length;
-    const totalWaste = patterns.reduce((sum, p) => sum + p.waste, 0);
+    
+    // Separate waste calculation: new bars vs reused pieces
+    let wasteFromNewBars = 0;
+    let wasteFromReusedPieces = 0;
+    
+    patterns.forEach((pattern, index) => {
+      const isWasteBin = pattern.id.startsWith('waste_pattern_');
+      if (isWasteBin) {
+        wasteFromReusedPieces += pattern.waste;
+      } else {
+        wasteFromNewBars += pattern.waste;
+      }
+    });
+    
+    const totalWaste = wasteFromNewBars + wasteFromReusedPieces;
+    
     const avgUtilization =
       totalBars > 0
         ? patterns.reduce((sum, p) => sum + p.utilization, 0) / totalBars
@@ -788,6 +803,8 @@ export class SwapOptimization {
       newBarsUsed: newBarsUsed ?? totalBars,
       wastePiecesReused: wastePiecesUsed ?? 0,
       totalWasteLength: Math.round(totalWaste * 1000) / 1000,
+      wasteFromNewBars: Math.round(wasteFromNewBars * 1000) / 1000,
+      wasteFromReusedPieces: Math.round(wasteFromReusedPieces * 1000) / 1000,
       totalWastePercentage:
         totalMaterialLength > 0
           ? Math.round((totalWaste / totalMaterialLength) * 10000) / 100

@@ -74,7 +74,11 @@ export interface CuttingStockResult {
 
 export interface CuttingSummary {
   totalStandardBars: number;
-  totalWasteLength: number;
+  newBarsUsed?: number;                    // NEW: Count of new 12m bars used
+  wastePiecesReused?: number;              // NEW: Count of waste pieces reused
+  totalWasteLength: number;                // Total waste (from all bars)
+  wasteFromNewBars?: number;               // NEW: Waste only from new 12m bars
+  wasteFromReusedPieces?: number;          // NEW: Waste from reused waste pieces
   totalWastePercentage: number;
   averageUtilization: number;
   patternCount: number;

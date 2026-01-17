@@ -11,7 +11,8 @@ import { getWorkerManager } from "./workerManager";
 export async function exportAllDiasToExcel(
   displayData: BarCuttingDisplay[],
   fileName: string,
-  onProgress?: (dia: number, current: number, total: number) => void
+  onProgress?: (dia: number, current: number, total: number) => void,
+  generatedWaste: any[] = [] // Optional generated waste for live tracking
 ): Promise<void> {
   const uniqueDias = getUniqueDiaFromDisplay(displayData);
   const preprocessor = new CuttingStockPreprocessor();
@@ -40,7 +41,13 @@ export async function exportAllDiasToExcel(
       const requests = preprocessor.convertToCuttingRequests(displayData);
 
       // Run both algorithms
-      const { greedy, dynamic } = await workerManager.runBoth(requests, dia);
+      let { greedy, dynamic } = await workerManager.runBoth(requests, dia);
+
+      // Patch results with live waste data if available
+      if (generatedWaste.length > 0) {
+        greedy = patchResultWithLiveWaste(greedy, generatedWaste);
+        dynamic = patchResultWithLiveWaste(dynamic, generatedWaste);
+      }
 
       // Add to summary
       const bestAlgorithm =
@@ -189,7 +196,14 @@ function addDiaSheet(
 
       // Waste and Utilization only on first cut
       if (index === 0) {
-        row.push(parseFloat(barWaste.toFixed(3)));
+        // If recovered, show text
+        const isRecovered = (detail as any).isWasteRecovered;
+        if (isRecovered) {
+          row.push(`${parseFloat(barWaste.toFixed(3))} (Recovered)`);
+        } else {
+          row.push(parseFloat(barWaste.toFixed(3)));
+        }
+        
         row.push(parseFloat((100 - barUtilization).toFixed(2))); // Waste %
         row.push(parseFloat(barUtilization.toFixed(2)));
       } else {
@@ -264,4 +278,63 @@ function groupCutsByBarCode(cuts: { barCode: string; length: number; lapLength: 
   }
 
   return result;
+}
+
+/**
+ * Helper to patch result with live waste stats
+ * (Duplicated from SheetPage logic for isolated export)
+ */
+function patchResultWithLiveWaste(result: CuttingStockResult, generatedWaste: any[]): CuttingStockResult {
+  if (!result || generatedWaste.length === 0) return result;
+
+  // Clone result deeply
+  const patched = JSON.parse(JSON.stringify(result));
+  
+  // Filter waste for this dia
+  const relevantWaste = generatedWaste.filter(w => w.dia === result.dia);
+  if (relevantWaste.length === 0) return result;
+
+  let totallyRecoveredLength = 0;
+  
+  // Map waste by Source Bar Number
+  const wasteByBar = new Map<number, any>();
+  relevantWaste.forEach(w => {
+    if (w.status === 'used' && w.usages && w.usages.length > 0) {
+      wasteByBar.set(w.sourceBarNumber, w);
+    }
+  });
+
+  // Iterate detailed cuts and update
+  patched.detailedCuts.forEach((cut: any, index: number) => {
+    const barNum = cut.barNumber || index + 1;
+    const recoveredWaste = wasteByBar.get(barNum);
+    
+    if (recoveredWaste) {
+      // Calculate how much was recovered
+      // usages[0] usually contains the main usage
+      const recoveredAmount = recoveredWaste.usages.reduce((sum: number, u: any) => sum + (u.cutLength || 0), 0) / 1000;
+      
+      // Update cut properties
+      cut.isWasteRecovered = true;
+      cut.recoveredAmount = recoveredAmount; // m
+      
+      // Subtract from WASTE
+      const originalWaste = cut.waste;
+      cut.waste = Math.max(0, originalWaste - recoveredAmount);
+      
+      totallyRecoveredLength += recoveredAmount;
+    }
+  });
+
+  // Update Summary Stats
+  patched.summary.totalWasteLength = Math.max(0, patched.summary.totalWasteLength - totallyRecoveredLength);
+  patched.totalWaste = Math.max(0, patched.totalWaste - totallyRecoveredLength);
+  
+  // Recalculate Percentage
+  const totalInputLength = patched.totalBarsUsed * 12; // Standard 12m
+  if (totalInputLength > 0) {
+    patched.summary.totalWastePercentage = (patched.summary.totalWasteLength / totalInputLength) * 100;
+  }
+
+  return patched;
 }

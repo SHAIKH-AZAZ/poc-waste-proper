@@ -164,13 +164,27 @@ function ComparisonCard({
     <div className={`${bgColor} border ${borderColor} rounded-lg p-4`}>
       <h3 className={`font-bold ${textColor} mb-3`}>{title}</h3>
       <div className="space-y-2 text-sm">
-        <div className="flex justify-between">
-          <span className="text-gray-600 flex items-center gap-1.5"><IconLayoutList size={14} /> Standard Bars Used:</span>
-          <span className="font-bold">{result.totalBarsUsed}</span>
+        <div className="flex justify-between items-start">
+          <span className="text-gray-600 flex items-center gap-1.5 mt-0.5"><IconLayoutList size={14} /> Stock Used:</span>
+          <div className="flex flex-col items-end">
+            <span className="font-bold">{result.totalBarsUsed} total</span>
+            {result.detailedCuts.filter(d => (d as any).isFromWaste || d.patternId?.startsWith("waste_")).length > 0 && (
+              <span className="text-[10px] text-gray-500 font-medium">
+                ({result.totalBarsUsed - result.detailedCuts.filter(d => (d as any).isFromWaste || d.patternId?.startsWith("waste_")).length} new + <span className="text-purple-600">{result.detailedCuts.filter(d => (d as any).isFromWaste || d.patternId?.startsWith("waste_")).length} reused</span>)
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-600 flex items-center gap-1.5"><IconRecycle size={14} /> Total Waste:</span>
-          <span className="font-bold">{result.totalWaste.toFixed(3)}m</span>
+          <span className="text-gray-600 flex items-center gap-1.5"><IconRecycle size={14} /> Net Waste:</span>
+          <div className="flex flex-col items-end">
+            <span className="font-bold">{(result as any).summary?.totalWasteLength?.toFixed(3) || result.totalWaste.toFixed(3)}m</span>
+            {(result as any).summary?.wasteFromNewBars !== undefined && (result as any).summary?.wasteFromReusedPieces !== undefined && (
+              <span className="text-[10px] text-gray-500 font-medium">
+                ({(result as any).summary.wasteFromNewBars.toFixed(3)}m new + {(result as any).summary.wasteFromReusedPieces.toFixed(3)}m reused)
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600 flex items-center gap-1.5"><IconChartBar size={14} /> Avg Utilization:</span>
@@ -233,8 +247,13 @@ function DetailedResultCard({
           {/* Summary Stats */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
             <StatCard
-              label="Total Bars"
+              label="Stock Used"
               value={result.summary.totalStandardBars}
+              subValue={
+                result.detailedCuts.some(d => (d as any).isFromWaste)
+                  ? `${result.detailedCuts.filter(d => (d as any).isFromWaste).length} reused`
+                  : undefined
+              }
             />
             <StatCard
               label="Total Waste"
@@ -267,16 +286,16 @@ function DetailedResultCard({
                 <IconScissors size={18} />
               </span>
               Cutting Patterns
-              <span className="text-slate-400 font-normal text-sm ml-1">(12m Standard Bars)</span>
+              Cutting Patterns
             </h4>
             <span className="bg-white border border-slate-200 px-3 py-1 rounded-lg text-xs font-medium text-slate-600">
-              {result.detailedCuts.length} bars total
+              {result.detailedCuts.length} items total
             </span>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-100">
-              <thead className="bg-slate-50/50">
+          <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+            <table className="min-w-full divide-y divide-slate-100 relative">
+              <thead className="bg-slate-50/50 sticky top-0 z-10 backdrop-blur-sm shadow-sm">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-16">Bar #</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-32">Source</th>
@@ -286,79 +305,103 @@ function DetailedResultCard({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 bg-white">
-                {result.detailedCuts.map((detail, index) => {
-                  // Calculate actual waste based on bar length
-                  const barLength = detail.isFromWaste && detail.wasteSource
-                    ? detail.wasteSource.originalLength / 1000
-                    : 12.0;
-                  const totalUsed = detail.cuts.reduce((sum, cut) =>
-                    sum + cut.length, 0
-                  );
-                  // Fix floating point precision issues (e.g. -0.00000001 becoming -0.000)
-                  let actualWaste = barLength - totalUsed;
-                  if (Math.abs(actualWaste) < 0.0001) actualWaste = 0;
+                {[...result.detailedCuts]
+                  .sort((a, b) => {
+                    // Sort: Reused waste FIRST, then by bar number
+                    const aIsWaste = (a as any).isFromWaste || a.patternId?.startsWith("waste_");
+                    const bIsWaste = (b as any).isFromWaste || b.patternId?.startsWith("waste_");
+                    if (aIsWaste && !bIsWaste) return -1;
+                    if (!aIsWaste && bIsWaste) return 1;
+                    return a.barNumber - b.barNumber;
+                  })
+                  .map((detail, index) => {
+                    // Calculate actual waste based on bar length
+                    const barLength = detail.isFromWaste && detail.wasteSource
+                      ? detail.wasteSource.originalLength / 1000
+                      : 12.0;
+                    const totalUsed = detail.cuts.reduce((sum, cut) =>
+                      sum + cut.length, 0
+                    );
+                    // Fix floating point precision issues (e.g. -0.00000001 becoming -0.000)
+                    let actualWaste = barLength - totalUsed;
+                    if (Math.abs(actualWaste) < 0.0001) actualWaste = 0;
 
-                  const actualUtilization = (totalUsed / barLength) * 100;
+                    const actualUtilization = (totalUsed / barLength) * 100;
 
-                  return (
-                    <tr
-                      key={index}
-                      className="group hover:bg-slate-50/80 transition-colors"
-                    >
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shadow-sm border ${detail.isFromWaste
-                          ? 'bg-purple-50 text-purple-700 border-purple-100'
-                          : 'bg-blue-50 text-blue-700 border-blue-100'
-                          }`}>
-                          {detail.barNumber}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {detail.isFromWaste && detail.wasteSource ? (
-                          <div className="flex flex-col gap-1">
-                            <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-50 text-purple-700 rounded-md border border-purple-100 w-fit">
-                              <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
-                              <span className="text-xs font-semibold">Reused</span>
+                    return (
+                      <tr
+                        key={index}
+                        className="group hover:bg-slate-50/80 transition-colors"
+                      >
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shadow-sm border ${detail.isFromWaste
+                            ? 'bg-purple-50 text-purple-700 border-purple-100'
+                            : 'bg-blue-50 text-blue-700 border-blue-100'
+                            }`}>
+                            {detail.barNumber}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {detail.isFromWaste && detail.wasteSource ? (
+                            <div className="flex flex-col gap-1">
+                              <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-50 text-purple-700 rounded-md border border-purple-100 w-fit">
+                                <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                                <span className="text-xs font-semibold">Reused</span>
+                              </div>
+                              <div className="flex flex-col text-[10px] text-slate-500 leading-tight">
+                                <span>Length: {(detail.wasteSource.originalLength / 1000).toFixed(2)}m</span>
+                                <span>From: Sheet {detail.wasteSource.sourceSheetNumber || detail.wasteSource.sourceSheetId}</span>
+                              </div>
                             </div>
-                            <div className="flex flex-col text-[10px] text-slate-500 leading-tight">
-                              <span>Length: {(detail.wasteSource.originalLength / 1000).toFixed(2)}m</span>
-                              <span>From: Sheet {detail.wasteSource.sourceSheetNumber || detail.wasteSource.sourceSheetId}</span>
+                          ) : (
+                            <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-700 rounded-md border border-blue-100">
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                              <span className="text-xs font-semibold">New 12m</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <CutsDisplay cuts={detail.cuts} />
+                        </td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <div className="flex flex-col items-end gap-1">
+                            <span className={`font-mono font-medium ${actualWaste > 1 ? 'text-red-600' : 'text-slate-600'}`}>
+                              {actualWaste.toFixed(3)}m
+                            </span>
+
+                            {/* Recovery Indicator */}
+                            {(detail as any).isWasteRecovered && (
+                              <div className="flex flex-col gap-0.5 items-end">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 border border-green-200">
+                                  <IconRecycle size={10} className="mr-1" />
+                                  ♻️ {(detail as any).recoveredAmount?.toFixed(2)}m reused
+                                </span>
+                                <span className="text-[10px] text-green-600 font-medium">
+                                  in {(detail as any).recoveredWasteInfo?.usedInSheet || 'another sheet'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
+                          <div className="flex flex-col items-end gap-1">
+                            <span className="font-bold text-slate-800 text-sm">
+                              {actualUtilization.toFixed(1)}%
+                            </span>
+                            <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-100">
+                              <div
+                                className={`h-full rounded-full ${actualUtilization > 95 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+                                  actualUtilization > 85 ? 'bg-gradient-to-r from-yellow-400 to-amber-500' :
+                                    'bg-gradient-to-r from-red-400 to-red-500'
+                                  }`}
+                                style={{ width: `${Math.min(actualUtilization, 100)}%` }}
+                              />
                             </div>
                           </div>
-                        ) : (
-                          <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-700 rounded-md border border-blue-100">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
-                            <span className="text-xs font-semibold">New 12m</span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">
-                        <CutsDisplay cuts={detail.cuts} />
-                      </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <span className={`font-mono font-medium ${actualWaste > 1 ? 'text-red-600' : 'text-slate-600'}`}>
-                          {actualWaste.toFixed(3)}m
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <div className="flex flex-col items-end gap-1">
-                          <span className="font-bold text-slate-800 text-sm">
-                            {actualUtilization.toFixed(1)}%
-                          </span>
-                          <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-100">
-                            <div
-                              className={`h-full rounded-full ${actualUtilization > 95 ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
-                                actualUtilization > 85 ? 'bg-gradient-to-r from-yellow-400 to-amber-500' :
-                                  'bg-gradient-to-r from-red-400 to-red-500'
-                                }`}
-                              style={{ width: `${Math.min(actualUtilization, 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                        </td>
+                      </tr>
+                    );
+                  })}
               </tbody>
             </table>
           </div>
@@ -437,11 +480,12 @@ function CutsDisplay({ cuts }: { cuts: CutInstruction[] }) {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
+function StatCard({ label, value, subValue }: { label: string; value: string | number; subValue?: string }) {
   return (
     <div className="bg-gray-50 border border-gray-200 rounded p-3 text-center">
       <div className="text-xs text-gray-600 mb-1">{label}</div>
       <div className="text-lg font-bold text-gray-800">{value}</div>
+      {subValue && <div className="text-[10px] text-purple-600 font-medium">{subValue}</div>}
     </div>
   );
 }
