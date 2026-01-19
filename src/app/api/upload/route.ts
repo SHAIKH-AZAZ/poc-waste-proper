@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
 
     // Parse Excel file
     const arrayBuffer = await file.arrayBuffer();
-    const data = new Uint8Array(arrayBuffer);
-    const workbook = XLSX.read(data, { type: "array" });
+    const data = Buffer.from(arrayBuffer);
+    const workbook = XLSX.read(data, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
     const sheet = workbook.Sheets[sheetName];
     const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: "" });

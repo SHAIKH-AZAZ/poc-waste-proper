@@ -14,14 +14,7 @@ import {
   IconInfoCircle,
   IconChartPie,
 } from "@tabler/icons-react";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-  Tooltip,
-  Legend,
-} from "recharts";
+import DashboardAnalytics from "./components/DashboardAnalytics";
 
 interface Sheet {
   id: number;
@@ -42,6 +35,7 @@ interface Sheet {
     totalBarsUsed: number;
     wastePiecesReused: number;
     totalWaste: number;
+    averageUtilization: number;
   }[];
 }
 
@@ -655,196 +649,9 @@ export default function ProjectPage() {
 
         {/* Dashboard Tab */}
         {!loading && activeTab === "dashboard" && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
-            {/* Aggregate Stats Bar */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {(() => {
-                let totalBars = 0;
-                let reusedPieces = 0;
-                let totalWaste = 0;
-                let totalUsedLength = 0;
-
-                sheets.forEach(s => {
-                  s.results.forEach(r => {
-                    totalBars += r.totalBarsUsed;
-                    reusedPieces += r.wastePiecesReused || 0;
-                    totalWaste += r.totalWaste;
-                  });
-                });
-
-                // Estimate total material processed
-                const newBarsCount = Math.max(0, totalBars - reusedPieces);
-                const totalMaterialValue = (newBarsCount * 12000) + (reusedPieces * 5000); // 5m avg for scrap used
-                totalUsedLength = Math.max(0, totalMaterialValue - totalWaste);
-
-                const materialData = [
-                  { name: "New Bars", value: newBarsCount, color: "#6366f1" },
-                  { name: "Reused Scrap", value: reusedPieces, color: "#10b981" },
-                ];
-
-                const efficiencyData = [
-                  { name: "Material Used", value: totalUsedLength, color: "#4f46e5" },
-                  { name: "Net Waste", value: totalWaste, color: "#cbd5e1" },
-                ];
-
-                if (totalBars === 0) {
-                  return (
-                    <div className="lg:col-span-3 text-center py-20 bg-white rounded-3xl border border-slate-200 shadow-sm">
-                      <IconChartPie className="w-16 h-16 mx-auto text-slate-200 mb-4" />
-                      <h3 className="text-xl font-bold text-slate-900">No Analytics Yet</h3>
-                      <p className="text-slate-500 mt-2 max-w-sm mx-auto">Run calculations on your project sheets to see material composition and efficiency metrics.</p>
-                    </div>
-                  );
-                }
-
-                return (
-                  <>
-                    {/* Material Composition Chart */}
-                    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col items-center">
-                      <div className="w-full flex justify-between items-center mb-6">
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Material Original</h3>
-                        <IconPackage size={20} className="text-slate-300" />
-                      </div>
-                      <div className="w-full h-64 relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={materialData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={65}
-                              outerRadius={85}
-                              paddingAngle={8}
-                              dataKey="value"
-                              animationBegin={0}
-                              animationDuration={1200}
-                              stroke="none"
-                            >
-                              {materialData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)' }}
-                              cursor={{ fill: 'transparent' }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                          <p className="text-3xl font-black text-slate-900">{totalBars}</p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Total Bars</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 w-full mt-6">
-                        {materialData.map(d => (
-                          <div key={d.name} className="bg-slate-50 p-3 rounded-2xl border border-slate-100 transition-colors hover:bg-white hover:border-blue-100">
-                            <p className="text-lg font-black text-slate-900">{d.value}</p>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tight flex items-center gap-1.5 mt-0.5">
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: d.color }}></span>
-                              {d.name}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Efficiency Chart */}
-                    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm flex flex-col items-center">
-                      <div className="w-full flex justify-between items-center mb-6">
-                        <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest">Efficiency Ratio</h3>
-                        <IconRecycle size={20} className="text-slate-300" />
-                      </div>
-                      <div className="w-full h-64 relative">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={efficiencyData}
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={65}
-                              outerRadius={85}
-                              paddingAngle={8}
-                              dataKey="value"
-                              animationBegin={200}
-                              animationDuration={1200}
-                              stroke="none"
-                            >
-                              {efficiencyData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.color} />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              formatter={(value: any) => formatLength(Number(value))}
-                              contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)' }}
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                          <p className="text-3xl font-black text-indigo-600">
-                            {((totalUsedLength / (totalUsedLength + totalWaste)) * 100).toFixed(1)}%
-                          </p>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Utilization</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 w-full mt-6">
-                        {efficiencyData.map(d => (
-                          <div key={d.name} className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                            <p className="text-xs font-bold text-slate-900 truncate" title={formatLength(d.value)}>{formatLength(d.value)}</p>
-                            <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tight flex items-center gap-1.5 mt-0.5">
-                              <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: d.color }}></span>
-                              {d.name.split(' ')[1] || d.name}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Summary Card */}
-                    <div className="space-y-6">
-                      <div className="bg-gradient-to-br from-indigo-600 to-violet-700 p-8 rounded-3xl text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden group">
-                        <div className="absolute top-[-20%] right-[-20%] w-64 h-64 bg-white/10 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-700"></div>
-                        <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-70 mb-6">Savings Analysis</h4>
-                        <div className="space-y-6">
-                          <div>
-                            <p className="text-4xl font-black">{reusedPieces}</p>
-                            <p className="text-xs font-medium opacity-80 mt-1">Waste pieces saved from landfill</p>
-                          </div>
-                          <div>
-                            <p className="text-2xl font-bold">{((reusedPieces / totalBars) * 100).toFixed(1)}%</p>
-                            <p className="text-xs font-medium opacity-80 mt-1">Project reuse ratio</p>
-                          </div>
-                        </div>
-                        <div className="mt-8 pt-6 border-t border-white/10 flex items-center gap-3">
-                          <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-md">
-                            <IconRecycle size={20} />
-                          </div>
-                          <p className="text-[11px] font-semibold leading-tight opacity-90">
-                            You've optimized material use by prioritizing scrap reuse.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:border-emerald-200 transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 border border-emerald-100">
-                            <span className="text-xs font-black">SAVE</span>
-                          </div>
-                          <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Calculated Savings</p>
-                            <p className="text-xl font-black text-slate-900">
-                              {formatLength(reusedPieces * 12000 - totalWaste)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
+          <DashboardAnalytics sheets={sheets} formatLength={formatLength} />
         )}
       </div>
-    </div>
+    </div >
   );
 }
