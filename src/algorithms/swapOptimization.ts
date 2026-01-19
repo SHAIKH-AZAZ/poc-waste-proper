@@ -154,7 +154,7 @@ export class SwapOptimization {
     onProgress?.("Complete", 100);
 
     return {
-      algorithm: "dynamic",
+      algorithm: "swap",
       dia,
       patterns,
       totalBarsUsed: bins.length,
@@ -820,7 +820,7 @@ export class SwapOptimization {
    */
   private createEmptyResult(dia: number, startTime: number): CuttingStockResult {
     return {
-      algorithm: "dynamic",
+      algorithm: "swap",
       dia,
       patterns: [],
       totalBarsUsed: 0,

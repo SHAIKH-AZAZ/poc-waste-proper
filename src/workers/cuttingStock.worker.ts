@@ -9,14 +9,14 @@ import { SwapOptimization } from "@/algorithms/swapOptimization";
 import type { MultiBarCuttingRequest, CuttingStockResult, WastePiece } from "@/types/CuttingStock";
 
 export interface WorkerMessage {
-    type: "greedy" | "dynamic" | "true-dynamic" | "branch-bound" | "adaptive" | "improved-greedy" | "chunked";
+    type: "greedy" | "dynamic" | "true-dynamic" | "branch-and-bound" | "adaptive" | "improved-greedy" | "chunked" | "swap";
     requests: MultiBarCuttingRequest[];
     dia: number;
     wastePieces?: WastePiece[];  // Available waste pieces to reuse
 }
 
 export interface WorkerResponse {
-    type: "greedy" | "dynamic" | "true-dynamic" | "branch-bound" | "adaptive" | "improved-greedy" | "chunked";
+    type: "greedy" | "dynamic" | "true-dynamic" | "branch-and-bound" | "adaptive" | "improved-greedy" | "chunked" | "swap";
     result?: CuttingStockResult | CuttingStockResult[];
     error?: string;
     progress?: {
@@ -26,7 +26,7 @@ export interface WorkerResponse {
 }
 
 // Helper to send progress updates
-function sendProgress(type: "greedy" | "dynamic" | "true-dynamic" | "branch-bound" | "adaptive" | "improved-greedy" | "chunked", stage: string, percentage: number) {
+function sendProgress(type: "greedy" | "dynamic" | "true-dynamic" | "branch-and-bound" | "adaptive" | "improved-greedy" | "chunked" | "swap", stage: string, percentage: number) {
     const response: WorkerResponse = {
         type,
         progress: { stage, percentage },
@@ -89,7 +89,7 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
                 sendProgress(type, "Finalizing results...", 90);
                 break;
 
-            case "branch-bound":
+            case "branch-and-bound":
                 sendProgress(type, "Initializing search tree...", 10);
                 const branchBound = new BranchAndBoundCuttingStock();
                 sendProgress(type, "Calculating bounds...", 30);
@@ -126,6 +126,14 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
                     sendProgress(type, stage, percentage);
                 });
                 console.log(`[Worker chunked] Complete, bars used: ${(result as CuttingStockResult).totalBarsUsed}`);
+                break;
+
+            case "swap":
+                console.log(`[Worker swap] Starting swap optimization for dia ${dia}`);
+                const swap = new SwapOptimization();
+                result = swap.solve(requests, dia, wastePieces, (stage, percentage) => {
+                    sendProgress(type, stage, percentage);
+                });
                 break;
 
             default:
