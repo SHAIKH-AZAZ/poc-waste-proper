@@ -33,8 +33,8 @@ export default function Navigation() {
                   key={link.href}
                   href={link.href}
                   className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isActive
-                      ? "bg-blue-100 text-blue-700"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    ? "bg-blue-600/10 text-blue-600"
+                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                 >
                   <Icon className="w-4 h-4" />
