@@ -561,7 +561,7 @@ export default function ProjectPage() {
                   <div className="overflow-x-auto max-h-[650px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
                     <table className="w-full text-sm border-separate border-spacing-0">
                       <thead className="sticky top-0 z-20">
-                        <tr className="bg-slate-50/95 backdrop-blur-sm">
+                        <tr className="bg-white/70 backdrop-blur-md sticky top-0 z-20">
                           <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 first:pl-8">ID</th>
                           <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Dia</th>
                           <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Length</th>

@@ -295,7 +295,7 @@ function DetailedResultCard({
 
           <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
             <table className="min-w-full divide-y divide-slate-100 relative">
-              <thead className="bg-slate-50/50 sticky top-0 z-10 backdrop-blur-sm shadow-sm">
+              <thead className="bg-white/70 backdrop-blur-md sticky top-0 z-10">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-16">Bar #</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-32">Source</th>

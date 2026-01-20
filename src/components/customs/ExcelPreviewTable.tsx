@@ -83,16 +83,16 @@ export default function ExcelPreviewTable({ data, selectedDia }: ExcelPreviewTab
       {/* Table Container - Flex grow to fill remaining height */}
       <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 relative">
         <table className="border-collapse bg-white w-full">
-          <thead className="bg-slate-50 sticky top-0 z-20 shadow-sm">
+          <thead className="bg-white/70 backdrop-blur-md sticky top-0 z-20">
             <tr>
               {/* Row Number Column Header */}
-              <th className="sticky left-0 z-30 bg-slate-50 border-r border-b border-slate-200 w-12 px-2 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <th className="sticky left-0 z-30 bg-white/70 backdrop-blur-md border-r border-b border-slate-200 w-12 px-2 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
                 #
               </th>
               {headers.map((header, i) => (
                 <th
                   key={i}
-                  className="border-r border-b border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap bg-slate-50"
+                  className="border-r border-b border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap bg-white/70 backdrop-blur-md"
                   style={{
                     minWidth: `${getColumnWidth(i)}px`,
                   }}
