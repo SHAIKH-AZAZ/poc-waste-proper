@@ -354,6 +354,78 @@ export async function DELETE(req: NextRequest) {
     // Delete from PostgreSQL
     await prisma.calculationResult.deleteMany({ where });
 
+    // --- DEEP WASTE CLEANUP ---
+    // 1. Find all waste items produced by THIS sheet and diameter
+    const wasteFromThisSheet = await prisma.wasteInventory.findMany({
+      where: {
+        sourceSheetId: parseInt(sheetId),
+        dia: dia ? parseInt(dia) : undefined,
+      },
+      select: { id: true, status: true }
+    });
+
+    const wasteIds = wasteFromThisSheet.map(w => w.id);
+
+    if (wasteIds.length > 0) {
+      // 2. Find any usage records WHERE this waste was used (could be in THIS or OTHER sheets)
+      // If we are recalculating, we should ideally reverse these usages.
+      // For now, focus on cleaning up records that cause the "self-reuse" UI bug.
+      
+      // Delete usage records where waste from THIS sheet was used
+      const deletedUsages = await prisma.wasteUsage.deleteMany({
+        where: {
+          wasteId: { in: wasteIds }
+        }
+      });
+      console.log(`[Results] Deleted ${deletedUsages.count} usage records for waste produced by this sheet`);
+
+      // 3. Delete the waste inventory records themselves
+      const deletedWasteCount = await prisma.wasteInventory.deleteMany({
+        where: {
+          id: { in: wasteIds }
+        }
+      });
+      console.log(`[Results] Deleted ${deletedWasteCount.count} waste inventory records produced by sheet ${sheetId}`);
+    }
+
+    // 4. Clean up usage records where OTHER waste was used IN THIS SHEET
+    // This removes the "self-reuse" indicator from the UI for the current sheet
+    
+    // FIRST: Find those inward usages so we know which waste pieces to revert
+    const inwardUsages = await prisma.wasteUsage.findMany({
+      where: {
+        usedInSheetId: parseInt(sheetId),
+        waste: {
+          dia: dia ? parseInt(dia) : undefined
+        }
+      },
+      select: { wasteId: true }
+    });
+
+    if (inwardUsages.length > 0) {
+      // SECOND: Mark the original waste pieces back as 'available'
+      await prisma.wasteInventory.updateMany({
+        where: {
+          id: { in: inwardUsages.map(u => u.wasteId) }
+        },
+        data: {
+          status: "available"
+        }
+      });
+      console.log(`[Results] Reverted ${inwardUsages.length} waste pieces back to 'available' status`);
+
+      // THIRD: Delete the inward usage records
+      const deletedInwardUsages = await prisma.wasteUsage.deleteMany({
+        where: {
+          usedInSheetId: parseInt(sheetId),
+          waste: {
+            dia: dia ? parseInt(dia) : undefined
+          }
+        }
+      });
+      console.log(`[Results] Deleted ${deletedInwardUsages.count} inward usage records`);
+    }
+
     // Delete from MongoDB
     const db = await getMongoDb();
     for (const result of resultsToDelete) {

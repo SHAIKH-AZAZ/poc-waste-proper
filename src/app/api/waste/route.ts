@@ -12,6 +12,7 @@ export async function GET(req: NextRequest) {
     const projectId = req.nextUrl.searchParams.get("projectId");
     const dia = req.nextUrl.searchParams.get("dia");
     const status = req.nextUrl.searchParams.get("status");
+    const sourceSheetId = req.nextUrl.searchParams.get("sourceSheetId");
 
     if (!projectId) {
       return NextResponse.json(
@@ -20,13 +21,14 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    console.log(`[Waste] Fetching waste for project ${projectId}, dia: ${dia || "all"}, status: ${status || "all"}`);
+    console.log(`[Waste] Fetching waste for project ${projectId}, dia: ${dia || "all"}, status: ${status || "all"}, sourceSheet: ${sourceSheetId || "all"}`);
 
     // Build where clause
     const where: {
       projectId: number;
       dia?: number;
       status?: string;
+      sourceSheetId?: number;
     } = {
       projectId: parseInt(projectId),
     };
@@ -37,6 +39,10 @@ export async function GET(req: NextRequest) {
 
     if (status) {
       where.status = status;
+    }
+
+    if (sourceSheetId) {
+      where.sourceSheetId = parseInt(sourceSheetId);
     }
 
     // Get waste from PostgreSQL

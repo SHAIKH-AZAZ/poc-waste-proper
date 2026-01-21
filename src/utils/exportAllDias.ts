@@ -311,18 +311,27 @@ function patchResultWithLiveWaste(result: CuttingStockResult, generatedWaste: an
     
     if (recoveredWaste) {
       // Calculate how much was recovered
-      // usages[0] usually contains the main usage
       const recoveredAmount = recoveredWaste.usages.reduce((sum: number, u: any) => sum + (u.cutLength || 0), 0) / 1000;
       
-      // Update cut properties
-      cut.isWasteRecovered = true;
-      cut.recoveredAmount = recoveredAmount; // m
-      
-      // Subtract from WASTE
-      const originalWaste = cut.waste;
-      cut.waste = Math.max(0, originalWaste - recoveredAmount);
-      
-      totallyRecoveredLength += recoveredAmount;
+      // CRITICAL FIX: Only subtract if source is DIFFERENT from the producing results
+      // (Self-recovery shouldn't reduce net waste of the producer sheet)
+      // Note: In exportAllDias, generatedWaste pieces are ALL from the same project, 
+      // but we want to avoid "self-recovery" indicators if the usage was in the same sheet.
+      // Since we don't have the current sheetId easily here, we skip the detailed indicator 
+      // if it looks like a self-recovery (usage in same sheet as source).
+      const isSelfRecovery = recoveredWaste.usages.some((u: any) => String(u.usedInSheetId) === String(recoveredWaste.sourceSheetId));
+
+      if (!isSelfRecovery) {
+        // Update cut properties
+        cut.isWasteRecovered = true;
+        cut.recoveredAmount = recoveredAmount; // m
+        
+        // Subtract from WASTE
+        const originalWaste = cut.waste;
+        cut.waste = Math.max(0, originalWaste - recoveredAmount);
+        
+        totallyRecoveredLength += recoveredAmount;
+      }
     }
   });
 

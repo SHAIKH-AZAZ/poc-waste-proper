@@ -102,9 +102,9 @@ export default function SheetPage() {
           sourceSheet?: { id: number; sheetNumber: number; fileName: string };
           cutsOnSourceBar?: { barCode: string; length: number; element: string }[];
         }) => {
-          // Exclude waste from current sheet
+          // Exclude waste from current sheet (Robust comparison)
           const sourceId = w.sourceSheetId || w.sourceSheet?.id;
-          if (sourceId === parseInt(sheetId)) return;
+          if (String(sourceId) === String(sheetId)) return;
 
           if (!wasteByDia[w.dia]) wasteByDia[w.dia] = [];
           wasteByDia[w.dia].push({
@@ -266,7 +266,7 @@ export default function SheetPage() {
                 sourceSheet?: { id: number };
               }) => {
                 const sourceId = w.sourceSheetId || w.sourceSheet?.id;
-                return w.dia === dia && sourceId !== parseInt(sheetId);
+                return w.dia === dia && String(sourceId) !== String(sheetId);
               })
               .map((w: {
                 id: number;
@@ -330,7 +330,8 @@ export default function SheetPage() {
     const wasteByBar = new Map<number, any>();
     relevantWaste.forEach(w => {
       // If waste is USED, it's recovered
-      if (w.status === 'used' && w.usages && w.usages.length > 0) {
+      // CRITICAL FIX: Only track pieces produced by THIS sheet to avoid colliding with other sheets' bar numbers
+      if (w.status === 'used' && w.usages && w.usages.length > 0 && String(w.sourceSheetId) === String(sheetId)) {
         wasteByBar.set(w.sourceBarNumber, w);
       }
     });
@@ -344,20 +345,24 @@ export default function SheetPage() {
         // Calculate how much was recovered
         const recoveredAmount = recoveredWaste.usages.reduce((sum: number, u: any) => sum + (u.cutLength || 0), 0) / 1000; // mm to m
 
-        // Update cut properties
-        cut.isWasteRecovered = true;
-        cut.recoveredAmount = recoveredAmount;
-        cut.recoveredWasteInfo = {
-          usedInSheet: recoveredWaste.usages[0]?.usedInSheet?.fileName || `Sheet #${recoveredWaste.usages[0]?.usedInSheetId}`,
-          wasteId: recoveredWaste.id
-        };
-
         // Subtract from WASTE (but keep it positive)
-        // Original Waste - Recovered Amount
-        const originalWaste = cut.waste;
-        cut.waste = Math.max(0, originalWaste - recoveredAmount);
+        // CRITICAL FIX: Only subtract if source is DIFFERENT from this sheet
+        // (Self-recovery shouldn't reduce net waste of the producer sheet)
+        const isSelfRecovery = String(recoveredWaste.sourceSheetId) === String(sheetId);
 
-        totallyRecoveredLength += recoveredAmount;
+        const originalWaste = cut.waste;
+        if (!isSelfRecovery) {
+          // Update cut properties
+          cut.isWasteRecovered = true;
+          cut.recoveredAmount = recoveredAmount;
+          cut.recoveredWasteInfo = {
+            usedInSheet: recoveredWaste.usages[0]?.usedInSheet?.fileName || `Sheet #${recoveredWaste.usages[0]?.usedInSheetId}`,
+            wasteId: recoveredWaste.id
+          };
+
+          cut.waste = Math.max(0, originalWaste - recoveredAmount);
+          totallyRecoveredLength += recoveredAmount;
+        }
       }
     });
 
