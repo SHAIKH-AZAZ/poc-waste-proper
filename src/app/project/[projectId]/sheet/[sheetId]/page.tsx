@@ -102,9 +102,8 @@ export default function SheetPage() {
           sourceSheet?: { id: number; sheetNumber: number; fileName: string };
           cutsOnSourceBar?: { barCode: string; length: number; element: string }[];
         }) => {
-          // Exclude waste from current sheet (Robust comparison)
           const sourceId = w.sourceSheetId || w.sourceSheet?.id;
-          if (String(sourceId) === String(sheetId)) return;
+          // if (String(sourceId) === String(sheetId)) return;
 
           if (!wasteByDia[w.dia]) wasteByDia[w.dia] = [];
           wasteByDia[w.dia].push({
@@ -266,7 +265,7 @@ export default function SheetPage() {
                 sourceSheet?: { id: number };
               }) => {
                 const sourceId = w.sourceSheetId || w.sourceSheet?.id;
-                return w.dia === dia && String(sourceId) !== String(sheetId);
+                return w.dia === dia;
               })
               .map((w: {
                 id: number;
@@ -703,7 +702,7 @@ export default function SheetPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
-                    {wasteForCurrentDia.slice(0, 10).map((w, i) => (
+                    {wasteForCurrentDia.map((w, i) => (
                       <tr key={i}>
                         <td className="py-2.5 font-semibold text-slate-900">{formatLength(w.length)}</td>
                         <td className="py-2.5 text-slate-600">
@@ -715,9 +714,6 @@ export default function SheetPage() {
                     ))}
                   </tbody>
                 </table>
-                {wasteForCurrentDia.length > 10 && (
-                  <p className="text-sm text-slate-500 mt-3 text-center">+{wasteForCurrentDia.length - 10} more pieces</p>
-                )}
               </div>
 
               <div className="bg-blue-50 rounded-xl p-4 mb-6 border border-blue-100">
@@ -784,14 +780,25 @@ export default function SheetPage() {
                 <IconRecycle className="w-4 h-4 text-emerald-600" />
               </div>
               <span className="text-emerald-700 font-medium">
-                {wasteForCurrentDia.length} waste pieces available from previous sheets
-                {(patchedGreedyResult || greedyResult || patchedDynamicResult || dynamicResult) && (
-                  <>
-                    {" "}• <span className="font-bold">
-                      {(patchedGreedyResult || greedyResult)?.detailedCuts.filter(d => (d as any).isFromWaste).length ||
-                        (patchedDynamicResult || dynamicResult)?.detailedCuts.filter(d => (d as any).isFromWaste).length || 0}
-                    </span> actually used
-                  </>
+                {resultsFromCache ? (
+                  <span>
+                    Reused <span className="font-bold">{
+                      (patchedGreedyResult || greedyResult)?.detailedCuts.filter(d => (d as any).isFromWaste).length ||
+                      (patchedDynamicResult || dynamicResult)?.detailedCuts.filter(d => (d as any).isFromWaste).length || 0
+                    }</span> waste pieces from inventory
+                  </span>
+                ) : (
+                  <span>
+                    {wasteForCurrentDia.length} waste pieces available from previous sheets
+                    {(patchedGreedyResult || greedyResult || patchedDynamicResult || dynamicResult) && (
+                      <>
+                        {" "}• <span className="font-bold">
+                          {(patchedGreedyResult || greedyResult)?.detailedCuts.filter(d => (d as any).isFromWaste).length ||
+                            (patchedDynamicResult || dynamicResult)?.detailedCuts.filter(d => (d as any).isFromWaste).length || 0}
+                        </span> actually used
+                      </>
+                    )}
+                  </span>
                 )}
               </span>
             </div>

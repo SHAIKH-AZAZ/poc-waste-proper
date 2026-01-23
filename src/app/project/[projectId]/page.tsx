@@ -51,6 +51,15 @@ interface WasteItem {
     fileName: string;
   };
   cutsOnSourceBar: { barCode: string; length: number; element: string }[];
+  usages?: {
+    usedInSheet: {
+      id: number;
+      sheetNumber: number;
+      fileName: string;
+    };
+    usedForBarCode: string;
+    cutLength: number;
+  }[];
 }
 
 interface WasteSummary {
@@ -567,6 +576,7 @@ export default function ProjectPage() {
                           <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Length</th>
                           <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Source Sheet</th>
                           <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Origin (Bars)</th>
+                          <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Used In</th>
                           <th className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 last:pr-8">Status</th>
                         </tr>
                       </thead>
@@ -621,6 +631,25 @@ export default function ProjectPage() {
                                   </div>
                                 )}
                               </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              {item.status === 'used' && item.usages && item.usages.length > 0 ? (
+                                <div className="flex flex-col gap-0.5">
+                                  <div className="text-slate-900 font-semibold text-xs flex items-center gap-1.5">
+                                    <IconRecycle size={12} className="text-emerald-500" />
+                                    Sheet #{item.usages[0].usedInSheet.sheetNumber}
+                                  </div>
+                                  <Link
+                                    href={`/project/${projectId}/sheet/${item.usages[0].usedInSheet.id}`}
+                                    className="text-[10px] text-blue-500 hover:text-blue-700 hover:underline font-medium truncate max-w-[150px]"
+                                    title={item.usages[0].usedInSheet.fileName}
+                                  >
+                                    {item.usages[0].usedInSheet.fileName}
+                                  </Link>
+                                </div>
+                              ) : (
+                                <span className="text-slate-300 text-xs">-</span>
+                              )}
                             </td>
                             <td className="px-6 py-4 text-right last:pr-8">
                               <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${item.status === 'available'
