@@ -70,11 +70,10 @@ const UploadedFileInfoCard: React.FC<UploadedFileInfoCardProps> = ({
                 {datasetSizeInfo.isLargeDataset && (
                   <div className="mt-2 flex items-center justify-center">
                     <div
-                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        datasetSizeInfo.isVeryLargeDataset
+                      className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${datasetSizeInfo.isVeryLargeDataset
                           ? "bg-red-100 text-red-800"
                           : "bg-yellow-100 text-yellow-800"
-                      }`}
+                        }`}
                     >
                       {datasetSizeInfo.isVeryLargeDataset
                         ? "⚠ Very Large Dataset"
