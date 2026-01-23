@@ -53,6 +53,7 @@ export class SwapOptimization {
     onProgress?: (stage: string, percentage: number) => void
   ): CuttingStockResult {
     const startTime = performance.now();
+    
     console.log(`[Swap] Starting swap optimization for dia ${dia}`);
     if (wastePieces && wastePieces.length > 0) {
       console.log(`[Swap] Received ${wastePieces.length} waste pieces for reuse:`);

@@ -38,12 +38,25 @@ interface Sheet {
     }[];
 }
 
+interface WasteItem {
+    id: number;
+    dia: number;
+    length: number;
+    status: string;
+    sourceSheet: {
+        id: number;
+        sheetNumber: number;
+        fileName: string;
+    };
+}
+
 interface DashboardAnalyticsProps {
     sheets: Sheet[];
+    waste: WasteItem[];
     formatLength: (mm: number) => string;
 }
 
-export default function DashboardAnalytics({ sheets, formatLength }: DashboardAnalyticsProps) {
+export default function DashboardAnalytics({ sheets, waste, formatLength }: DashboardAnalyticsProps) {
     // Aggregation logic
     const diaMap: { [key: number]: { count: number; waste: number; provided: number } } = {};
     let countTotal = 0;
@@ -59,8 +72,21 @@ export default function DashboardAnalytics({ sheets, formatLength }: DashboardAn
             }
 
             const barsUsed = Number(res.totalBarsUsed) || 0;
-            const wasteMeters = Number(res.totalWaste) || 0;
-            const wasteMM = wasteMeters * 1000;
+
+            // Calculate Net Waste: Original Waste - Reused Waste
+            // We find all waste items produced by THIS sheet for THIS dia that are now 'used'
+            const reusedWasteForLimit = waste.filter(w =>
+                w.sourceSheet.id === sheet.id &&
+                w.dia === d &&
+                w.status === 'used'
+            ).reduce((sum, w) => sum + w.length, 0);
+
+            const originalWasteMeters = Number(res.totalWaste) || 0;
+            const originalWasteMM = originalWasteMeters * 1000;
+
+            // Net waste cannot be less than 0
+            const netWasteMM = Math.max(0, originalWasteMM - reusedWasteForLimit);
+
             const reused = Number(res.wastePiecesReused) || 0;
             const util = Number(res.averageUtilization) || 0;
 
@@ -71,16 +97,16 @@ export default function DashboardAnalytics({ sheets, formatLength }: DashboardAn
             if (util >= 99.99) {
                 providedMM = barsUsed * 12000;
             } else {
-                providedMM = wasteMM / (1 - util / 100);
+                providedMM = netWasteMM / (1 - util / 100);
             }
 
             diaMap[d].count += barsUsed;
-            diaMap[d].waste += wasteMM;
+            diaMap[d].waste += netWasteMM;
             diaMap[d].provided += providedMM;
 
             countTotal += barsUsed;
             piecesReused += reused;
-            weightWaste += wasteMM;
+            weightWaste += netWasteMM;
             totalLenProvided += providedMM;
         });
     });

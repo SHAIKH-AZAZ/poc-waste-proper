@@ -365,19 +365,28 @@ function DetailedResultCard({
                         </td>
                         <td className="px-4 py-3 text-right whitespace-nowrap">
                           <div className="flex flex-col items-end gap-1">
-                            <span className={`font-mono font-medium ${actualWaste > 1 ? 'text-red-600' : 'text-slate-600'}`}>
-                              {actualWaste.toFixed(3)}m
-                            </span>
+                            {/* Original Waste / Net Waste Display */}
+                            {(detail as any).isWasteRecovered ? (
+                              <>
+                                <span className="font-mono font-medium text-slate-400 line-through decoration-slate-400 text-xs">
+                                  {actualWaste.toFixed(3)}m
+                                </span>
+                                <span className="font-mono font-bold text-green-600 text-sm">
+                                  0.000m
+                                </span>
+                              </>
+                            ) : (
+                              <span className={`font-mono font-medium ${actualWaste > 1 ? 'text-red-600' : 'text-slate-600'}`}>
+                                {actualWaste.toFixed(3)}m
+                              </span>
+                            )}
 
                             {/* Recovery Indicator */}
                             {(detail as any).isWasteRecovered && (
-                              <div className="flex flex-col gap-0.5 items-end">
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 border border-green-200">
+                              <div className="flex flex-col gap-0.5 items-end animate-in fade-in slide-in-from-top-1 duration-300">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 border border-green-200 shadow-sm">
                                   <IconRecycle size={10} className="mr-1" />
-                                  ♻️ {(detail as any).recoveredAmount?.toFixed(2)}m reused
-                                </span>
-                                <span className="text-[10px] text-green-600 font-medium">
-                                  in {(detail as any).recoveredWasteInfo?.usedInSheet || 'another sheet'}
+                                  ♻️ Used in {(detail as any).recoveredWasteInfo?.usedInSheet || 'Project'}
                                 </span>
                               </div>
                             )}

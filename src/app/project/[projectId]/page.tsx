@@ -649,7 +649,7 @@ export default function ProjectPage() {
 
         {/* Dashboard Tab */}
         {!loading && activeTab === "dashboard" && (
-          <DashboardAnalytics sheets={sheets} formatLength={formatLength} />
+          <DashboardAnalytics sheets={sheets} waste={waste} formatLength={formatLength} />
         )}
       </div>
     </div >

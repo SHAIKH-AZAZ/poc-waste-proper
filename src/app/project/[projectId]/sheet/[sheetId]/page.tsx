@@ -320,61 +320,68 @@ export default function SheetPage() {
     // Clone result to avoid mutating state
     const patched = JSON.parse(JSON.stringify(result));
 
-    // Filter waste for this dia
-    const relevantWaste = generatedWaste.filter(w => w.dia === result.dia);
-    if (relevantWaste.length === 0) return result;
+    // Filter waste produced by THIS sheet for this dia
+    // generatedWaste contains all waste inventory items where sourceSheetId == this sheet
+    const producedWaste = generatedWaste.filter(w => w.dia === result.dia);
+    if (producedWaste.length === 0) return result;
 
     let totallyRecoveredLength = 0;
 
-    // Map waste by Source Bar Number
-    const wasteByBar = new Map<number, any>();
-    relevantWaste.forEach(w => {
-      // If waste is USED, it's recovered
-      // CRITICAL FIX: Only track pieces produced by THIS sheet to avoid colliding with other sheets' bar numbers
-      if (w.status === 'used' && w.usages && w.usages.length > 0 && String(w.sourceSheetId) === String(sheetId)) {
-        wasteByBar.set(w.sourceBarNumber, w);
+    // Create a map of produced waste by Bar Number
+    // Logic: Each bar in the result produces at most one "main" waste piece.
+    // The WasteInventory record has sourceBarNumber.
+    const wasteBySourceBar = new Map<number, any>();
+    producedWaste.forEach(w => {
+      // We are looking for waste PRODUCED by this sheet that is now USED
+      if (w.sourceBarNumber) {
+        wasteBySourceBar.set(w.sourceBarNumber, w);
       }
     });
 
-    // Iterate detailed cuts and update
+    // Iterate detailed cuts to patch WASTE OUTPUTS (Recovered Waste)
     patched.detailedCuts.forEach((cut: any, index: number) => {
       const barNum = cut.barNumber || index + 1;
-      const recoveredWaste = wasteByBar.get(barNum);
 
-      if (recoveredWaste) {
-        // Calculate how much was recovered
-        const recoveredAmount = recoveredWaste.usages.reduce((sum: number, u: any) => sum + (u.cutLength || 0), 0) / 1000; // mm to m
+      // Check if this cut produced a waste piece that is now used
+      const producedWasteItem = wasteBySourceBar.get(barNum);
 
-        // Subtract from WASTE (but keep it positive)
-        // CRITICAL FIX: Only subtract if source is DIFFERENT from this sheet
-        // (Self-recovery shouldn't reduce net waste of the producer sheet)
-        const isSelfRecovery = String(recoveredWaste.sourceSheetId) === String(sheetId);
+      if (producedWasteItem && producedWasteItem.status === 'used') {
+        // This waste piece was reused!
+        const wasteLengthM = producedWasteItem.length / 1000;
 
-        const originalWaste = cut.waste;
-        if (!isSelfRecovery) {
-          // Update cut properties
-          cut.isWasteRecovered = true;
-          cut.recoveredAmount = recoveredAmount;
-          cut.recoveredWasteInfo = {
-            usedInSheet: recoveredWaste.usages[0]?.usedInSheet?.fileName || `Sheet #${recoveredWaste.usages[0]?.usedInSheetId}`,
-            wasteId: recoveredWaste.id
-          };
+        // Mark as recovered in the UI
+        cut.isWasteRecovered = true;
+        cut.recoveredAmount = wasteLengthM;
 
-          cut.waste = Math.max(0, originalWaste - recoveredAmount);
-          totallyRecoveredLength += recoveredAmount;
-        }
+        // Find where it was used
+        const usage = producedWasteItem.usages && producedWasteItem.usages[0];
+        cut.recoveredWasteInfo = {
+          usedInSheet: usage?.usedInSheet?.fileName || `Sheet #${usage?.usedInSheetId || 'Unknown'}`,
+          wasteId: producedWasteItem.id
+        };
+
+        // Subtract from Net Waste of this sheet
+        // We don't change 'cut.waste' (the physical waste), but we can add a 'netWaste' property
+        // or let the UI handle it. 
+        // For the SUMMARY, we definitely want to subtract it.
+        totallyRecoveredLength += wasteLengthM;
       }
     });
 
-    // Update Summary Stats
-    patched.summary.totalWasteLength = Math.max(0, patched.summary.totalWasteLength - totallyRecoveredLength);
-    patched.totalWaste = Math.max(0, patched.totalWaste - totallyRecoveredLength);
+    // Update Summary Stats for Net Waste
+    if (totallyRecoveredLength > 0) {
+      patched.summary.originalTotalWaste = patched.summary.totalWasteLength; // Keep original for reference
+      patched.summary.totalWasteLength = Math.max(0, patched.summary.totalWasteLength - totallyRecoveredLength);
+      patched.totalWaste = Math.max(0, patched.totalWaste - totallyRecoveredLength);
 
-    // Recalculate Percentage
-    // Total Length = Bars * 12m
-    const totalInputLength = patched.totalBarsUsed * 12;
-    if (totalInputLength > 0) {
-      patched.summary.totalWastePercentage = (patched.summary.totalWasteLength / totalInputLength) * 100;
+      // Add explicit field for UI to show breakdown
+      patched.summary.wasteRecovered = totallyRecoveredLength;
+
+      // Recalculate Percentage
+      const totalInputLength = patched.totalBarsUsed * 12; // Assuming 12m bars
+      if (totalInputLength > 0) {
+        patched.summary.totalWastePercentage = (patched.summary.totalWasteLength / totalInputLength) * 100;
+      }
     }
 
     return patched;
