@@ -301,13 +301,82 @@ export async function GET(req: NextRequest) {
             _id: new ObjectId(pgResult.mongoResultId),
           });
 
-          return {
+          const fullResult = {
             ...pgResult,
             patterns: mongoData?.patterns || [],
             detailedCuts: mongoData?.detailedCuts || [],
             summary: mongoData?.summary || null,
           };
-        } catch {
+
+          // --- PATCH: Check for Waste Recovery (Server-Side Calculation) ---
+          // Fetch waste produced by this sheet/dia to see if it's used elsewhere
+          const producedWaste = await prisma.wasteInventory.findMany({
+            where: { 
+              sourceSheetId: pgResult.sheetId, 
+              dia: pgResult.dia 
+            },
+            include: {
+              usages: {
+                include: {
+                  usedInSheet: {
+                    select: { fileName: true, sheetNumber: true }
+                  }
+                }
+              }
+            }
+          });
+
+          if (producedWaste.length > 0 && fullResult.detailedCuts) {
+            // Map waste by Source Bar Number
+            const wasteMap = new Map();
+            producedWaste.forEach(w => wasteMap.set(w.sourceBarNumber, w));
+            
+            let totalRecoveredLength = 0;
+
+            fullResult.detailedCuts.forEach((cut: any) => {
+              const waste = wasteMap.get(cut.barNumber);
+              
+              // If waste exists and is USED
+              if (waste && waste.status === 'used' && waste.usages.length > 0) {
+                 const usage = waste.usages[0];
+                 const recoverAmount = waste.length / 1000; // mm to m
+                 
+                 // Check if it's self-recovery
+                 const isSelfUsage = usage.usedInSheetId === pgResult.sheetId;
+
+                 if (!isSelfUsage) {
+                     cut.isWasteRecovered = true;
+                     cut.recoveredAmount = recoverAmount;
+                     cut.recoveredWasteInfo = {
+                         usedInSheet: usage.usedInSheet?.fileName || `Sheet #${usage.usedInSheetId}`,
+                         wasteId: waste.id.toString()
+                     };
+                     cut.originalWaste = cut.waste;
+                     cut.waste = Math.max(0, cut.waste - recoverAmount);
+                     
+                     totalRecoveredLength += recoverAmount;
+                 }
+              }
+            });
+
+            // Update Summary if recovery happened
+            if (totalRecoveredLength > 0 && fullResult.summary) {
+                fullResult.summary.totalWasteLength = Math.max(0, fullResult.summary.totalWasteLength - totalRecoveredLength);
+                // Also update postgres totalWaste snapshot in the return object (not DB)
+                // pgResult.totalWaste is Decimal from Prisma, convert to number
+                (fullResult as any).totalWaste = Math.max(0, Number(fullResult.totalWaste) - totalRecoveredLength);
+                
+                // Recalculate Percentage
+                const totalInputLength = fullResult.totalBarsUsed * 12.0; // Standard 12m assumption
+                if (totalInputLength > 0) {
+                    fullResult.summary.totalWastePercentage = (fullResult.summary.totalWasteLength / totalInputLength) * 100;
+                }
+            }
+          }
+
+          return fullResult;
+        } catch (error) {
+          console.error(`[Results] Error enriching result ${pgResult.id}:`, error);
           return pgResult;
         }
       })

@@ -99,6 +99,13 @@ export interface DetailedCut {
     sourceBarNumber: number;
     originalLength: number;
   };
+  isWasteRecovered?: boolean;
+  recoveredAmount?: number;
+  recoveredWasteInfo?: {
+    usedInSheet: string;
+    wasteId: string;
+  };
+  originalWaste?: number;
 }
 
 export interface CutInstruction {

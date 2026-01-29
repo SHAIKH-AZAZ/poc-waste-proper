@@ -2,21 +2,19 @@ import * as XLSX from "xlsx";
 import type { BarCuttingDisplay } from "@/types/BarCuttingRow";
 import type { CuttingStockResult } from "@/types/CuttingStock";
 import { getUniqueDiaFromDisplay } from "./barCodeUtils";
-import { CuttingStockPreprocessor } from "./cuttingStockPreprocessor";
-import { getWorkerManager } from "./workerManager";
 
 /**
  * Export cutting stock results for all diameters to a single Excel file
  */
 export async function exportAllDiasToExcel(
+  sheetId: number,
   displayData: BarCuttingDisplay[],
   fileName: string,
   onProgress?: (dia: number, current: number, total: number) => void,
-  generatedWaste: any[] = [] // Optional generated waste for live tracking
+  generatedWaste: any[] = [] // Optional generated waste (deprecated, server handles lookup)
 ): Promise<void> {
   const uniqueDias = getUniqueDiaFromDisplay(displayData);
-  const preprocessor = new CuttingStockPreprocessor();
-  const workerManager = getWorkerManager();
+  // Preprocessor and worker removed - using server API
 
   // Create workbook
   const workbook = XLSX.utils.book_new();
@@ -37,17 +35,28 @@ export async function exportAllDiasToExcel(
     onProgress?.(dia, i + 1, uniqueDias.length);
 
     try {
-      // Preprocess data for this diameter
-      const requests = preprocessor.convertToCuttingRequests(displayData);
+      // Call Server-Side API (No DB Save - Preview Mode)
+      // This will return results patched with "Net Waste" status if applicable
+      const response = await fetch("/api/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sheetId,
+          dia,
+          saveToDb: false,
+        }),
+      });
 
-      // Run both algorithms
-      let { greedy, dynamic } = await workerManager.runBoth(requests, dia);
+      const data = await response.json();
 
-      // Patch results with live waste data if available
-      if (generatedWaste.length > 0) {
-        greedy = patchResultWithLiveWaste(greedy, generatedWaste);
-        dynamic = patchResultWithLiveWaste(dynamic, generatedWaste);
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || "Calculation failed on server");
       }
+
+      const greedy: CuttingStockResult = data.results.greedy;
+      const dynamic: CuttingStockResult = data.results.dynamic;
+      
+      // Removed client-side patching - server handles it with saveToDb:false
 
       // Add to summary
       const bestAlgorithm =

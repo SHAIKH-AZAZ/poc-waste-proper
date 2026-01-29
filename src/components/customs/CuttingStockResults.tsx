@@ -36,50 +36,14 @@ export default function CuttingStockResults({
   };
   if (isLoading) {
     return (
-      <div className="w-full max-w-7xl mx-auto p-6 bg-white rounded-xl shadow-lg mb-6">
-        <div className="py-8">
-          <h3 className="text-xl font-bold text-gray-800 mb-6 text-center">
-            Calculating Optimal Cutting Patterns...
-          </h3>
-
-          {/* Greedy Algorithm Progress */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-blue-700">Greedy Algorithm</span>
-              <span className="text-sm font-medium text-blue-700">{greedyProgress.percentage}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-              <div
-                className="bg-blue-500 h-full transition-all duration-300 ease-out"
-                style={{ width: `${greedyProgress.percentage}%` }}
-              />
-            </div>
-            {greedyProgress.stage && (
-              <p className="text-xs text-gray-600 mt-1">{greedyProgress.stage}</p>
-            )}
-          </div>
-
-          {/* Dynamic Programming Progress */}
-          <div className="mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-green-700">Dynamic Programming</span>
-              <span className="text-sm font-medium text-green-700">{dynamicProgress.percentage}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-              <div
-                className="bg-green-500 h-full transition-all duration-300 ease-out"
-                style={{ width: `${dynamicProgress.percentage}%` }}
-              />
-            </div>
-            {dynamicProgress.stage && (
-              <p className="text-xs text-gray-600 mt-1">{dynamicProgress.stage}</p>
-            )}
-          </div>
-
-          <p className="text-center text-sm text-gray-500 mt-6">
-            Running algorithms in parallel using Web Workers...
-          </p>
-        </div>
+      <div className="w-full max-w-7xl mx-auto p-6 bg-white rounded-xl shadow-lg mb-6 flex flex-col items-center justify-center py-12">
+        <div className="w-16 h-16 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mb-6"></div>
+        <h3 className="text-xl font-bold text-gray-800 mb-2">
+          Calculating Optimization...
+        </h3>
+        <p className="text-gray-500 text-sm">
+          Processing on server. This may take a moment for large datasets.
+        </p>
       </div>
     );
   }
