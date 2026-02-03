@@ -15,6 +15,7 @@ import type { BarCuttingDisplay } from "@/types/BarCuttingRow";
 import type { CuttingStockResult, WastePiece } from "@/types/CuttingStock";
 import { exportAllDiasToExcel } from "@/utils/exportAllDias";
 import { WASTE_MIN_LENGTH_MM } from "@/constants/config";
+import { compressData } from "@/utils/compression";
 
 interface AvailableWasteForDia {
   dia: number;
@@ -590,15 +591,26 @@ export default function SheetPage() {
         }
       }
 
+
+
+      const payload = {
+        sheetId: parseInt(sheetId),
+        dia,
+        greedyResult: payloadGreedy,
+        dynamicResult: payloadDynamic,
+        wasteItems,
+      };
+
+      console.log(`[Sheet] Compressing payload...`);
+      const compressedData = compressData(payload);
+      console.log(`[Sheet] Payload compressed. Sending request...`);
+
       const response = await fetch("/api/results", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sheetId: parseInt(sheetId),
-          dia,
-          greedyResult: payloadGreedy,
-          dynamicResult: payloadDynamic,
-          wasteItems,
+          compressed: true,
+          data: compressedData
         }),
       });
 

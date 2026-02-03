@@ -4,11 +4,24 @@ import { getMongoDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import type { CuttingStockResult } from "@/types/CuttingStock";
 import { WASTE_MIN_LENGTH_MM } from "@/constants/config";
+import { decompressData } from "@/utils/compression";
 
 // POST - Save the BEST calculation result (compares greedy vs dynamic)
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    let body = await req.json();
+    
+    // Decompress if needed
+    if (body.compressed && body.data) {
+      console.log("[Results] Received compressed payload, decompressing...");
+      try {
+        body = decompressData(body.data);
+      } catch (e) {
+        console.error("[Results] Decompression failed", e);
+        return NextResponse.json({ error: "Decompression failed" }, { status: 400 });
+      }
+    }
+
     const {
       sheetId,
       dia,
