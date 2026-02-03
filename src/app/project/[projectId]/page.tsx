@@ -89,24 +89,32 @@ export default function ProjectPage() {
     setLoading(true);
     setError(null);
     try {
-      // Fetch sheets
-      const sheetsRes = await fetch(`/api/sheets?projectId=${projectId}`);
-      const sheetsData = await sheetsRes.json();
+      // Parallelize requests for better performance
+      const [sheetsRes, wasteRes, projectsRes] = await Promise.all([
+        fetch(`/api/sheets?projectId=${projectId}`),
+        // Initial load: Only fetch summary/SQL data, skip heavy Mongo lookups
+        fetch(`/api/waste?projectId=${projectId}&summaryOnly=true`),
+        fetch("/api/projects")
+      ]);
+
+      const [sheetsData, wasteData, projectsData] = await Promise.all([
+        sheetsRes.json(),
+        wasteRes.json(),
+        projectsRes.json()
+      ]);
+
+      // Handle Sheets Response
       if (sheetsData.success) {
         setSheets(sheetsData.sheets);
       }
 
-      // Fetch waste inventory
-      const wasteRes = await fetch(`/api/waste?projectId=${projectId}`);
-      const wasteData = await wasteRes.json();
+      // Handle Waste Response
       if (wasteData.success) {
         setWaste(wasteData.waste);
         setWasteSummary(wasteData.summary);
       }
 
-      // Get project name from projects list
-      const projectsRes = await fetch("/api/projects");
-      const projectsData = await projectsRes.json();
+      // Handle Projects Response
       if (projectsData.success) {
         const project = projectsData.projects.find((p: { id: number }) => p.id === parseInt(projectId));
         if (project) {
@@ -119,6 +127,33 @@ export default function ProjectPage() {
       setLoading(false);
     }
   }, [projectId]);
+
+  // Lazy load detailed waste data (with Mongo origins) when needed
+  const fetchWasteDetails = async (dia: number) => {
+    try {
+      // Check if we already have details for this dia (optimization)
+      const existingItems = waste.filter(w => w.dia === dia);
+      const hasDetails = existingItems.some(w => w.cutsOnSourceBar && w.cutsOnSourceBar.length > 0);
+
+      // If we simply have empty source bars, it might be that there ARE no cuts, or we haven't fetched them.
+      // But typically "summaryOnly" returns empty arrays.
+      // To be safe, we just fetch if we are in a "summary" state (which we can assume if we haven't fetched details yet).
+      // A simpler check: just fetch it. The API is now fast enough for a single dia.
+
+      const res = await fetch(`/api/waste?projectId=${projectId}&dia=${dia}`); // full fetch for this dia
+      const data = await res.json();
+
+      if (data.success) {
+        // Merge new detailed items into existing waste state
+        setWaste(prev => {
+          const otherDiaWaste = prev.filter(w => w.dia !== dia);
+          return [...otherDiaWaste, ...data.waste];
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load waste details", err);
+    }
+  };
 
   useEffect(() => {
     fetchProjectData();
@@ -533,7 +568,14 @@ export default function ProjectPage() {
                     return (
                       <button
                         key={dia}
-                        onClick={() => setSelectedWasteDia(isSelected ? null : dia)}
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedWasteDia(null);
+                          } else {
+                            setSelectedWasteDia(dia);
+                            fetchWasteDetails(dia);
+                          }
+                        }}
                         className={`p-4 rounded-xl border transition-all text-left ${isSelected
                           ? "bg-blue-50 border-blue-400 shadow-sm ring-1 ring-blue-400/20"
                           : "bg-gradient-to-br from-slate-50 to-slate-100/50 border-slate-200 hover:border-blue-200 hover:bg-white"

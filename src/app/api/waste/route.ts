@@ -7,12 +7,14 @@ import { WASTE_MIN_LENGTH_MM } from "@/constants/config";
 const prisma = new PrismaClient();
 
 // GET - Fetch waste inventory for a project
+// GET - Fetch waste inventory for a project
 export async function GET(req: NextRequest) {
   try {
     const projectId = req.nextUrl.searchParams.get("projectId");
     const dia = req.nextUrl.searchParams.get("dia");
     const status = req.nextUrl.searchParams.get("status");
     const sourceSheetId = req.nextUrl.searchParams.get("sourceSheetId");
+    const summaryOnly = req.nextUrl.searchParams.get("summaryOnly") === "true";
 
     if (!projectId) {
       return NextResponse.json(
@@ -21,7 +23,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    console.log(`[Waste] Fetching waste for project ${projectId}, dia: ${dia || "all"}, status: ${status || "all"}, sourceSheet: ${sourceSheetId || "all"}`);
+    console.log(`[Waste] Fetching waste for project ${projectId}, dia: ${dia || "all"}, status: ${status || "all"}, summaryOnly: ${summaryOnly}`);
 
     // Build where clause
     const where: {
@@ -46,6 +48,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get waste from PostgreSQL
+    // Optimize: If summaryOnly, we might not need all relations, but for now keeping them is fine as SQL is fast
     const wasteItems = await prisma.wasteInventory.findMany({
       where,
       include: {
@@ -73,33 +76,60 @@ export async function GET(req: NextRequest) {
 
     console.log(`[Waste] Found ${wasteItems.length} waste items`);
 
-    // Get origin details from MongoDB
-    const db = await getMongoDb();
-    const wasteOriginsCollection = db.collection("waste_origins");
+    let enrichedWaste = wasteItems;
 
-    const enrichedWaste = await Promise.all(
-      wasteItems.map(async (item) => {
-        let cutsOnSourceBar: { barCode: string; length: number; element: string }[] = [];
+    // Only fetch origin details from MongoDB if NOT summaryOnly
+    if (!summaryOnly && wasteItems.length > 0) {
+      const db = await getMongoDb();
+      const wasteOriginsCollection = db.collection("waste_origins");
 
-        if (item.mongoCutsOriginId) {
+      // Collect all Mongo IDs
+      const mongoIds = wasteItems
+        .map(w => w.mongoCutsOriginId)
+        .filter((id): id is string => !!id)
+        .map(id => {
           try {
-            const originData = await wasteOriginsCollection.findOne({
-              _id: new ObjectId(item.mongoCutsOriginId),
-            });
-            if (originData) {
-              cutsOnSourceBar = originData.cutsOnSourceBar || [];
-            }
+            return new ObjectId(id);
           } catch {
-            // Ignore invalid ObjectId
+            return null;
           }
-        }
+        })
+        .filter((id): id is ObjectId => id !== null);
 
-        return {
-          ...item,
-          cutsOnSourceBar,
-        };
-      })
-    );
+      if (mongoIds.length > 0) {
+        // Single batch query
+        const origins = await wasteOriginsCollection.find({
+          _id: { $in: mongoIds }
+        }).toArray();
+
+        // Map origins by ID string
+        const originMap = new Map<string, any>();
+        origins.forEach(o => originMap.set(o._id.toString(), o));
+
+        // Attach to waste items
+        enrichedWaste = wasteItems.map((item) => {
+          let cutsOnSourceBar: { barCode: string; length: number; element: string }[] = [];
+          
+          if (item.mongoCutsOriginId) {
+             const originData = originMap.get(item.mongoCutsOriginId);
+             if (originData) {
+               cutsOnSourceBar = originData.cutsOnSourceBar || [];
+             }
+          }
+
+          return {
+            ...item,
+            cutsOnSourceBar,
+          };
+        });
+      } else {
+         // No valid mongo IDs, return items with empty cutsOnSourceBar
+         enrichedWaste = wasteItems.map(item => ({ ...item, cutsOnSourceBar: [] }));
+      }
+    } else {
+        // Summary mode or no items: return items without enriching (or empty cuts array)
+        enrichedWaste = wasteItems.map(item => ({ ...item, cutsOnSourceBar: [] }));
+    }
 
     // Calculate summary
     const summary = {
