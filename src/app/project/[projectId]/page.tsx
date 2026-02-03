@@ -13,6 +13,10 @@ import {
   IconRecycle,
   IconInfoCircle,
   IconChartPie,
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronsLeft,
+  IconChevronsRight,
 } from "@tabler/icons-react";
 import DashboardAnalytics from "./components/DashboardAnalytics";
 
@@ -84,6 +88,10 @@ export default function ProjectPage() {
   const [activeTab, setActiveTab] = useState<"sheets" | "waste" | "dashboard">("sheets");
   const [selectedWasteDia, setSelectedWasteDia] = useState<number | null>(null);
   const [selectedWasteStatus, setSelectedWasteStatus] = useState<string | null>(null);
+
+  // Waste Pagination State
+  const [currentWastePage, setCurrentWastePage] = useState(1);
+  const [wasteItemsPerPage, setWasteItemsPerPage] = useState(50);
 
   const fetchProjectData = useCallback(async () => {
     setLoading(true);
@@ -245,6 +253,23 @@ export default function ProjectPage() {
     const statusMatch = selectedWasteStatus ? item.status === selectedWasteStatus : true;
     return diaMatch && statusMatch;
   });
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentWastePage(1);
+  }, [selectedWasteDia, selectedWasteStatus]);
+
+  // Pagination Logic
+  const totalWastePages = Math.ceil(filteredWaste.length / wasteItemsPerPage);
+  const paginatedWaste = filteredWaste.slice(
+    (currentWastePage - 1) * wasteItemsPerPage,
+    currentWastePage * wasteItemsPerPage
+  );
+
+  const goToWastePage = (page: number) => {
+    const p = Math.max(1, Math.min(page, totalWastePages));
+    setCurrentWastePage(p);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 py-8">
@@ -609,103 +634,167 @@ export default function ProjectPage() {
                     {`No waste pieces found for Dia ${selectedWasteDia}mm ${selectedWasteStatus ? `with status ${selectedWasteStatus}` : ''}.`}
                   </div>
                 ) : (
-                  <div className="overflow-x-auto max-h-[650px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
-                    <table className="w-full text-sm border-separate border-spacing-0">
-                      <thead className="sticky top-0 z-20">
-                        <tr className="bg-white/70 backdrop-blur-md sticky top-0 z-20">
-                          <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 first:pl-8">ID</th>
-                          <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Dia</th>
-                          <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Length</th>
-                          <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Source Sheet</th>
-                          <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Origin (Bars)</th>
-                          <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Used In</th>
-                          <th className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 last:pr-8">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {filteredWaste.map((item, idx) => (
-                          <tr
-                            key={item.id}
-                            className={`group transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'} hover:bg-blue-50/40`}
-                          >
-                            <td className="px-6 py-4 first:pl-8">
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[10px] font-bold border border-slate-200 group-hover:bg-white transition-colors">
-                                W-{item.id}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-                                <span className="font-semibold text-slate-700">{item.dia}mm</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <span className="font-bold text-indigo-600 tabular-nums">
-                                {formatLength(item.length)}
-                              </span>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex flex-col gap-0.5">
-                                <div className="text-slate-900 font-semibold text-xs flex items-center gap-1.5">
-                                  <IconFile size={12} className="text-slate-400" />
-                                  Sheet #{item.sourceSheet.sheetNumber}
+                  <>
+                    <div className="overflow-x-auto max-h-[650px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+                      <table className="w-full text-sm border-separate border-spacing-0">
+                        <thead className="sticky top-0 z-20">
+                          <tr className="bg-white/70 backdrop-blur-md sticky top-0 z-20">
+                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 first:pl-8">ID</th>
+                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Dia</th>
+                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Length</th>
+                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Source Sheet</th>
+                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Origin (Bars)</th>
+                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Used In</th>
+                            <th className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 last:pr-8">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {paginatedWaste.map((item, idx) => (
+                            <tr
+                              key={item.id}
+                              className={`group transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'} hover:bg-blue-50/40`}
+                            >
+                              <td className="px-6 py-4 first:pl-8">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[10px] font-bold border border-slate-200 group-hover:bg-white transition-colors">
+                                  W-{item.id}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-2">
+                                  <span className="w-2 h-2 rounded-full bg-slate-400"></span>
+                                  <span className="font-semibold text-slate-700">{item.dia}mm</span>
                                 </div>
-                                <div className="text-[10px] text-slate-400 font-medium truncate max-w-[150px]" title={item.sourceSheet.fileName}>
-                                  {item.sourceSheet.fileName}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex flex-col gap-1">
-                                <div className="text-slate-700 font-medium text-xs">Bar #{item.sourceBarNumber}</div>
-                                {item.cutsOnSourceBar && item.cutsOnSourceBar.length > 0 && (
-                                  <div className="flex flex-wrap gap-1">
-                                    {item.cutsOnSourceBar.slice(0, 2).map((cut, i) => (
-                                      <span key={i} className="text-[9px] px-1.5 bg-white border border-slate-200 rounded text-slate-500 font-medium">
-                                        {formatLength(cut.length)}
-                                      </span>
-                                    ))}
-                                    {item.cutsOnSourceBar.length > 2 && (
-                                      <span className="text-[9px] text-slate-400 font-medium">
-                                        +{item.cutsOnSourceBar.length - 2} more
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              {item.status === 'used' && item.usages && item.usages.length > 0 ? (
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className="font-bold text-indigo-600 tabular-nums">
+                                  {formatLength(item.length)}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4">
                                 <div className="flex flex-col gap-0.5">
                                   <div className="text-slate-900 font-semibold text-xs flex items-center gap-1.5">
-                                    <IconRecycle size={12} className="text-emerald-500" />
-                                    Sheet #{item.usages[0].usedInSheet.sheetNumber}
+                                    <IconFile size={12} className="text-slate-400" />
+                                    Sheet #{item.sourceSheet.sheetNumber}
                                   </div>
-                                  <Link
-                                    href={`/project/${projectId}/sheet/${item.usages[0].usedInSheet.id}`}
-                                    className="text-[10px] text-blue-500 hover:text-blue-700 hover:underline font-medium truncate max-w-[150px]"
-                                    title={item.usages[0].usedInSheet.fileName}
-                                  >
-                                    {item.usages[0].usedInSheet.fileName}
-                                  </Link>
+                                  <div className="text-[10px] text-slate-400 font-medium truncate max-w-[150px]" title={item.sourceSheet.fileName}>
+                                    {item.sourceSheet.fileName}
+                                  </div>
                                 </div>
-                              ) : (
-                                <span className="text-slate-300 text-xs">-</span>
-                              )}
-                            </td>
-                            <td className="px-6 py-4 text-right last:pr-8">
-                              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${item.status === 'available'
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                : 'bg-slate-100 text-slate-500 border-slate-200'
-                                }`}>
-                                {item.status}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex flex-col gap-1">
+                                  <div className="text-slate-700 font-medium text-xs">Bar #{item.sourceBarNumber}</div>
+                                  {item.cutsOnSourceBar && item.cutsOnSourceBar.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                      {item.cutsOnSourceBar.slice(0, 2).map((cut, i) => (
+                                        <span key={i} className="text-[9px] px-1.5 bg-white border border-slate-200 rounded text-slate-500 font-medium">
+                                          {formatLength(cut.length)}
+                                        </span>
+                                      ))}
+                                      {item.cutsOnSourceBar.length > 2 && (
+                                        <span className="text-[9px] text-slate-400 font-medium">
+                                          +{item.cutsOnSourceBar.length - 2} more
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                {item.status === 'used' && item.usages && item.usages.length > 0 ? (
+                                  <div className="flex flex-col gap-0.5">
+                                    <div className="text-slate-900 font-semibold text-xs flex items-center gap-1.5">
+                                      <IconRecycle size={12} className="text-emerald-500" />
+                                      Sheet #{item.usages[0].usedInSheet.sheetNumber}
+                                    </div>
+                                    <Link
+                                      href={`/project/${projectId}/sheet/${item.usages[0].usedInSheet.id}`}
+                                      className="text-[10px] text-blue-500 hover:text-blue-700 hover:underline font-medium truncate max-w-[150px]"
+                                      title={item.usages[0].usedInSheet.fileName}
+                                    >
+                                      {item.usages[0].usedInSheet.fileName}
+                                    </Link>
+                                  </div>
+                                ) : (
+                                  <span className="text-slate-300 text-xs">-</span>
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-right last:pr-8">
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${item.status === 'available'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                  : 'bg-slate-100 text-slate-500 border-slate-200'
+                                  }`}>
+                                  {item.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Waste Pagination Footer */}
+                    <div className="bg-slate-50 border-t border-slate-100 px-6 py-3 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-500 font-medium">Rows:</span>
+                          <select
+                            value={wasteItemsPerPage}
+                            onChange={(e) => {
+                              setWasteItemsPerPage(Number(e.target.value));
+                              setCurrentWastePage(1);
+                            }}
+                            className="bg-white border border-slate-200 text-slate-700 text-xs rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1 pl-2 pr-6"
+                          >
+                            <option value={10}>10</option>
+                            <option value={20}>20</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                          </select>
+                        </div>
+                        <span className="text-xs text-slate-400 hidden sm:inline">
+                          {Math.min((currentWastePage - 1) * wasteItemsPerPage + 1, filteredWaste.length)}–
+                          {Math.min(currentWastePage * wasteItemsPerPage, filteredWaste.length)} of {filteredWaste.length}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => goToWastePage(1)}
+                          disabled={currentWastePage === 1}
+                          className="p-1 rounded hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed text-slate-500 transition-all active:scale-95"
+                        >
+                          <IconChevronsLeft size={16} />
+                        </button>
+                        <button
+                          onClick={() => goToWastePage(currentWastePage - 1)}
+                          disabled={currentWastePage === 1}
+                          className="p-1 rounded hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed text-slate-500 transition-all active:scale-95"
+                        >
+                          <IconChevronLeft size={16} />
+                        </button>
+
+                        <span className="px-3 text-xs font-semibold text-slate-700">
+                          {currentWastePage} <span className="text-slate-400 font-normal">/ {totalWastePages}</span>
+                        </span>
+
+                        <button
+                          onClick={() => goToWastePage(currentWastePage + 1)}
+                          disabled={currentWastePage === totalWastePages}
+                          className="p-1 rounded hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed text-slate-500 transition-all active:scale-95"
+                        >
+                          <IconChevronRight size={16} />
+                        </button>
+                        <button
+                          onClick={() => goToWastePage(totalWastePages)}
+                          disabled={currentWastePage === totalWastePages}
+                          className="p-1 rounded hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed text-slate-500 transition-all active:scale-95"
+                        >
+                          <IconChevronsRight size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
             ) : (
