@@ -175,7 +175,7 @@ export default function SheetPage() {
         // STEP 1: Check if result already exists in database
         try {
           console.log(`[Sheet] Checking for existing result for dia ${dia}...`);
-          const existingRes = await fetch(`/api/results?sheetId=${sheetId}`);
+          const existingRes = await fetch(`/api/results?sheetId=${sheetId}`, { cache: "no-store" });
           const existingData = await existingRes.json();
 
           console.log(`[Sheet] API response:`, existingData);
@@ -572,9 +572,11 @@ export default function SheetPage() {
         loadSheetData();
       } else {
         console.error(`[Sheet] Failed to save:`, data.error);
+        setCalculationError(`Saved Locally Only. Server Error: ${data.error}`);
       }
     } catch (err) {
       console.error("[Sheet] Error saving results:", err);
+      setCalculationError(`Saved Locally Only. Network Error: ${err instanceof Error ? err.message : String(err)}`);
     }
   };
 
