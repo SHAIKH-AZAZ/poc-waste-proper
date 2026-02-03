@@ -172,45 +172,53 @@ export async function POST(req: NextRequest) {
     // ============================================
     // STEP 5: Save Waste to Inventory (>= 2m only)
     // ============================================
+    // ============================================
+    // STEP 5: Save Waste to Inventory (>= 2m only)
+    // ============================================
     console.log(`[Results] Received ${wasteItems?.length || 0} waste items to process`);
     
     if (wasteItems && wasteItems.length > 0) {
       const wasteOriginsCollection = db.collection("waste_origins");
-      let savedWasteCount = 0;
+      
+      const validWasteItems = wasteItems.filter(item => item.length >= WASTE_MIN_LENGTH_MM);
+      
+      if (validWasteItems.length > 0) {
+        console.log(`[Results] Saving ${validWasteItems.length} valid waste items (>= ${WASTE_MIN_LENGTH_MM}mm)`);
 
-      for (const item of wasteItems) {
-        console.log(`[Results] Processing waste: dia=${item.dia}, length=${item.length}mm`);
-        // Only save waste >= minimum threshold
-        if (item.length >= WASTE_MIN_LENGTH_MM) {
-          // Store origin in MongoDB
-          const originResult = await wasteOriginsCollection.insertOne({
-            projectId: sheet.projectId,
-            sheetId,
-            sourceBarNumber: item.sourceBarNumber,
-            sourcePatternId: item.sourcePatternId,
-            cutsOnSourceBar: item.cutsOnSourceBar,
-            createdAt: new Date(),
-          });
+        // 1. Batch insert into MongoDB (Origins)
+        const mongoDocs = validWasteItems.map(item => ({
+          projectId: sheet.projectId,
+          sheetId,
+          sourceBarNumber: item.sourceBarNumber,
+          sourcePatternId: item.sourcePatternId,
+          cutsOnSourceBar: item.cutsOnSourceBar,
+          createdAt: new Date(),
+        }));
 
-          // Store in PostgreSQL
-          await prisma.wasteInventory.create({
-            data: {
-              projectId: sheet.projectId,
-              sourceSheetId: sheetId,
-              dia: item.dia,
-              length: item.length,
-              sourceBarNumber: item.sourceBarNumber,
-              sourcePatternId: item.sourcePatternId,
-              mongoCutsOriginId: originResult.insertedId.toString(),
-              status: "available",
-            },
-          });
+        const mongoRes = await wasteOriginsCollection.insertMany(mongoDocs);
+        const insertedIds = mongoRes.insertedIds;
 
-          savedWasteCount++;
-        }
+        // 2. Batch insert into PostgreSQL (Inventory)
+        // Note: insertedIds is an object { 0: ObjectId, 1: ObjectId ... }
+        const pgData = validWasteItems.map((item, index) => ({
+          projectId: sheet.projectId,
+          sourceSheetId: sheetId,
+          dia: item.dia,
+          length: item.length,
+          sourceBarNumber: item.sourceBarNumber,
+          sourcePatternId: item.sourcePatternId,
+          mongoCutsOriginId: insertedIds[index].toString(),
+          status: "available",
+        }));
+
+        await prisma.wasteInventory.createMany({
+          data: pgData,
+        });
+
+        console.log(`[Results] Successfully batch saved ${validWasteItems.length} waste items`);
+      } else {
+        console.log(`[Results] No waste items met the minimum length criteria`);
       }
-
-      console.log(`[Results] Saved ${savedWasteCount} waste items (discarded ${wasteItems.length - savedWasteCount} < 2m)`);
     }
 
     // ============================================
