@@ -13,7 +13,6 @@ const adapter = new PrismaPg(pool);
 
 export const prisma =
   globalForPrisma.prisma ??
-  // @ts-expect-error - adapter property is valid in Prisma 7 but types might need update or are generic
   new PrismaClient({ adapter });
 
 if (process.env.NODE_ENV !== "production") {
