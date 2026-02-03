@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getMongoDb } from "@/lib/mongodb";
-
-const prisma = new PrismaClient();
 
 export async function POST(req: NextRequest) {
   try {

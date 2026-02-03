@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getMongoDb } from "@/lib/mongodb";
-
-const prisma = new PrismaClient();
 
 // GET all projects
 export async function GET() {

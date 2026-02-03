@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getMongoDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import { WASTE_MIN_LENGTH_MM } from "@/constants/config";
-
-const prisma = new PrismaClient();
 
 // GET - Fetch waste inventory for a project
 // GET - Fetch waste inventory for a project

@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getMongoDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
 import type { CuttingStockResult } from "@/types/CuttingStock";
 import { WASTE_MIN_LENGTH_MM } from "@/constants/config";
-
-const prisma = new PrismaClient();
 
 // POST - Save the BEST calculation result (compares greedy vs dynamic)
 export async function POST(req: NextRequest) {

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getMongoDb } from "@/lib/mongodb";
 import { ObjectId } from "mongodb";
-
-const prisma = new PrismaClient();
 
 // GET - Fetch all sheets for a project
 export async function GET(req: NextRequest) {
