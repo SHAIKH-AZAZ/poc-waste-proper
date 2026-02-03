@@ -491,6 +491,43 @@ export default function SheetPage() {
 
       console.log(`[Sheet] Best result detailedCuts:`, bestResult?.detailedCuts?.length || 0);
 
+      // Client-side Optimization: Determine winner to reduce payload size (Fix 413 Error)
+      // Instead of sending both results, we only send the one that the server would favor anyway.
+      let payloadGreedy = null;
+      let payloadDynamic = null;
+
+      if (greedyRes && dynamicRes) {
+        // Logic must match Server's comparison logic exactly or be safe enough
+        // Server prioritizes: 1. Fewer New Bars, 2. Fewer Total Bars, 3. Less Waste
+        const greedyNew = greedyRes.summary.newBarsUsed ?? greedyRes.totalBarsUsed;
+        const dynamicNew = dynamicRes.summary.newBarsUsed ?? dynamicRes.totalBarsUsed;
+
+        if (greedyNew < dynamicNew) {
+          payloadGreedy = greedyRes; // Greedy wins on new bars
+        } else if (dynamicNew < greedyNew) {
+          payloadDynamic = dynamicRes; // Dynamic wins on new bars
+        } else {
+          // New bars equal, check total bars
+          if (greedyRes.totalBarsUsed < dynamicRes.totalBarsUsed) {
+            payloadGreedy = greedyRes;
+          } else if (dynamicRes.totalBarsUsed < greedyRes.totalBarsUsed) {
+            payloadDynamic = dynamicRes;
+          } else {
+            // Total bars equal, check waste. Greedy wins ties.
+            if (greedyRes.totalWaste <= dynamicRes.totalWaste) {
+              payloadGreedy = greedyRes;
+            } else {
+              payloadDynamic = dynamicRes;
+            }
+          }
+        }
+      } else {
+        payloadGreedy = greedyRes;
+        payloadDynamic = dynamicRes;
+      }
+
+      console.log(`[Sheet] Optimizing Result Payload: Sending ${payloadGreedy ? 'Greedy' : 'Dynamic'} result only`);
+
       // Find which waste pieces were ACTUALLY used by the algorithm
       const actuallyUsedWasteIds = new Set<string>();
       bestResult?.detailedCuts?.forEach((cut) => {
@@ -559,8 +596,8 @@ export default function SheetPage() {
         body: JSON.stringify({
           sheetId: parseInt(sheetId),
           dia,
-          greedyResult: greedyRes,
-          dynamicResult: dynamicRes,
+          greedyResult: payloadGreedy,
+          dynamicResult: payloadDynamic,
           wasteItems,
         }),
       });
