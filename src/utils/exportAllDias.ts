@@ -11,7 +11,8 @@ import { getWorkerManager } from "./workerManager";
 export async function exportAllDiasToExcel(
   displayData: BarCuttingDisplay[],
   fileName: string,
-  onProgress?: (dia: number, current: number, total: number) => void
+  onProgress?: (dia: number, current: number, total: number) => void,
+  generatedWaste: any[] = [] // Optional generated waste for live tracking
 ): Promise<void> {
   const uniqueDias = getUniqueDiaFromDisplay(displayData);
   const preprocessor = new CuttingStockPreprocessor();
@@ -27,7 +28,7 @@ export async function exportAllDiasToExcel(
     ["Generated:", new Date().toLocaleString()],
     ["Total Diameters:", uniqueDias.length],
     [],
-    ["Dia", "Greedy Bars", "Greedy Waste (m)", "Dynamic Bars", "Dynamic Waste (m)", "Best Algorithm"],
+    ["Dia", "Greedy Bars", "Greedy Waste (m)", "Greedy Waste (%)", "Greedy Waste Reused", "Dynamic Bars", "Dynamic Waste (m)", "Dynamic Waste (%)", "Best Algorithm"],
   ];
 
   // Process each diameter
@@ -40,7 +41,13 @@ export async function exportAllDiasToExcel(
       const requests = preprocessor.convertToCuttingRequests(displayData);
 
       // Run both algorithms
-      const { greedy, dynamic } = await workerManager.runBoth(requests, dia);
+      let { greedy, dynamic } = await workerManager.runBoth(requests, dia);
+
+      // Patch results with live waste data if available
+      if (generatedWaste.length > 0) {
+        greedy = patchResultWithLiveWaste(greedy, generatedWaste);
+        dynamic = patchResultWithLiveWaste(dynamic, generatedWaste);
+      }
 
       // Add to summary
       const bestAlgorithm =
@@ -50,12 +57,20 @@ export async function exportAllDiasToExcel(
           ? "Dynamic"
           : "Equal";
 
+      // Count waste pieces reused in greedy result
+      const greedyWasteReused = greedy.detailedCuts.filter(
+        (d) => (d as { isFromWaste?: boolean }).isFromWaste || d.patternId?.startsWith("waste_")
+      ).length;
+
       summaryData.push([
         dia,
         greedy.totalBarsUsed,
         parseFloat(greedy.totalWaste.toFixed(3)),
+        parseFloat(greedy.summary.totalWastePercentage.toFixed(2)),
+        greedyWasteReused,
         dynamic.totalBarsUsed,
         parseFloat(dynamic.totalWaste.toFixed(3)),
+        parseFloat(dynamic.summary.totalWastePercentage.toFixed(2)),
         bestAlgorithm,
       ]);
 
@@ -81,7 +96,10 @@ export async function exportAllDiasToExcel(
     { wch: 8 },
     { wch: 15 },
     { wch: 18 },
+    { wch: 20 },
     { wch: 15 },
+    { wch: 18 },
+    { wch: 18 },
     { wch: 18 },
     { wch: 20 },
   ];
@@ -102,13 +120,16 @@ function addDiaSheet(
 ): void {
   const STANDARD_BAR_LENGTH = 12.0;
 
-  // Create header row
+  // Create header row - added "Source" column to show if bar is from waste inventory
   const headers = [
     "Bar #",
+    "Source",
+    "Bar Length (m)",
     "BarCode",
     "Effective Length (m)",
     "Lap Length (m)",
     "Waste (m)",
+    "Waste (%)",
     "Utilization (%)",
   ];
 
@@ -119,13 +140,38 @@ function addDiaSheet(
     // Group cuts by BarCode
     const cutGroups = groupCutsByBarCode(detail.cuts);
 
+    // Check if this bar is from waste inventory
+    const detailWithWaste = detail as typeof detail & { 
+      isFromWaste?: boolean; 
+      wasteSource?: { 
+        wasteId: string; 
+        sourceSheetId: number;
+        sourceSheetNumber?: number;
+        sourceBarNumber: number; 
+        originalLength: number; 
+      } 
+    };
+    
+    const isFromWaste = detailWithWaste.isFromWaste || detail.patternId?.startsWith("waste_");
+    const wasteSource = detailWithWaste.wasteSource;
+    
+    // Determine bar length (waste pieces have different lengths)
+    const barLength = wasteSource 
+      ? wasteSource.originalLength / 1000  // Convert mm to m
+      : STANDARD_BAR_LENGTH;
+
     // Calculate total used length and waste for this bar
     let totalUsedLength = 0;
     cutGroups.forEach((cut) => {
       totalUsedLength += cut.length;
     });
-    const barWaste = STANDARD_BAR_LENGTH - totalUsedLength;
-    const barUtilization = (totalUsedLength / STANDARD_BAR_LENGTH) * 100;
+    const barWaste = barLength - totalUsedLength;
+    const barUtilization = (totalUsedLength / barLength) * 100;
+
+    // Source description
+    const sourceDesc = isFromWaste 
+      ? `Waste (Sheet #${wasteSource?.sourceSheetNumber || wasteSource?.sourceSheetId || "?"}, Bar #${wasteSource?.sourceBarNumber || "?"})`
+      : "New 12m Bar";
 
     // Add each cut as a separate row
     cutGroups.forEach((cut, index) => {
@@ -134,7 +180,11 @@ function addDiaSheet(
       // Bar # only on first cut
       if (index === 0) {
         row.push(detail.barNumber);
+        row.push(sourceDesc);
+        row.push(parseFloat(barLength.toFixed(3)));
       } else {
+        row.push("");
+        row.push("");
         row.push("");
       }
 
@@ -146,9 +196,18 @@ function addDiaSheet(
 
       // Waste and Utilization only on first cut
       if (index === 0) {
-        row.push(parseFloat(barWaste.toFixed(3)));
+        // If recovered, show text
+        const isRecovered = (detail as any).isWasteRecovered;
+        if (isRecovered) {
+          row.push(`${parseFloat(barWaste.toFixed(3))} (Recovered)`);
+        } else {
+          row.push(parseFloat(barWaste.toFixed(3)));
+        }
+        
+        row.push(parseFloat((100 - barUtilization).toFixed(2))); // Waste %
         row.push(parseFloat(barUtilization.toFixed(2)));
       } else {
+        row.push("");
         row.push("");
         row.push("");
       }
@@ -160,12 +219,15 @@ function addDiaSheet(
   // Create worksheet
   const worksheet = XLSX.utils.aoa_to_sheet(data);
   worksheet["!cols"] = [
-    { wch: 8 },
-    { wch: 15 },
-    { wch: 18 },
-    { wch: 15 },
-    { wch: 12 },
-    { wch: 15 },
+    { wch: 8 },   // Bar #
+    { wch: 28 },  // Source
+    { wch: 14 },  // Bar Length
+    { wch: 25 },  // BarCode
+    { wch: 18 },  // Effective Length
+    { wch: 15 },  // Lap Length
+    { wch: 12 },  // Waste
+    { wch: 12 },  // Waste %
+    { wch: 15 },  // Utilization
   ];
 
   // Truncate sheet name if too long (Excel limit is 31 characters)
@@ -216,4 +278,72 @@ function groupCutsByBarCode(cuts: { barCode: string; length: number; lapLength: 
   }
 
   return result;
+}
+
+/**
+ * Helper to patch result with live waste stats
+ * (Duplicated from SheetPage logic for isolated export)
+ */
+function patchResultWithLiveWaste(result: CuttingStockResult, generatedWaste: any[]): CuttingStockResult {
+  if (!result || generatedWaste.length === 0) return result;
+
+  // Clone result deeply
+  const patched = JSON.parse(JSON.stringify(result));
+  
+  // Filter waste for this dia
+  const relevantWaste = generatedWaste.filter(w => w.dia === result.dia);
+  if (relevantWaste.length === 0) return result;
+
+  let totallyRecoveredLength = 0;
+  
+  // Map waste by Source Bar Number
+  const wasteByBar = new Map<number, any>();
+  relevantWaste.forEach(w => {
+    if (w.status === 'used' && w.usages && w.usages.length > 0) {
+      wasteByBar.set(w.sourceBarNumber, w);
+    }
+  });
+
+  // Iterate detailed cuts and update
+  patched.detailedCuts.forEach((cut: any, index: number) => {
+    const barNum = cut.barNumber || index + 1;
+    const recoveredWaste = wasteByBar.get(barNum);
+    
+    if (recoveredWaste) {
+      // Calculate how much was recovered
+      const recoveredAmount = recoveredWaste.usages.reduce((sum: number, u: any) => sum + (u.cutLength || 0), 0) / 1000;
+      
+      // CRITICAL FIX: Only subtract if source is DIFFERENT from the producing results
+      // (Self-recovery shouldn't reduce net waste of the producer sheet)
+      // Note: In exportAllDias, generatedWaste pieces are ALL from the same project, 
+      // but we want to avoid "self-recovery" indicators if the usage was in the same sheet.
+      // Since we don't have the current sheetId easily here, we skip the detailed indicator 
+      // if it looks like a self-recovery (usage in same sheet as source).
+      const isSelfRecovery = recoveredWaste.usages.some((u: any) => String(u.usedInSheetId) === String(recoveredWaste.sourceSheetId));
+
+      if (!isSelfRecovery) {
+        // Update cut properties
+        cut.isWasteRecovered = true;
+        cut.recoveredAmount = recoveredAmount; // m
+        
+        // Subtract from WASTE
+        const originalWaste = cut.waste;
+        cut.waste = Math.max(0, originalWaste - recoveredAmount);
+        
+        totallyRecoveredLength += recoveredAmount;
+      }
+    }
+  });
+
+  // Update Summary Stats
+  patched.summary.totalWasteLength = Math.max(0, patched.summary.totalWasteLength - totallyRecoveredLength);
+  patched.totalWaste = Math.max(0, patched.totalWaste - totallyRecoveredLength);
+  
+  // Recalculate Percentage
+  const totalInputLength = patched.totalBarsUsed * 12; // Standard 12m
+  if (totalInputLength > 0) {
+    patched.summary.totalWastePercentage = (patched.summary.totalWasteLength / totalInputLength) * 100;
+  }
+
+  return patched;
 }

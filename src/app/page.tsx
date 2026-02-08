@@ -1,316 +1,121 @@
 "use client";
-import { useState, useMemo, useCallback } from "react";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { HeadDemo } from "@/components/customs/Heading";
-import ExcelUploader from "@/components/customs/ExcelUploader";
-import ExcelPreviewTable from "@/components/customs/ExcelPreviewTable";
-import ExcelFormatGuide from "@/components/customs/ExcelFormatGuide";
-import DiaFilter from "@/components/customs/DiaFilter";
-import FileInfoCard from "@/components/customs/FileInfoCard";
-import CuttingStockResults from "@/components/customs/CuttingStockResults";
-import { clearData, downloadResults } from "@/utils/dataUtils";
-import { transformToDisplayFormat, filterDisplayDataByDia } from "@/utils/barCodeUtils";
-import { CuttingStockPreprocessor } from "@/utils/cuttingStockPreprocessor";
-import { getWorkerManager } from "@/utils/workerManager";
-import { exportAllDiasToExcel } from "@/utils/exportAllDias";
-import { analytics } from "@/utils/analytics";
-import type { BarCuttingRaw, BarCuttingDisplay } from "@/types/BarCuttingRow";
-import type { CuttingStockResult } from "@/types/CuttingStock";
+import Link from "next/link";
+import { IconPackage, IconPlus, IconArrowRight } from "@tabler/icons-react";
 
 export default function Home() {
-  const [fileName, setFileName] = useState<string>("");
-  const [, setParsedData] = useState<BarCuttingRaw[] | null>(null);
-  const [displayData, setDisplayData] = useState<BarCuttingDisplay[] | null>(null);
-  const [selectedDia, setSelectedDia] = useState<number | null>(null);
-  const [greedyResult, setGreedyResult] = useState<CuttingStockResult | null>(null);
-  const [dynamicResult, setDynamicResult] = useState<CuttingStockResult | null>(null);
-  const [isCalculating, setIsCalculating] = useState(false);
-  const [greedyProgress, setGreedyProgress] = useState({ stage: "", percentage: 0 });
-  const [dynamicProgress, setDynamicProgress] = useState({ stage: "", percentage: 0 });
-  const [calculationError, setCalculationError] = useState<string | null>(null);
-  const [isDownloadingAll, setIsDownloadingAll] = useState(false);
-  const [downloadAllProgress, setDownloadAllProgress] = useState({ current: 0, total: 0, dia: 0 });
+  const router = useRouter();
 
-  const handleClearData = () => {
-    clearData(setParsedData, setFileName);
-    setDisplayData(null);
-    setSelectedDia(null);
-    setGreedyResult(null);
-    setDynamicResult(null);
-    setGreedyProgress({ stage: "", percentage: 0 });
-    setDynamicProgress({ stage: "", percentage: 0 });
-  };
-
-  const handleDataParsed = (data: BarCuttingRaw[], name: string) => {
-    setParsedData(data);
-    const transformed = transformToDisplayFormat(data);
-    setDisplayData(transformed);
-    setFileName(name);
-    setSelectedDia(null);
-    setGreedyResult(null);
-    setDynamicResult(null);
-    setGreedyProgress({ stage: "", percentage: 0 });
-    setDynamicProgress({ stage: "", percentage: 0 });
-
-    // Track file upload analytics
-    analytics.fileUploaded(name, data.length, 0);
-    analytics.featureUsed("excel_upload", `${data.length} rows processed`);
-  };
-
-  // Filter display data based on selected Dia
-  const filteredDisplayData = useMemo(() => {
-    if (!displayData) return null;
-    if (selectedDia === null) return displayData;
-    return filterDisplayDataByDia(displayData, selectedDia);
-  }, [displayData, selectedDia]);
-
-  // Track large dataset warnings
-  useMemo(() => {
-    if (displayData) {
-      const dataLength = displayData.length;
-      if (dataLength > 2000) {
-        analytics.performanceMetric("large_dataset_warning", dataLength, "very_large");
-      } else if (dataLength > 500) {
-        analytics.performanceMetric("large_dataset_warning", dataLength, "large");
-      }
-    }
-  }, [displayData]);
-
-  // Calculate cutting stock when Dia is selected
-  const handleDiaSelect = useCallback(async (dia: number | null) => {
-    setSelectedDia(dia);
-    setGreedyResult(null);
-    setDynamicResult(null);
-    setGreedyProgress({ stage: "", percentage: 0 });
-    setDynamicProgress({ stage: "", percentage: 0 });
-    setCalculationError(null);
-
-    if (dia !== null && displayData) {
-      setIsCalculating(true);
-      
-      // Track diameter selection
-      analytics.diameterSelected(dia, displayData.length);
-      analytics.featureUsed("dia_filter", `Diameter ${dia}mm selected`);
-      
-      try {
-        // Preprocess data
-        const preprocessor = new CuttingStockPreprocessor();
-        const requests = preprocessor.convertToCuttingRequests(displayData);
-        const totalSegments = requests.reduce((sum, req) => sum + req.segments.length * req.quantity, 0);
-        
-        console.log("[Page] Starting calculation with", requests.length, "requests for dia", dia);
-        
-        // Run both algorithms in Web Workers (parallel execution) with progress tracking
-        const workerManager = getWorkerManager();
-        const { greedy: greedyRes, dynamic: dynamicRes } = await workerManager.runBoth(
-          requests, 
-          dia,
-          {
-            greedy: (stage, percentage) => {
-              console.log("[Page] Greedy progress:", stage, percentage);
-              setGreedyProgress({ stage, percentage });
-            },
-            dynamic: (stage, percentage) => {
-              console.log("[Page] Dynamic progress:", stage, percentage);
-              setDynamicProgress({ stage, percentage });
-            }
-          }
-        );
-        
-        console.log("[Page] Calculation complete. Greedy:", greedyRes, "Dynamic:", dynamicRes);
-        setGreedyResult(greedyRes);
-        setDynamicResult(dynamicRes);
-
-        // Track algorithm execution analytics
-        analytics.algorithmExecuted(
-          "greedy",
-          dia,
-          totalSegments,
-          greedyRes.executionTime,
-          greedyRes.totalBarsUsed,
-          greedyRes.totalWaste,
-          greedyRes.averageUtilization
-        );
-
-        analytics.algorithmExecuted(
-          "dynamic",
-          dia,
-          totalSegments,
-          dynamicRes.executionTime,
-          dynamicRes.totalBarsUsed,
-          dynamicRes.totalWaste,
-          dynamicRes.averageUtilization
-        );
-      } catch (error) {
-        console.error("[Page] Error calculating cutting stock:", error);
-        const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-        setCalculationError(errorMessage);
-
-        // Track algorithm errors
-        analytics.algorithmError("cutting_stock", errorMessage, displayData.length);
-      } finally {
-        setIsCalculating(false);
-      }
-    }
-  }, [displayData]);
-
-  const handleDownloadResults = () => {
-    if (filteredDisplayData) {
-      const downloadFileName = selectedDia
-        ? `${fileName.replace('.xlsx', '').replace('.xls', '')}_Dia_${selectedDia}.json`
-        : `${fileName.replace('.xlsx', '').replace('.xls', '')}.json`;
-      downloadResults(filteredDisplayData, downloadFileName);
-
-      // Track download analytics
-      analytics.resultsDownloaded(
-        "json",
-        "filtered_data",
-        selectedDia || 0,
-        filteredDisplayData.length
-      );
-      analytics.featureUsed("results_comparison", `Downloaded ${filteredDisplayData.length} results`);
-    }
-  };
-
-  const handleDownloadAllDias = useCallback(async () => {
-    if (!displayData) return;
-
-    setIsDownloadingAll(true);
-    setDownloadAllProgress({ current: 0, total: 0, dia: 0 });
-
-    try {
-      await exportAllDiasToExcel(
-        displayData,
-        fileName,
-        (dia, current, total) => {
-          setDownloadAllProgress({ dia, current, total });
-        }
-      );
-    } catch (error) {
-      console.error("[Page] Error downloading all dias:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to download all diameters";
-      setCalculationError(errorMessage);
-    } finally {
-      setIsDownloadingAll(false);
-      setDownloadAllProgress({ current: 0, total: 0, dia: 0 });
-    }
-  }, [displayData, fileName]);
+  // Auto-redirect to projects page after a short delay (optional)
+  useEffect(() => {
+    // Uncomment below to auto-redirect
+    // const timer = setTimeout(() => router.push("/projects"), 3000);
+    // return () => clearTimeout(timer);
+  }, [router]);
 
   return (
-    <div className="flex flex-col items-center mx-auto mt-10">
-      <div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+      <div className="flex flex-col items-center mx-auto pt-10 px-4">
         <HeadDemo />
+
+        {/* Welcome Card */}
+        <div className="w-full max-w-2xl mx-auto mt-10 p-8 bg-white rounded-2xl shadow-lg border border-slate-200">
+          <div className="text-center mb-8">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-500/20">
+              <IconPackage className="w-10 h-10 text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">
+              Cutting Stock Optimizer
+            </h2>
+            <p className="text-slate-500 max-w-md mx-auto">
+              Optimize your rebar cutting with advanced algorithms. Create projects, upload sheets, and minimize waste.
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-4">
+            <Link
+              href="/projects"
+              className="flex items-center justify-between w-full p-5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/20 group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                  <IconPackage className="w-6 h-6" />
+                </div>
+                <div className="text-left">
+                  <div className="font-semibold text-lg">View Projects</div>
+                  <div className="text-blue-100 text-sm">Manage existing projects and sheets</div>
+                </div>
+              </div>
+              <IconArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+            </Link>
+
+            <Link
+              href="/projects"
+              className="flex items-center justify-between w-full p-5 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                  <IconPlus className="w-6 h-6 text-slate-600" />
+                </div>
+                <div className="text-left">
+                  <div className="font-semibold text-lg">Create New Project</div>
+                  <div className="text-slate-500 text-sm">Start a new cutting optimization project</div>
+                </div>
+              </div>
+              <IconArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
+            </Link>
+          </div>
+
+          {/* Info Section */}
+          <div className="mt-8 pt-6 border-t border-slate-200">
+            <h3 className="font-semibold text-slate-900 mb-4">How it works</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="p-4 bg-slate-50 rounded-xl">
+                <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold mb-2">1</div>
+                <div className="font-medium text-slate-900">Create Project</div>
+                <div className="text-slate-500 mt-1">Group related sheets together</div>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-xl">
+                <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold mb-2">2</div>
+                <div className="font-medium text-slate-900">Upload Sheets</div>
+                <div className="text-slate-500 mt-1">Add Excel files with bar data</div>
+              </div>
+              <div className="p-4 bg-slate-50 rounded-xl">
+                <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center font-bold mb-2">3</div>
+                <div className="font-medium text-slate-900">Optimize & Export</div>
+                <div className="text-slate-500 mt-1">Run calculations, reuse waste</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Features */}
+        <div className="w-full max-w-2xl mx-auto mt-6 grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+          <div className="p-4 bg-white rounded-xl border border-slate-200 text-center">
+            <div className="text-2xl mb-1">🔄</div>
+            <div className="text-sm font-medium text-slate-900">Waste Reuse</div>
+            <div className="text-xs text-slate-500">Cross-sheet optimization</div>
+          </div>
+          <div className="p-4 bg-white rounded-xl border border-slate-200 text-center">
+            <div className="text-2xl mb-1">⚡</div>
+            <div className="text-sm font-medium text-slate-900">Fast Algorithms</div>
+            <div className="text-xs text-slate-500">Greedy & Dynamic</div>
+          </div>
+          <div className="p-4 bg-white rounded-xl border border-slate-200 text-center">
+            <div className="text-2xl mb-1">📊</div>
+            <div className="text-sm font-medium text-slate-900">Excel Export</div>
+            <div className="text-xs text-slate-500">Detailed reports</div>
+          </div>
+          <div className="p-4 bg-white rounded-xl border border-slate-200 text-center">
+            <div className="text-2xl mb-1">💾</div>
+            <div className="text-sm font-medium text-slate-900">Auto-Save</div>
+            <div className="text-xs text-slate-500">Results persist</div>
+          </div>
+        </div>
       </div>
-
-      {/* Excel Format Guide */}
-      <ExcelFormatGuide />
-
-      {/* {uploading data} */}
-      <ExcelUploader onDataParsed={handleDataParsed} />
-
-      {/* Parsed Data Preview */}
-
-      {/* File info card */}
-      {displayData && fileName && (
-        <FileInfoCard
-          fileName={fileName}
-          rows={filteredDisplayData || displayData}
-          headers={Object.keys(displayData[0] || {})}
-          jsonData={filteredDisplayData || displayData}
-          clearData={handleClearData}
-          downloadResults={handleDownloadResults}
-          selectedDia={selectedDia}
-          totalRows={displayData.length}
-          datasetSizeInfo={{
-            fileSizeMB: 1.2, // optional: calculate dynamically
-            estimatedMemoryUsageMB:
-              (filteredDisplayData || displayData).length *
-              Object.keys(displayData[0] || {}).length *
-              0.001,
-            isLargeDataset: (filteredDisplayData || displayData).length > 500,
-            isVeryLargeDataset: (filteredDisplayData || displayData).length > 2000,
-          }}
-        />
-      )}
-
-      {/* Dia Filter */}
-      {displayData && (
-        <DiaFilter
-          data={displayData}
-          selectedDia={selectedDia}
-          onDiaSelect={handleDiaSelect}
-          onDownloadAll={handleDownloadAllDias}
-          isDownloadingAll={isDownloadingAll}
-        />
-      )}
-
-      {/* Download All Progress */}
-      {isDownloadingAll && (
-        <div className="w-full max-w-7xl mx-auto p-6 bg-purple-50 border border-purple-200 rounded-xl shadow-lg mb-6">
-          <h3 className="text-lg font-bold text-purple-800 mb-4 flex items-center gap-2">
-            <div className="w-5 h-5 border-3 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
-            Processing All Diameters...
-          </h3>
-          <div className="mb-2">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-purple-700">
-                Processing Dia {downloadAllProgress.dia} ({downloadAllProgress.current} of {downloadAllProgress.total})
-              </span>
-              <span className="text-sm font-medium text-purple-700">
-                {downloadAllProgress.total > 0 
-                  ? Math.round((downloadAllProgress.current / downloadAllProgress.total) * 100)
-                  : 0}%
-              </span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-              <div 
-                className="bg-purple-500 h-full transition-all duration-300 ease-out"
-                style={{ 
-                  width: `${downloadAllProgress.total > 0 
-                    ? (downloadAllProgress.current / downloadAllProgress.total) * 100 
-                    : 0}%` 
-                }}
-              />
-            </div>
-          </div>
-          <p className="text-sm text-purple-600 mt-3">
-            Running calculations for all diameters and generating Excel file...
-          </p>
-        </div>
-      )}
-
-      {/* Error Display */}
-      {calculationError && (
-        <div className="w-full max-w-7xl mx-auto p-6 bg-red-50 border border-red-200 rounded-xl shadow-lg mb-6">
-          <div className="flex items-start gap-3">
-            <span className="text-2xl">⚠️</span>
-            <div>
-              <h3 className="text-lg font-bold text-red-800 mb-2">Calculation Error</h3>
-              <p className="text-red-700">{calculationError}</p>
-              <button
-                onClick={() => setCalculationError(null)}
-                className="mt-3 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Cutting Stock Results */}
-      {selectedDia && (
-        <CuttingStockResults
-          greedyResult={greedyResult}
-          dynamicResult={dynamicResult}
-          isLoading={isCalculating}
-          fileName={fileName}
-          greedyProgress={greedyProgress}
-          dynamicProgress={dynamicProgress}
-        />
-      )}
-
-      {/* Filtered Data Preview */}
-      {filteredDisplayData && <ExcelPreviewTable data={filteredDisplayData} selectedDia={selectedDia} />}
     </div>
   );
 }

@@ -61,7 +61,7 @@ export interface CuttingBin {
 }
 
 export interface CuttingStockResult {
-  algorithm: 'greedy' | 'dynamic' | 'true-dynamic' | 'branch-and-bound' | 'column-generation' | 'heuristic' | 'adaptive' | 'improved-greedy';
+  algorithm: 'greedy' | 'dynamic' | 'true-dynamic' | 'branch-and-bound' | 'column-generation' | 'heuristic' | 'adaptive' | 'improved-greedy' | 'chunked' | 'swap';
   dia: number;
   patterns: CuttingPattern[];
   totalBarsUsed: number;
@@ -74,7 +74,11 @@ export interface CuttingStockResult {
 
 export interface CuttingSummary {
   totalStandardBars: number;
-  totalWasteLength: number;
+  newBarsUsed?: number;                    // NEW: Count of new 12m bars used
+  wastePiecesReused?: number;              // NEW: Count of waste pieces reused
+  totalWasteLength: number;                // Total waste (from all bars)
+  wasteFromNewBars?: number;               // NEW: Waste only from new 12m bars
+  wasteFromReusedPieces?: number;          // NEW: Waste from reused waste pieces
   totalWastePercentage: number;
   averageUtilization: number;
   patternCount: number;
@@ -87,6 +91,14 @@ export interface DetailedCut {
   cuts: CutInstruction[];
   waste: number;
   utilization: number;
+  isFromWaste?: boolean;
+  wasteSource?: {
+    wasteId: string;
+    sourceSheetId: number;
+    sourceSheetNumber?: number;  // Display number (#1, #2, etc.)
+    sourceBarNumber: number;
+    originalLength: number;
+  };
 }
 
 export interface CutInstruction {
@@ -98,4 +110,75 @@ export interface CutInstruction {
   segmentIndex: number;
   hasLap: boolean;
   lapLength: number;          // Actual lap length (0 if no lap)
+}
+
+
+// ============================================
+// WASTE TRACKING TYPES
+// ============================================
+
+export interface WastePiece {
+  id: string;
+  projectId: number;
+  
+  // Origin tracking
+  sourceSheetId: number;        // Database ID
+  sourceSheetNumber: number;    // Display number (#1, #2, etc.)
+  sourceSheetName: string;      // Filename
+  sourceBarNumber: number;      // Which 12m standard bar (Bar #1, #2, etc.)
+  sourcePatternId: string;
+  
+  // What cuts were made on that bar (that produced this waste)
+  cutsOnSourceBar: WasteOriginCut[];
+  
+  // Waste details
+  dia: number;
+  length: number;               // in mm
+  status: "available" | "used" | "discarded";
+  
+  // If used
+  usedInSheetId?: number;
+  usedInSheetName?: string;
+  usedForBarCode?: string;
+  
+  createdAt: Date;
+}
+
+export interface WasteOriginCut {
+  barCode: string;
+  length: number;               // in mm
+  element: string;
+}
+
+export interface WasteUsageRecord {
+  wasteId: string;
+  sourceSheetId: number;
+  sourceSheetName: string;
+  sourceBarNumber: number;
+  wasteLength: number;          // Original waste piece length
+  cutsOnSourceBar: WasteOriginCut[];
+  
+  // What it was used for
+  usedForBarCode: string;
+  cutLength: number;
+  remainingLength: number;
+  remainingStatus: "discarded" | "added_to_inventory";
+}
+
+export interface CuttingStockResultWithWaste extends CuttingStockResult {
+  // Waste reuse tracking
+  wasteUsage: WasteUsageRecord[];
+  newBarsUsed: number;          // Only new 12m bars
+  wastePiecesReused: number;    // Count of waste pieces used
+  totalWasteSaved: number;      // mm saved by reusing waste
+  
+  // New waste generated
+  newWasteGenerated: WastePiece[];
+}
+
+export interface AvailableWaste {
+  dia: number;
+  pieces: WastePiece[];
+  totalLength: number;          // Total available length in mm
+  totalPieces: number;
 }

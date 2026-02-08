@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import Navigation from "@/components/customs/Navigation";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cutting Stock Optimizer - Advanced Rebar Cutting Solutions",
-  description: "Advanced cutting stock optimization for construction rebar with multiple algorithms including greedy, dynamic programming, and branch & bound for minimal waste.",
+  title: "POC Waste - Bar Cutting Optimization",
+  description: "Optimize steel rebar cutting to minimize waste",
 };
 
 export default function RootLayout({
@@ -24,12 +24,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" >
+    <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <Navigation />
         {children}
-        <Analytics />
       </body>
     </html>
   );

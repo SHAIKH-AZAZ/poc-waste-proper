@@ -1,9 +1,10 @@
-import type { MultiBarCuttingRequest, CuttingStockResult } from "@/types/CuttingStock";
+import type { MultiBarCuttingRequest, CuttingStockResult, WastePiece } from "@/types/CuttingStock";
 import type { WorkerMessage, WorkerResponse } from "@/workers/cuttingStock.worker";
 
 export class WorkerManager {
   private greedyWorker: Worker | null = null;
   private dynamicWorker: Worker | null = null;
+  private trueDynamicWorker: Worker | null = null;
 
   /**
    * Initialize workers
@@ -21,6 +22,10 @@ export class WorkerManager {
         new URL("@/workers/cuttingStock.worker.ts", import.meta.url),
         { type: "module" }
       );
+      this.trueDynamicWorker = new Worker(
+        new URL("@/workers/cuttingStock.worker.ts", import.meta.url),
+        { type: "module" }
+      );
     } catch (error) {
       console.error("Failed to initialize workers:", error);
     }
@@ -32,7 +37,8 @@ export class WorkerManager {
   async runGreedy(
     requests: MultiBarCuttingRequest[],
     dia: number,
-    onProgress?: (stage: string, percentage: number) => void
+    onProgress?: (stage: string, percentage: number) => void,
+    wastePieces?: WastePiece[]
   ): Promise<CuttingStockResult> {
     if (!this.greedyWorker) {
       this.initWorkers();
@@ -81,6 +87,7 @@ export class WorkerManager {
         type: "greedy",
         requests,
         dia,
+        wastePieces,
       };
       this.greedyWorker.postMessage(message);
     });
@@ -92,7 +99,8 @@ export class WorkerManager {
   async runDynamic(
     requests: MultiBarCuttingRequest[],
     dia: number,
-    onProgress?: (stage: string, percentage: number) => void
+    onProgress?: (stage: string, percentage: number) => void,
+    wastePieces?: WastePiece[]
   ): Promise<CuttingStockResult> {
     if (!this.dynamicWorker) {
       this.initWorkers();
@@ -146,9 +154,126 @@ export class WorkerManager {
         type: "dynamic",
         requests,
         dia,
+        wastePieces,
       };
       console.log("[WorkerManager] Sending message to dynamic worker:", message);
       this.dynamicWorker.postMessage(message);
+    });
+  }
+
+  /**
+   * Run true dynamic algorithm in worker
+   */
+  async runTrueDynamic(
+    requests: MultiBarCuttingRequest[],
+    dia: number,
+    onProgress?: (stage: string, percentage: number) => void
+  ): Promise<CuttingStockResult> {
+    if (!this.trueDynamicWorker) {
+      this.initWorkers();
+    }
+
+    return new Promise((resolve, reject) => {
+      if (!this.trueDynamicWorker) {
+        reject(new Error("Worker not available"));
+        return;
+      }
+
+      const handleMessage = (event: MessageEvent<WorkerResponse>) => {
+        if (event.data.type === "true-dynamic") {
+          if (event.data.progress) {
+            onProgress?.(event.data.progress.stage, event.data.progress.percentage);
+            return;
+          }
+
+          if (event.data.result || event.data.error) {
+            this.trueDynamicWorker?.removeEventListener("message", handleMessage);
+            this.trueDynamicWorker?.removeEventListener("error", handleError);
+
+            if (event.data.error) {
+              reject(new Error(event.data.error));
+            } else if (event.data.result) {
+              const result = Array.isArray(event.data.result) ? event.data.result[0] : event.data.result;
+              resolve(result);
+            }
+          }
+        }
+      };
+
+      const handleError = (error: ErrorEvent) => {
+        this.trueDynamicWorker?.removeEventListener("message", handleMessage);
+        this.trueDynamicWorker?.removeEventListener("error", handleError);
+        reject(error);
+      };
+
+      this.trueDynamicWorker.addEventListener("message", handleMessage);
+      this.trueDynamicWorker.addEventListener("error", handleError);
+
+      const message: WorkerMessage = {
+        type: "true-dynamic",
+        requests,
+        dia,
+      };
+      this.trueDynamicWorker.postMessage(message);
+    });
+  }
+
+  /**
+   * Run improved greedy algorithm in worker
+   */
+  async runImprovedGreedy(
+    requests: MultiBarCuttingRequest[],
+    dia: number,
+    onProgress?: (stage: string, percentage: number) => void
+  ): Promise<CuttingStockResult> {
+    if (!this.greedyWorker) {
+      this.initWorkers();
+    }
+
+    return new Promise((resolve, reject) => {
+      if (!this.greedyWorker) {
+        reject(new Error("Worker not available"));
+        return;
+      }
+
+      const handleMessage = (event: MessageEvent<WorkerResponse>) => {
+        if (event.data.type === "improved-greedy") {
+          // Handle progress updates
+          if (event.data.progress) {
+            onProgress?.(event.data.progress.stage, event.data.progress.percentage);
+            return;
+          }
+
+          // Handle final result
+          if (event.data.result || event.data.error) {
+            this.greedyWorker?.removeEventListener("message", handleMessage);
+            this.greedyWorker?.removeEventListener("error", handleError);
+
+            if (event.data.error) {
+              reject(new Error(event.data.error));
+            } else if (event.data.result) {
+              const result = Array.isArray(event.data.result) ? event.data.result[0] : event.data.result;
+              resolve(result);
+            }
+          }
+        }
+      };
+
+      const handleError = (error: ErrorEvent) => {
+        this.greedyWorker?.removeEventListener("message", handleMessage);
+        this.greedyWorker?.removeEventListener("error", handleError);
+        reject(error);
+      };
+
+      this.greedyWorker.addEventListener("message", handleMessage);
+      this.greedyWorker.addEventListener("error", handleError);
+
+      const message: WorkerMessage = {
+        type: "improved-greedy",
+        requests,
+        dia,
+      };
+      this.greedyWorker.postMessage(message);
     });
   }
 
@@ -161,14 +286,15 @@ export class WorkerManager {
     onProgress?: {
       greedy?: (stage: string, percentage: number) => void;
       dynamic?: (stage: string, percentage: number) => void;
-    }
+    },
+    wastePieces?: WastePiece[]
   ): Promise<{
     greedy: CuttingStockResult;
     dynamic: CuttingStockResult;
   }> {
     const [greedy, dynamic] = await Promise.all([
-      this.runGreedy(requests, dia, onProgress?.greedy),
-      this.runDynamic(requests, dia, onProgress?.dynamic),
+      this.runGreedy(requests, dia, onProgress?.greedy, wastePieces),
+      this.runDynamic(requests, dia, onProgress?.dynamic, wastePieces),
     ]);
 
     return { greedy, dynamic };
@@ -185,6 +311,10 @@ export class WorkerManager {
     if (this.dynamicWorker) {
       this.dynamicWorker.terminate();
       this.dynamicWorker = null;
+    }
+    if (this.trueDynamicWorker) {
+        this.trueDynamicWorker.terminate();
+        this.trueDynamicWorker = null;
     }
   }
 }

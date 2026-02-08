@@ -7,6 +7,7 @@ import {
   exportCuttingInstructions,
 } from "@/utils/cuttingStockExport";
 import { exportToExcel } from "@/utils/excelExport";
+import { IconScissors, IconFileSpreadsheet, IconFileCode, IconChartBar, IconClock, IconRecycle, IconRuler2, IconLayoutList } from "@tabler/icons-react";
 
 interface CuttingStockResultsProps {
   greedyResult: CuttingStockResult | null;
@@ -25,7 +26,7 @@ export default function CuttingStockResults({
   greedyProgress = { stage: "", percentage: 0 },
   dynamicProgress = { stage: "", percentage: 0 },
 }: CuttingStockResultsProps) {
-  
+
   const handleExportAll = () => {
     exportCuttingStockResults(greedyResult, dynamicResult, fileName);
   };
@@ -40,7 +41,7 @@ export default function CuttingStockResults({
           <h3 className="text-xl font-bold text-gray-800 mb-6 text-center">
             Calculating Optimal Cutting Patterns...
           </h3>
-          
+
           {/* Greedy Algorithm Progress */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
@@ -48,7 +49,7 @@ export default function CuttingStockResults({
               <span className="text-sm font-medium text-blue-700">{greedyProgress.percentage}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-              <div 
+              <div
                 className="bg-blue-500 h-full transition-all duration-300 ease-out"
                 style={{ width: `${greedyProgress.percentage}%` }}
               />
@@ -65,7 +66,7 @@ export default function CuttingStockResults({
               <span className="text-sm font-medium text-green-700">{dynamicProgress.percentage}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
-              <div 
+              <div
                 className="bg-green-500 h-full transition-all duration-300 ease-out"
                 style={{ width: `${dynamicProgress.percentage}%` }}
               />
@@ -92,21 +93,23 @@ export default function CuttingStockResults({
       <div className="w-full max-w-7xl mx-auto space-y-6 mb-6">
         <div className="flex justify-between items-center">
           <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-            <span className="text-2xl">📐</span> Cutting Stock Optimization
-            Results
+            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 border border-indigo-100">
+              <IconScissors size={24} />
+            </div>
+            Cutting Stock Optimization Results
           </h2>
           <div className="flex gap-2">
             <button
               onClick={handleExportExcel}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 font-medium shadow-sm active:scale-95"
             >
-              <span>📊</span> Export Excel
+              <IconFileSpreadsheet size={18} /> Export Excel
             </button>
             <button
               onClick={handleExportAll}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 font-medium shadow-sm active:scale-95"
             >
-              <span>📥</span> Export JSON
+              <IconFileCode size={18} /> Export JSON
             </button>
           </div>
         </div>
@@ -161,22 +164,36 @@ function ComparisonCard({
     <div className={`${bgColor} border ${borderColor} rounded-lg p-4`}>
       <h3 className={`font-bold ${textColor} mb-3`}>{title}</h3>
       <div className="space-y-2 text-sm">
-        <div className="flex justify-between">
-          <span className="text-gray-600">Standard Bars Used:</span>
-          <span className="font-bold">{result.totalBarsUsed}</span>
+        <div className="flex justify-between items-start">
+          <span className="text-gray-600 flex items-center gap-1.5 mt-0.5"><IconLayoutList size={14} /> Stock Used:</span>
+          <div className="flex flex-col items-end">
+            <span className="font-bold">{result.totalBarsUsed} total</span>
+            {result.detailedCuts.filter(d => (d as any).isFromWaste || d.patternId?.startsWith("waste_")).length > 0 && (
+              <span className="text-[10px] text-gray-500 font-medium">
+                ({result.totalBarsUsed - result.detailedCuts.filter(d => (d as any).isFromWaste || d.patternId?.startsWith("waste_")).length} new + <span className="text-purple-600">{result.detailedCuts.filter(d => (d as any).isFromWaste || d.patternId?.startsWith("waste_")).length} reused</span>)
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-600">Total Waste:</span>
-          <span className="font-bold">{result.totalWaste.toFixed(3)}m</span>
+          <span className="text-gray-600 flex items-center gap-1.5"><IconRecycle size={14} /> Net Waste:</span>
+          <div className="flex flex-col items-end">
+            <span className="font-bold">{(result as any).summary?.totalWasteLength?.toFixed(3) || result.totalWaste.toFixed(3)}m</span>
+            {(result as any).summary?.wasteFromNewBars !== undefined && (result as any).summary?.wasteFromReusedPieces !== undefined && (
+              <span className="text-[10px] text-gray-500 font-medium">
+                ({(result as any).summary.wasteFromNewBars.toFixed(3)}m new + {(result as any).summary.wasteFromReusedPieces.toFixed(3)}m reused)
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-600">Avg Utilization:</span>
+          <span className="text-gray-600 flex items-center gap-1.5"><IconChartBar size={14} /> Avg Utilization:</span>
           <span className="font-bold">
             {result.averageUtilization.toFixed(2)}%
           </span>
         </div>
         <div className="flex justify-between">
-          <span className="text-gray-600">Execution Time:</span>
+          <span className="text-gray-600 flex items-center gap-1.5"><IconClock size={14} /> Execution Time:</span>
           <span className="font-bold">
             {result.executionTime.toFixed(2)}ms
           </span>
@@ -194,10 +211,39 @@ function DetailedResultCard({
   result: CuttingStockResult;
 }) {
   const [isExpanded, setIsExpanded] = React.useState(false);
-  
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [itemsPerPage, setItemsPerPage] = React.useState(30);
+
   const handleExportInstructions = () => {
     exportCuttingInstructions(result, `${result.algorithm}_dia_${result.dia}`);
   };
+
+  // Reset pagination when result changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [result]);
+
+  // Memoize and sort data
+  const sortedData = React.useMemo(() => {
+    return [...result.detailedCuts].sort((a, b) => {
+      // Sort: Reused waste FIRST, then by bar number
+      const aIsWaste =
+        (a as any).isFromWaste || a.patternId?.startsWith("waste_");
+      const bIsWaste =
+        (b as any).isFromWaste || b.patternId?.startsWith("waste_");
+      if (aIsWaste && !bIsWaste) return -1;
+      if (!aIsWaste && bIsWaste) return 1;
+      return a.barNumber - b.barNumber;
+    });
+  }, [result]);
+
+  // Calculate pagination
+  const totalItems = sortedData.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+
+  const currentData = sortedData.slice(startIndex, endIndex);
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg shadow-md">
@@ -210,7 +256,8 @@ function DetailedResultCard({
             <div className="flex items-center gap-2">
               <h3 className="font-bold text-gray-800 text-lg">{title} - Details</h3>
               <span
-                className={`transform transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                className={`transform transition-transform ${isExpanded ? "rotate-180" : ""
+                  }`}
               >
                 ▼
               </span>
@@ -230,8 +277,15 @@ function DetailedResultCard({
           {/* Summary Stats */}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
             <StatCard
-              label="Total Bars"
+              label="Stock Used"
               value={result.summary.totalStandardBars}
+              subValue={
+                result.detailedCuts.some((d) => (d as any).isFromWaste)
+                  ? `${result.detailedCuts.filter((d) => (d as any).isFromWaste)
+                    .length
+                  } reused`
+                  : undefined
+              }
             />
             <StatCard
               label="Total Waste"
@@ -241,10 +295,7 @@ function DetailedResultCard({
               label="Waste %"
               value={`${result.summary.totalWastePercentage.toFixed(2)}%`}
             />
-            <StatCard
-              label="Patterns"
-              value={result.summary.patternCount}
-            />
+            <StatCard label="Patterns" value={result.summary.patternCount} />
             <StatCard
               label="Cuts Produced"
               value={result.summary.totalCutsProduced}
@@ -255,91 +306,181 @@ function DetailedResultCard({
             />
           </div>
 
-          {/* Cutting Patterns Table */}
-          <div className="overflow-x-auto">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-semibold text-gray-700">
-                Cutting Patterns (12m Standard Bars):
-              </h4>
-              <span className="text-xs text-gray-500">
-                {result.detailedCuts.length} bars total
+          {/* Cutting Patterns Table Header with Controls */}
+          <div className="bg-slate-50 px-4 py-3 border-b border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <h4 className="font-bold text-slate-800 flex items-center gap-2">
+              <span className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-blue-700 border border-blue-200">
+                <IconScissors size={18} />
+              </span>
+              Cutting Patterns
+            </h4>
+
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-slate-500 font-medium">Rows per page:</span>
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="bg-white border border-slate-300 text-slate-700 text-xs rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-1.5"
+              >
+                <option value={10}>10</option>
+                <option value={30}>30</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={500}>500</option>
+              </select>
+              <span className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-600 shadow-sm">
+                {startIndex + 1}-{endIndex} of {totalItems}
               </span>
             </div>
-            
-            {/* Legend */}
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex flex-wrap gap-4 text-xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-mono text-blue-700 font-semibold">1/B1/12</span>
-                  <span className="text-gray-500">= BarCode</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-gray-400">→</span>
-                  <span className="font-bold text-gray-800">5.750m</span>
-                  <span className="text-gray-500">= Cutting Length</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">×2</span>
-                  <span className="text-gray-500">= Quantity</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded font-medium">LAP</span>
-                  <span className="text-gray-500">= Requires lap joint</span>
-                </div>
-              </div>
-            </div>
-            <table className="min-w-full border border-gray-300 bg-white">
-              <thead className="bg-gradient-to-r from-gray-100 to-gray-200">
+          </div>
+
+          <div className="overflow-x-auto max-h-[600px] overflow-y-auto border-b border-slate-200">
+            <table className="min-w-full divide-y divide-slate-100 relative">
+              <thead className="bg-white/90 backdrop-blur-md sticky top-0 z-10 shadow-sm">
                 <tr>
-                  <th className="border border-gray-300 px-3 py-2 text-center text-sm font-semibold text-gray-700 w-20">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-16">
                     Bar #
                   </th>
-                  <th className="border border-gray-300 px-4 py-2 text-left text-sm font-semibold text-gray-700">
-                    Cuts (BarCode → Length)
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider w-32">
+                    Source
                   </th>
-                  <th className="border border-gray-300 px-3 py-2 text-right text-sm font-semibold text-gray-700 w-28">
-                    Waste (m)
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                    Cuts Layout
                   </th>
-                  <th className="border border-gray-300 px-3 py-2 text-right text-sm font-semibold text-gray-700 w-32">
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider w-32">
+                    Waste
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider w-40">
                     Utilization
                   </th>
                 </tr>
               </thead>
-              <tbody>
-                {result.detailedCuts.map((detail, index) => {
-                  // Calculate actual waste: 12m - sum of cutting lengths
-                  // Note: cut.length already includes lap length (cutting length = effective + lap)
-                  const STANDARD_BAR = 12.0;
-                  const totalUsed = detail.cuts.reduce((sum, cut) => 
-                    sum + cut.length, 0
+              <tbody className="divide-y divide-slate-100 bg-white">
+                {currentData.map((detail, index) => {
+                  // Note regarding index: currentData is a slice, so we use the object's barNumber for display if available
+                  // or calculate visual index
+
+                  // Calculate actual waste based on bar length
+                  const barLength =
+                    detail.isFromWaste && detail.wasteSource
+                      ? detail.wasteSource.originalLength / 1000
+                      : 12.0;
+                  const totalUsed = detail.cuts.reduce(
+                    (sum, cut) => sum + cut.length,
+                    0
                   );
-                  const actualWaste = STANDARD_BAR - totalUsed;
-                  const actualUtilization = (totalUsed / STANDARD_BAR) * 100;
+                  // Fix floating point precision issues
+                  let actualWaste = barLength - totalUsed;
+                  if (Math.abs(actualWaste) < 0.0001) actualWaste = 0;
+
+                  const actualUtilization = (totalUsed / barLength) * 100;
 
                   return (
-                    <tr key={index} className="hover:bg-blue-50 transition-colors">
-                      <td className="border border-gray-300 px-3 py-3 text-center">
-                        <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-700 font-bold text-sm rounded-full">
+                    <tr
+                      key={`bar-${detail.barNumber}-${index}`}
+                      className="group hover:bg-slate-50/80 transition-colors"
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm font-bold shadow-sm border ${detail.isFromWaste
+                              ? "bg-purple-50 text-purple-700 border-purple-100"
+                              : "bg-blue-50 text-blue-700 border-blue-100"
+                            }`}
+                        >
                           {detail.barNumber}
-                        </span>
+                        </div>
                       </td>
-                      <td className="border border-gray-300 px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {detail.isFromWaste && detail.wasteSource ? (
+                          <div className="flex flex-col gap-1">
+                            <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-purple-50 text-purple-700 rounded-md border border-purple-100 w-fit">
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span>
+                              <span className="text-xs font-semibold">
+                                Reused
+                              </span>
+                            </div>
+                            <div className="flex flex-col text-[10px] text-slate-500 leading-tight">
+                              <span>
+                                Length:{" "}
+                                {(
+                                  detail.wasteSource.originalLength / 1000
+                                ).toFixed(2)}
+                                m
+                              </span>
+                              <span>
+                                From: Sheet{" "}
+                                {detail.wasteSource.sourceSheetNumber ||
+                                  detail.wasteSource.sourceSheetId}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="inline-flex items-center gap-1.5 px-2 py-1 bg-blue-50 text-blue-700 rounded-md border border-blue-100">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                            <span className="text-xs font-semibold">
+                              New 12m
+                            </span>
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
                         <CutsDisplay cuts={detail.cuts} />
                       </td>
-                      <td className="border border-gray-300 px-3 py-3 text-right">
-                        <span className={`font-semibold ${actualWaste > 1 ? 'text-red-600' : 'text-green-600'}`}>
-                          {actualWaste.toFixed(3)}
-                        </span>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <div className="flex flex-col items-end gap-1">
+                          {/* Original Waste / Net Waste Display */}
+                          {(detail as any).isWasteRecovered ? (
+                            <>
+                              <span className="font-mono font-medium text-slate-400 line-through decoration-slate-400 text-xs">
+                                {actualWaste.toFixed(3)}m
+                              </span>
+                              <span className="font-mono font-bold text-green-600 text-sm">
+                                0.000m
+                              </span>
+                            </>
+                          ) : (
+                            <span
+                              className={`font-mono font-medium ${actualWaste > 1
+                                  ? "text-red-600"
+                                  : "text-slate-600"
+                                }`}
+                            >
+                              {actualWaste.toFixed(3)}m
+                            </span>
+                          )}
+
+                          {/* Recovery Indicator */}
+                          {(detail as any).isWasteRecovered && (
+                            <div className="flex flex-col gap-0.5 items-end animate-in fade-in slide-in-from-top-1 duration-300">
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-700 border border-green-200 shadow-sm">
+                                <IconRecycle size={10} className="mr-1" />
+                                ♻️ Used in{" "}
+                                {(detail as any).recoveredWasteInfo
+                                  ?.usedInSheet || "Project"}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </td>
-                      <td className="border border-gray-300 px-3 py-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <span className="font-semibold text-gray-800">
-                            {actualUtilization.toFixed(2)}%
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <div className="flex flex-col items-end gap-1">
+                          <span className="font-bold text-slate-800 text-sm">
+                            {actualUtilization.toFixed(1)}%
                           </span>
-                          <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full ${actualUtilization > 95 ? 'bg-green-500' : actualUtilization > 85 ? 'bg-yellow-500' : 'bg-red-500'}`}
-                              style={{ width: `${actualUtilization}%` }}
+                          <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-100">
+                            <div
+                              className={`h-full rounded-full ${actualUtilization > 95
+                                  ? "bg-gradient-to-r from-green-500 to-emerald-500"
+                                  : actualUtilization > 85
+                                    ? "bg-gradient-to-r from-yellow-400 to-amber-500"
+                                    : "bg-gradient-to-r from-red-400 to-red-500"
+                                }`}
+                              style={{
+                                width: `${Math.min(actualUtilization, 100)}%`,
+                              }}
                             />
                           </div>
                         </div>
@@ -349,7 +490,40 @@ function DetailedResultCard({
                 })}
               </tbody>
             </table>
+
+            {/* Empty State */}
+            {currentData.length === 0 && (
+              <div className="py-8 text-center text-slate-500 italic">No patterns to display.</div>
+            )}
           </div>
+
+          {/* Pagination Footer */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 bg-white">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="flex items-center px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+
+              <div className="hidden sm:flex space-x-2">
+                {/* Simplified Page Numbers: Show current, maybe start/end */}
+                <span className="px-3 py-1.5 text-sm font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg">
+                  Page {currentPage} of {totalPages}
+                </span>
+              </div>
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="flex items-center px-3 py-1.5 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -360,7 +534,7 @@ function CutsDisplay({ cuts }: { cuts: CutInstruction[] }) {
   // Group cuts by parent BarCode
   const groupedCuts = React.useMemo(() => {
     const groups = new Map<string, { length: number; lapLength: number; count: number }>();
-    
+
     for (const cut of cuts) {
       const existing = groups.get(cut.barCode);
       if (existing) {
@@ -373,7 +547,7 @@ function CutsDisplay({ cuts }: { cuts: CutInstruction[] }) {
         });
       }
     }
-    
+
     return Array.from(groups.entries());
   }, [cuts]);
 
@@ -384,34 +558,40 @@ function CutsDisplay({ cuts }: { cuts: CutInstruction[] }) {
   }, [cuts]);
 
   return (
-    <div className="space-y-1.5">
-      {groupedCuts.map(([barCode, info], i) => (
-        <div key={i} className="flex items-center gap-2 py-0.5">
-          <div className="flex items-center gap-1.5 flex-1">
-            <span className="font-mono text-blue-700 font-semibold text-xs">
-              {barCode}
+    <div className="flex flex-wrap gap-2">
+      {groupedCuts.map(([barCode, info], i) => {
+        // Clean up barcode display: remove _instance_X suffix
+        const cleanBarCode = barCode.replace(/_|instance|\[\d+\]|\d+$/g, '').replace(/\/+$/, '');
+        // Or simpler: just take the part before _instance if it exists
+        const displayBarCode = barCode.split('_instance')[0];
+
+        return (
+          <div key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm group hover:border-blue-300 hover:bg-blue-50/50 transition-colors">
+            <span className="font-mono text-blue-600 font-semibold text-xs tracking-tight" title={barCode}>
+              {displayBarCode}
             </span>
-            <span className="text-gray-400">→</span>
-            <span className="font-bold text-gray-800 text-xs">
-              {(info.length - info.lapLength).toFixed(3)}m
-            </span>
-            {info.lapLength > 0 && (
-              <span className="text-[10px] text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded font-medium">
-                +{info.lapLength.toFixed(3)}m lap
+            <div className="flex flex-col leading-none gap-0.5">
+              <span className="font-bold text-slate-700 text-xs">
+                {(info.length - info.lapLength).toFixed(3)}m
               </span>
-            )}
+              {info.lapLength > 0 && (
+                <span className="text-[10px] text-orange-600 font-medium bg-orange-50 px-1 rounded-sm">
+                  +Lap
+                </span>
+              )}
+            </div>
             {info.count > 1 && (
-              <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
+              <span className="ml-1 text-xs font-bold text-white bg-slate-400 px-1.5 py-0.5 rounded-md">
                 ×{info.count}
               </span>
             )}
           </div>
-        </div>
-      ))}
-      {groupedCuts.length > 1 && (
-        <div className="pt-1 mt-1 border-t border-gray-200">
-          <span className="text-[10px] text-gray-500">
-            Total used: {totalUsed.toFixed(3)}m
+        );
+      })}
+      {groupedCuts.length > 0 && (
+        <div className="flex items-center ml-2">
+          <span className="text-[10px] text-slate-400 bg-slate-50 px-2 py-1 rounded-full border border-slate-100">
+            Total: {totalUsed.toFixed(3)}m
           </span>
         </div>
       )}
@@ -419,11 +599,12 @@ function CutsDisplay({ cuts }: { cuts: CutInstruction[] }) {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: string | number }) {
+function StatCard({ label, value, subValue }: { label: string; value: string | number; subValue?: string }) {
   return (
     <div className="bg-gray-50 border border-gray-200 rounded p-3 text-center">
       <div className="text-xs text-gray-600 mb-1">{label}</div>
       <div className="text-lg font-bold text-gray-800">{value}</div>
+      {subValue && <div className="text-[10px] text-purple-600 font-medium">{subValue}</div>}
     </div>
   );
 }

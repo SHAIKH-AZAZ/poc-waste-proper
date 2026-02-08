@@ -31,6 +31,14 @@ const ALGORITHMS: AlgorithmInfo[] = [
     expectedQuality: "Best Available"
   },
   {
+    name: "Improved Greedy (Smart)",
+    key: "improved-greedy",
+    description: "Smart greedy with look-ahead for optimal combinations - solves 6m+4m+2m waste problem",
+    bestFor: "Fast processing with much better results than standard greedy",
+    complexity: "O(n log n)",
+    expectedQuality: "Excellent"
+  },
+  {
     name: "Branch & Bound",
     key: "branch-bound", 
     description: "Exhaustive search with intelligent pruning for guaranteed optimal solutions",
@@ -47,12 +55,12 @@ const ALGORITHMS: AlgorithmInfo[] = [
     expectedQuality: "Near-Optimal"
   },
   {
-    name: "Enhanced Greedy (FFD)",
+    name: "Standard Greedy (FFD)",
     key: "greedy",
-    description: "First Fit Decreasing with multi-bar constraint handling",
-    bestFor: "Large datasets requiring fast processing",
+    description: "First Fit Decreasing - has the 6m+4m+2m waste problem you identified",
+    bestFor: "Comparison baseline - shows the allocation problem",
     complexity: "O(n log n)",
-    expectedQuality: "Good"
+    expectedQuality: "Fair"
   },
   {
     name: "Legacy Dynamic",

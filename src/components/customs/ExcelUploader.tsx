@@ -3,13 +3,12 @@
 import React, { useState } from "react";
 import FileUpload from "./FileUpload";
 import { sanitizeExcelData } from "@/utils/sanitizeData";
-import { analytics } from "@/utils/analytics";
 
 import { validateHeaders, getHeaderValidationMessage } from "@/utils/excelTemplate";
 import type { BarCuttingRaw } from "@/types/BarCuttingRow";
 
 interface ExcelUploaderProps {
-  onDataParsed: (data: BarCuttingRaw[], fileName: string) => void;
+  onDataParsed: (data: BarCuttingRaw[], fileName: string, projectId?: number) => void;
 }
 
 export default function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
@@ -49,20 +48,13 @@ export default function ExcelUploader({ onDataParsed }: ExcelUploaderProps) {
         throw new Error("No valid data found in Excel file. Please check column headers and data format.");
       }
       
-      onDataParsed(finalData, file.name);
-      
-      // Track successful file processing
-      analytics.fileUploaded(file.name, finalData.length, file.size);
-      
+      onDataParsed(finalData, file.name, result.projectId);
       console.log("Processed data:", finalData);
       console.log("Original data:", result.data);
+      console.log("Project ID:", result.projectId);
     } catch (err) {
       console.error("Upload error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Failed to process file";
-      setError(errorMessage);
-      
-      // Track upload errors
-      analytics.algorithmError("file_upload", errorMessage, 0);
+      setError(err instanceof Error ? err.message : "Failed to process file");
     } finally {
       setLoading(false);
     }

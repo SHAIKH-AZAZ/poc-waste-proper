@@ -45,13 +45,17 @@ export function exportToExcel(
  * Format: Each bar's cuts listed vertically (one cut per row)
  */
 function createAlgorithmSheet(result: CuttingStockResult): XLSX.WorkSheet {
-  // Create header row
+  // Create header row - added "Source", "Bar Length", and "Total Used" columns
   const headers = [
     "Bar #",
+    "Source",
+    "Bar Length (m)",
+    "Total Used (m)",
     "BarCode",
     "Effective Length (m)",
     "Lap Length (m)",
     "Waste (m)",
+    "Waste (%)",
     "Utilization (%)",
   ];
 
@@ -63,24 +67,44 @@ function createAlgorithmSheet(result: CuttingStockResult): XLSX.WorkSheet {
     // Group cuts by BarCode to get unique cuts
     const cutGroups = groupCutsByBarCode(detail.cuts);
 
+    // Check if this bar is from waste inventory
+    const isFromWaste = detail.isFromWaste || detail.patternId?.startsWith("waste_");
+    const wasteSource = detail.wasteSource;
+    
+    // Determine bar length (waste pieces have different lengths)
+    const barLength = wasteSource 
+      ? wasteSource.originalLength / 1000  // Convert mm to m
+      : STANDARD_BAR_LENGTH;
+
     // Calculate total used length and waste for this bar
     // Note: cut.length already includes lap (cutting length = effective + lap)
     let totalUsedLength = 0;
     cutGroups.forEach((cut) => {
       totalUsedLength += cut.length;
     });
-    const barWaste = STANDARD_BAR_LENGTH - totalUsedLength;
-    const barUtilization = (totalUsedLength / STANDARD_BAR_LENGTH) * 100;
+    const barWaste = barLength - totalUsedLength;
+    const barUtilization = (totalUsedLength / barLength) * 100;
+
+    // Source description
+    const sourceDesc = isFromWaste 
+      ? `Waste (Sheet #${wasteSource?.sourceSheetNumber || wasteSource?.sourceSheetId || "?"}, Bar #${wasteSource?.sourceBarNumber || "?"})`
+      : "New 12m Bar";
 
     // Add each cut as a separate row
     cutGroups.forEach((cut, index) => {
       const row: (string | number)[] = [];
 
-      // Bar # only on first cut
+      // Bar #, Source, Bar Length, Total Used only on first cut
       if (index === 0) {
         row.push(detail.barNumber);
+        row.push(sourceDesc);
+        row.push(parseFloat(barLength.toFixed(3)));
+        row.push(parseFloat(totalUsedLength.toFixed(3))); // Total used (with laps)
       } else {
         row.push(""); // Empty for subsequent cuts
+        row.push("");
+        row.push("");
+        row.push("");
       }
 
       // BarCode, Effective Length, and Lap Length for all cuts
@@ -92,8 +116,10 @@ function createAlgorithmSheet(result: CuttingStockResult): XLSX.WorkSheet {
       // Waste and Utilization only on first cut
       if (index === 0) {
         row.push(parseFloat(barWaste.toFixed(3)));
+        row.push(parseFloat((100 - barUtilization).toFixed(2))); // Waste %
         row.push(parseFloat(barUtilization.toFixed(2)));
       } else {
+        row.push(""); // Empty for subsequent cuts
         row.push(""); // Empty for subsequent cuts
         row.push(""); // Empty for subsequent cuts
       }
@@ -107,12 +133,16 @@ function createAlgorithmSheet(result: CuttingStockResult): XLSX.WorkSheet {
 
   // Set column widths
   worksheet["!cols"] = [
-    { wch: 8 },  // Bar #
-    { wch: 15 }, // BarCode
-    { wch: 18 }, // Effective Length
-    { wch: 15 }, // Lap Length
-    { wch: 12 }, // Waste
-    { wch: 15 }, // Utilization
+    { wch: 8 },   // Bar #
+    { wch: 28 },  // Source
+    { wch: 14 },  // Bar Length
+    { wch: 14 },  // Total Used
+    { wch: 20 },  // BarCode
+    { wch: 18 },  // Effective Length
+    { wch: 15 },  // Lap Length
+    { wch: 12 },  // Waste
+    { wch: 12 },  // Waste %
+    { wch: 15 },  // Utilization
   ];
 
   return worksheet;
@@ -173,6 +203,14 @@ function createComparisonSheet(
   greedyResult: CuttingStockResult,
   dynamicResult: CuttingStockResult
 ): XLSX.WorkSheet {
+  // Count waste pieces reused
+  const greedyWasteReused = greedyResult.detailedCuts.filter(
+    (d) => d.isFromWaste || d.patternId?.startsWith("waste_")
+  ).length;
+  const dynamicWasteReused = dynamicResult.detailedCuts.filter(
+    (d) => d.isFromWaste || d.patternId?.startsWith("waste_")
+  ).length;
+
   // Summary comparison
   const summaryData = [
     ["SUMMARY COMPARISON", "", "", ""],
@@ -184,10 +222,36 @@ function createComparisonSheet(
       dynamicResult.totalBarsUsed - greedyResult.totalBarsUsed,
     ],
     [
+      "New 12m Bars",
+      greedyResult.totalBarsUsed - greedyWasteReused,
+      dynamicResult.totalBarsUsed - dynamicWasteReused,
+      (dynamicResult.totalBarsUsed - dynamicWasteReused) - (greedyResult.totalBarsUsed - greedyWasteReused),
+    ],
+    [
+      "Waste Pieces Reused",
+      greedyWasteReused,
+      dynamicWasteReused,
+      dynamicWasteReused - greedyWasteReused,
+    ],
+    [
       "Total Waste (m)",
       parseFloat(greedyResult.totalWaste.toFixed(3)),
       parseFloat(dynamicResult.totalWaste.toFixed(3)),
       parseFloat((dynamicResult.totalWaste - greedyResult.totalWaste).toFixed(3)),
+    ],
+    [
+      "Waste from New Bars (m)",
+      parseFloat(((greedyResult.summary as any).wasteFromNewBars ?? greedyResult.totalWaste).toFixed(3)),
+      parseFloat(((dynamicResult.summary as any).wasteFromNewBars ?? dynamicResult.totalWaste).toFixed(3)),
+      parseFloat((((dynamicResult.summary as any).wasteFromNewBars ?? dynamicResult.totalWaste) - 
+                  ((greedyResult.summary as any).wasteFromNewBars ?? greedyResult.totalWaste)).toFixed(3)),
+    ],
+    [
+      "Waste from Reused Pieces (m)",
+      parseFloat(((greedyResult.summary as any).wasteFromReusedPieces ?? 0).toFixed(3)),
+      parseFloat(((dynamicResult.summary as any).wasteFromReusedPieces ?? 0).toFixed(3)),
+      parseFloat((((dynamicResult.summary as any).wasteFromReusedPieces ?? 0) - 
+                  ((greedyResult.summary as any).wasteFromReusedPieces ?? 0)).toFixed(3)),
     ],
     [
       "Average Utilization (%)",
@@ -237,11 +301,14 @@ function createComparisonSheet(
     const greedyBar = greedyResult.detailedCuts[i];
     const dynamicBar = dynamicResult.detailedCuts[i];
 
+    const greedySource = greedyBar?.isFromWaste ? " [WASTE]" : "";
+    const dynamicSource = dynamicBar?.isFromWaste ? " [WASTE]" : "";
+
     const greedyCuts = greedyBar
-      ? `${greedyBar.cuts.length} cuts, ${greedyBar.waste.toFixed(3)}m waste`
+      ? `${greedyBar.cuts.length} cuts, ${greedyBar.waste.toFixed(3)}m waste${greedySource}`
       : "N/A";
     const dynamicCuts = dynamicBar
-      ? `${dynamicBar.cuts.length} cuts, ${dynamicBar.waste.toFixed(3)}m waste`
+      ? `${dynamicBar.cuts.length} cuts, ${dynamicBar.waste.toFixed(3)}m waste${dynamicSource}`
       : "N/A";
 
     const difference =
@@ -282,14 +349,26 @@ function createComparisonSheet(
     ]);
   }
 
+  // Add note about waste reuse
+  if (greedyWasteReused > 0 || dynamicWasteReused > 0) {
+    summaryData.push([]);
+    summaryData.push(["NOTE", "", "", ""]);
+    summaryData.push([
+      "Waste Reuse",
+      greedyWasteReused > 0 ? `Greedy reused ${greedyWasteReused} waste pieces` : "Greedy: No waste reused",
+      dynamicWasteReused > 0 ? `Dynamic reused ${dynamicWasteReused} waste pieces` : "Dynamic: No waste reused (not supported)",
+      "",
+    ]);
+  }
+
   // Create worksheet
   const worksheet = XLSX.utils.aoa_to_sheet(summaryData);
 
   // Set column widths
   worksheet["!cols"] = [
     { wch: 25 },
-    { wch: 25 },
-    { wch: 25 },
+    { wch: 35 },
+    { wch: 35 },
     { wch: 25 },
   ];
 

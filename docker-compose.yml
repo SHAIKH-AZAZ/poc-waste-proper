@@ -1,0 +1,24 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cutting_stock_postgres
+    network_mode: host
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cutting_stock
+
+  mongodb:
+    image: mongo:7
+    container_name: cutting_stock_mongodb
+    network_mode: host
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: cutting_stock
+
+volumes:
+  postgres_data:
+  mongodb_data:

@@ -25,7 +25,7 @@ export function filterDataByDia(data: BarCuttingRaw[], dia: number): BarCuttingR
 /**
  * Gets summary statistics for a specific Dia
  */
-export function getDiaSummary(data: BarCuttingRaw[], dia: number) {
+export default function getDiaSummary(data: BarCuttingRaw[], dia: number) {
   const filteredData = filterDataByDia(data, dia);
   
   const totalBars = filteredData.reduce((sum, row) => sum + (row["Total Bars"] || 0), 0);
