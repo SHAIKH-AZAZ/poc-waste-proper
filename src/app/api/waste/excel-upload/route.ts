@@ -133,28 +133,39 @@ export async function POST(req: NextRequest) {
     }
 
     // Create waste items in database
-    const createdWaste = [];
+    const wasteData = [];
     let totalPieces = 0;
     
     for (const item of wasteItems) {
       // Create multiple entries based on quantity/repetition
       for (let i = 0; i < item.quantity; i++) {
-        const waste = await prisma.wasteInventory.create({
-          data: {
-            projectId: parseInt(projectId),
-            sourceSheetId: offcutSheet.id,
-            dia: item.dia,
-            length: item.length,
-            sourceBarNumber: 0, // Excel upload
-            sourcePatternId: "offcut-upload",
-            mongoCutsOriginId: null,
-            status: "available",
-          },
+        wasteData.push({
+          projectId: parseInt(projectId),
+          sourceSheetId: offcutSheet.id,
+          dia: item.dia,
+          length: item.length,
+          sourceBarNumber: 0, // Excel upload
+          sourcePatternId: "offcut-upload",
+          mongoCutsOriginId: null,
+          status: "available",
         });
-        createdWaste.push(waste);
         totalPieces++;
       }
     }
+
+    if (wasteData.length > 0) {
+      // Use createMany for bulk insertion (much faster)
+      // Note: skipDuplicates is not needed as there are no unique constraints on these fields
+      await prisma.wasteInventory.createMany({
+        data: wasteData,
+      });
+    }
+
+    // Since createMany doesn't return the created records, we return an empty array or fetch them if needed.
+    // However, for performance, returning the count is usually sufficient for bulk uploads.
+    // If exact returned objects are needed by frontend (which they don't seem to be based on usage), 
+    // we can skip fetching them back.
+    const createdWaste: any[] = []; // Sending empty array to avoid fetching back 1000s of records
 
     return NextResponse.json({
       success: true,

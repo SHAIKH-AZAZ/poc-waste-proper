@@ -37,8 +37,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const createdWaste = [];
-    let totalCreated = 0;
+
 
     // For manual uploads, we need a sourceSheetId. 
     // We'll use 0 as a special marker for manual uploads, but Prisma requires a valid sheet.
@@ -72,26 +71,34 @@ export async function POST(req: NextRequest) {
     }
 
     // Create waste items in database
+    const wasteData = [];
+    let totalCreated = 0;
+    
     for (const item of wasteItems) {
       // Create multiple entries if quantity > 1
       for (let i = 0; i < item.quantity; i++) {
-        const waste = await prisma.wasteInventory.create({
-          data: {
-            projectId,
-            sourceSheetId: manualSheet.id,
-            dia: item.dia,
-            length: item.length,
-            sourceBarNumber: 0, // Manual upload
-            sourcePatternId: "manual-upload",
-            mongoCutsOriginId: null, // No origin data for manual uploads
-            status: "available",
-          },
+        wasteData.push({
+          projectId,
+          sourceSheetId: manualSheet.id,
+          dia: item.dia,
+          length: item.length,
+          sourceBarNumber: 0, // Manual upload
+          sourcePatternId: "manual-upload",
+          mongoCutsOriginId: null, // No origin data for manual uploads
+          status: "available",
         });
-
-        createdWaste.push(waste);
         totalCreated++;
       }
     }
+
+    if (wasteData.length > 0) {
+      await prisma.wasteInventory.createMany({
+        data: wasteData,
+      });
+    }
+
+    // Return empty array for createdWaste as we don't need the IDs immediately
+    const createdWaste: any[] = [];
 
     return NextResponse.json({
       success: true,
