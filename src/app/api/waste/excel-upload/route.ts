@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { WASTE_MIN_LENGTH_MM } from "@/constants/config";
+import * as XLSX from "xlsx";
+
+export const dynamic = "force-dynamic";
 
 // POST - Upload Excel file with waste materials (OFFCUT)
 export async function POST(req: NextRequest) {
@@ -18,7 +21,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Parse Excel file
-    const XLSX = await import("xlsx");
     const arrayBuffer = await file.arrayBuffer();
     const data = new Uint8Array(arrayBuffer);
     const workbook = XLSX.read(data, { type: "array" });

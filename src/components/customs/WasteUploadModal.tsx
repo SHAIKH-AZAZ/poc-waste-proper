@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { IconX, IconPlus, IconTrash, IconUpload, IconRecycle, IconFileSpreadsheet, IconEdit } from "@tabler/icons-react";
+import { toast } from "sonner";
 import WasteExcelUpload from "./WasteExcelUpload";
 
 interface WasteItem {
@@ -44,12 +45,14 @@ export default function WasteUploadModal({ projectId, onClose, onSuccess }: Wast
     );
 
     if (invalidItems.length > 0) {
+      toast.error("All items must have valid diameter, length ≥ 2000mm, and quantity > 0");
       setError("All items must have valid diameter, length ≥ 2000mm, and quantity > 0");
       return;
     }
 
     setUploading(true);
     setError(null);
+    const toastId = toast.loading("Processing manual entry...");
 
     try {
       const response = await fetch("/api/waste/manual-upload", {
@@ -64,12 +67,15 @@ export default function WasteUploadModal({ projectId, onClose, onSuccess }: Wast
       const data = await response.json();
 
       if (data.success) {
+        toast.success(data.message || "Manual waste upload successful!", { id: toastId });
         onSuccess();
         onClose();
       } else {
+        toast.error(data.error || "Failed to upload waste", { id: toastId });
         setError(data.error || "Failed to upload waste");
       }
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload waste", { id: toastId });
       setError(err instanceof Error ? err.message : "Failed to upload waste");
     } finally {
       setUploading(false);
@@ -107,22 +113,20 @@ export default function WasteUploadModal({ projectId, onClose, onSuccess }: Wast
           <div className="flex gap-2 mb-6 bg-slate-100 p-1 rounded-xl">
             <button
               onClick={() => setUploadMode("excel")}
-              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                uploadMode === "excel"
+              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${uploadMode === "excel"
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-600 hover:text-slate-900"
-              }`}
+                }`}
             >
               <IconFileSpreadsheet className="w-4 h-4" />
               Excel Upload
             </button>
             <button
               onClick={() => setUploadMode("manual")}
-              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
-                uploadMode === "manual"
+              className={`flex-1 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${uploadMode === "manual"
                   ? "bg-white text-slate-900 shadow-sm"
                   : "text-slate-600 hover:text-slate-900"
-              }`}
+                }`}
             >
               <IconEdit className="w-4 h-4" />
               Manual Entry
@@ -250,7 +254,7 @@ export default function WasteUploadModal({ projectId, onClose, onSuccess }: Wast
               {/* Info */}
               <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-4">
                 <p className="text-xs text-amber-800">
-                  <span className="font-semibold">Note:</span> Only waste pieces ≥ 2000mm (2m) can be added to inventory. 
+                  <span className="font-semibold">Note:</span> Only waste pieces ≥ 2000mm (2m) can be added to inventory.
                   These pieces will be available for reuse in future calculations.
                 </p>
               </div>

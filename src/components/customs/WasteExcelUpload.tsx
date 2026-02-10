@@ -7,6 +7,8 @@ interface WasteExcelUploadProps {
   onSuccess: () => void;
 }
 
+import { toast } from "sonner";
+
 export default function WasteExcelUpload({ projectId, onSuccess }: WasteExcelUploadProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +22,7 @@ export default function WasteExcelUpload({ projectId, onSuccess }: WasteExcelUpl
 
     // Validate file type
     if (!file.name.match(/\.(xlsx|xls)$/i)) {
-      setError("Please upload an Excel file (.xlsx or .xls)");
+      toast.error("Please upload an Excel file (.xlsx or .xls)");
       return;
     }
 
@@ -28,6 +30,7 @@ export default function WasteExcelUpload({ projectId, onSuccess }: WasteExcelUpl
     setError(null);
     setSuccess(null);
     setDetails(null);
+    const toastId = toast.loading("Processing Excel file...");
 
     try {
       const formData = new FormData();
@@ -42,6 +45,7 @@ export default function WasteExcelUpload({ projectId, onSuccess }: WasteExcelUpl
       const data = await response.json();
 
       if (data.success) {
+        toast.success(data.message || "Waste upload successful!", { id: toastId });
         setSuccess(data.message);
         setDetails({
           created: data.created,
@@ -50,18 +54,20 @@ export default function WasteExcelUpload({ projectId, onSuccess }: WasteExcelUpl
           errors: data.errors,
         });
         onSuccess();
-        
+
         // Clear file input
         if (fileInputRef.current) {
           fileInputRef.current.value = "";
         }
       } else {
+        toast.error(data.error || "Failed to upload waste Excel", { id: toastId });
         setError(data.error || "Failed to upload waste Excel");
         if (data.details) {
           setDetails({ created: 0, rows: 0, skipped: 0, errors: data.details });
         }
       }
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to upload waste Excel", { id: toastId });
       setError(err instanceof Error ? err.message : "Failed to upload waste Excel");
     } finally {
       setUploading(false);
@@ -76,7 +82,7 @@ export default function WasteExcelUpload({ projectId, onSuccess }: WasteExcelUpl
           <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center">
             <IconFileSpreadsheet className="w-8 h-8 text-blue-600" />
           </div>
-          
+
           <div className="text-center">
             <h3 className="font-semibold text-slate-900 mb-1">Upload OFFCUT Excel File</h3>
             <p className="text-sm text-slate-500">
@@ -159,7 +165,7 @@ export default function WasteExcelUpload({ projectId, onSuccess }: WasteExcelUpl
           <p>• Each row = one waste specification</p>
           <p>• Empty rows will be skipped</p>
         </div>
-        
+
         <div className="mt-3 bg-white rounded-lg p-3 border border-blue-100">
           <p className="text-xs font-semibold text-slate-600 mb-2">Example with Repetition:</p>
           <table className="w-full text-xs">
