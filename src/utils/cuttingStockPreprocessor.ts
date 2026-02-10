@@ -126,28 +126,7 @@ export class CuttingStockPreprocessor {
     }, 0);
   }
 
-  /**
-   * Extract all segments with unique identifiers for greedy algorithm
-   * This creates individual segment instances to avoid grouping issues
-   */
-  extractAllSegmentsForGreedy(requests: MultiBarCuttingRequest[]): BarSegment[] {
-    const allSegments: BarSegment[] = [];
 
-    for (const request of requests) {
-      // Expand segments by quantity - create unique instances
-      for (let i = 0; i < request.quantity; i++) {
-        // Create unique segments for each bar instance
-        const instanceSegments = request.segments.map(segment => ({
-          ...segment,
-          segmentId: `${segment.segmentId}_instance_${i}`, // Make segmentId unique
-          parentBarCode: `${segment.parentBarCode}_instance_${i}`, // Make parent unique per instance
-        }));
-        allSegments.push(...instanceSegments);
-      }
-    }
-
-    return allSegments;
-  }
 
   /**
    * Estimate minimum bars needed (lower bound)

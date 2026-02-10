@@ -399,28 +399,63 @@ export default function ProjectPage() {
                 <div key={sheet.id} className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-blue-200 transition-all duration-300">
                   <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm flex-shrink-0">
-                        <span className="text-lg font-bold text-indigo-600">#{sheet.sheetNumber}</span>
-                      </div>
+                      {/* Sheet Icon/Number Badge */}
+                      {(sheet.fileName.toLowerCase().includes('offcut') || 
+                        sheet.fileName.toLowerCase().includes('waste') ||
+                        sheet.fileName.toLowerCase().includes('manual waste upload')) ? (
+                        <div className="w-12 h-12 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl flex items-center justify-center border border-amber-200 shadow-sm flex-shrink-0">
+                          <IconRecycle className="w-6 h-6 text-amber-600" />
+                        </div>
+                      ) : (
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm flex-shrink-0">
+                          <span className="text-lg font-bold text-indigo-600">#{sheet.sheetNumber}</span>
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <Link href={`/project/${projectId}/sheet/${sheet.id}`} className="block">
-                          <h3 className="font-bold text-slate-900 text-lg hover:text-blue-600 transition-colors truncate pr-4">
-                            {sheet.fileName}
-                          </h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold text-slate-900 text-lg hover:text-blue-600 transition-colors truncate">
+                              {sheet.fileName}
+                            </h3>
+                            {/* Waste Only Marker */}
+                            {(sheet.fileName.toLowerCase().includes('offcut') || 
+                              sheet.fileName.toLowerCase().includes('waste') ||
+                              sheet.fileName.toLowerCase().includes('manual waste upload')) && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 text-xs font-bold rounded-full border border-amber-200 shadow-sm flex-shrink-0">
+                                <IconRecycle className="w-3 h-3" />
+                                WASTE ONLY
+                              </span>
+                            )}
+                          </div>
                         </Link>
                         <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-slate-500">
                           <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
                             <IconFile size={14} className="text-slate-400" />
                             {formatDate(sheet.uploadedAt)}
                           </span>
-                          <span className="hidden sm:inline text-slate-300">|</span>
-                          <span className="flex items-center gap-1">
-                            <span className="font-semibold text-slate-700">{sheet._count.results}</span> calculations
-                          </span>
-                          <span className="hidden sm:inline text-slate-300">|</span>
-                          <span className="flex items-center gap-1">
-                            <span className="font-semibold text-slate-700">{sheet._count.wasteProduced}</span> waste pieces
-                          </span>
+                          {/* Show different stats for waste-only sheets */}
+                          {(sheet.fileName.toLowerCase().includes('offcut') || 
+                            sheet.fileName.toLowerCase().includes('waste') ||
+                            sheet.fileName.toLowerCase().includes('manual waste upload')) ? (
+                            <>
+                              <span className="hidden sm:inline text-slate-300">|</span>
+                              <span className="flex items-center gap-1.5 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
+                                <IconRecycle size={14} className="text-amber-600" />
+                                <span className="font-semibold text-amber-700">{sheet._count.wasteProduced}</span> waste pieces
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="hidden sm:inline text-slate-300">|</span>
+                              <span className="flex items-center gap-1">
+                                <span className="font-semibold text-slate-700">{sheet._count.results}</span> calculations
+                              </span>
+                              <span className="hidden sm:inline text-slate-300">|</span>
+                              <span className="flex items-center gap-1">
+                                <span className="font-semibold text-slate-700">{sheet._count.wasteProduced}</span> waste pieces
+                              </span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
