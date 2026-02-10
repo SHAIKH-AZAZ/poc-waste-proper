@@ -19,6 +19,7 @@ import {
   IconChevronsRight,
 } from "@tabler/icons-react";
 import DashboardAnalytics from "./components/DashboardAnalytics";
+import WasteUploadModal from "@/components/customs/WasteUploadModal";
 
 interface Sheet {
   id: number;
@@ -88,6 +89,7 @@ export default function ProjectPage() {
   const [activeTab, setActiveTab] = useState<"sheets" | "waste" | "dashboard">("sheets");
   const [selectedWasteDia, setSelectedWasteDia] = useState<number | null>(null);
   const [selectedWasteStatus, setSelectedWasteStatus] = useState<string | null>(null);
+  const [showWasteUploadModal, setShowWasteUploadModal] = useState(false);
 
   // Waste Pagination State
   const [currentWastePage, setCurrentWastePage] = useState(1);
@@ -493,9 +495,32 @@ export default function ProjectPage() {
           </div>
         )}
 
+        {/* Waste Upload Modal */}
+        {showWasteUploadModal && (
+          <WasteUploadModal
+            projectId={projectId}
+            onClose={() => setShowWasteUploadModal(false)}
+            onSuccess={() => {
+              fetchProjectData();
+              setShowWasteUploadModal(false);
+            }}
+          />
+        )}
+
         {/* Waste Tab */}
         {!loading && activeTab === "waste" && (
           <div className="space-y-6">
+            {/* Upload Waste Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowWasteUploadModal(true)}
+                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:from-emerald-600 hover:to-green-700 transition-all shadow-lg shadow-emerald-500/20 font-medium"
+              >
+                <IconRecycle className="w-5 h-5" />
+                Upload Waste Materials
+              </button>
+            </div>
+
             {/* Waste Summary */}
             {wasteSummary && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
