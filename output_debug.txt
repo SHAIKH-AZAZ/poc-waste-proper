@@ -1,0 +1,7 @@
+$ prisma db push
+DATABASE_URL: undefined
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma\schema.prisma.
+Error: The datasource.url property is required in your Prisma config file when using prisma db push.
+error: script "db:push" exited with code 1

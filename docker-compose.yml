@@ -2,7 +2,8 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: cutting_stock_postgres
-    network_mode: host
+    ports:
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
@@ -13,7 +14,8 @@ services:
   mongodb:
     image: mongo:7
     container_name: cutting_stock_mongodb
-    network_mode: host
+    ports:
+      - "27017:27017"
     volumes:
       - mongodb_data:/data/db
     environment:
