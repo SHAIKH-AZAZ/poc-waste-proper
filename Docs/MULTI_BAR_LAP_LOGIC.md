@@ -24,13 +24,13 @@ Laps required: floor(15.5/12) = 1 lap joint
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                    15.5m Continuous Bar                          │
+│                    15.5m Continuous Bar                         │
 └─────────────────────────────────────────────────────────────────┘
          ↓                                    ↓
-┌──────────────────────┐              ┌──────────┐
-│   Segment 0: 12m     │←── LAP 0.48m ──→│ Seg 1: 3.5m │
-│   (has lap at END)   │              │ (has lap at START) │
-└──────────────────────┘              └──────────┘
+┌────────────────────────┐                    ┌────────────────────┐
+│   Segment 0: 12m       │←── LAP 0.48m ──→   │ Seg 1: 3.5m        │
+│   (has lap at END)     │                    │ (has lap at START) │
+└────────────────────────┘                    └────────────────────┘
 ```
 
 ### Segments
@@ -43,10 +43,12 @@ Segment 0:
 
 Segment 1:
   - Length: 3.5m
-  - Lap at START: 0.480m (to connect to segment 0)
-  - Total material: 3.5m + 0.480m = 3.980m
+  - Lap at END: 0m (Last segment)
+  - Incoming Lap: 0.480m (from Segment 0)
+  - Total material: 3.5m
 
-Total: 12.0m + 3.5m = 15.5m (with 0.480m overlap at lap joint)
+Total: 12.0m + 3.5m = 15.5m (Effective Length)
+Total Material with Lap: 12.480m (Seg 0) + 3.5m (Seg 1) = 15.980m
 ```
 
 ## 🔧 Implementation Logic
@@ -66,13 +68,13 @@ Segment 1: lapLength = 0.480 ✓ Correct
 ### After (CORRECT)
 
 ```typescript
-// ✅ ALL segments have lap if lapLength > 0 in input
-const hasLap = cut.segmentIndex >= 0 && cut.lapLength > 0;
-lapLength: hasLap ? cut.lapLength : 0
+// ✅ Only non-last segments have lap (at END)
+const hasLapEnd = isMultiBar && !isLastSegment;
+const segmentLapLength = isLastSegment ? 0 : lapLength;
 
 Result:
 Segment 0: lapLength = 0.480 ✓ Correct - has lap at END
-Segment 1: lapLength = 0.480 ✓ Correct - has lap at START
+Segment 1: lapLength = 0     ✓ Correct - has lap at START (conceptually) but no extra material needed at its end
 ```
 
 ## 📋 Excel Export Result
@@ -131,8 +133,8 @@ If Lap Length = 0 in Excel input:
 
 3. **Material Calculation:**
    - Segment 0: 12.0m bar with 0.480m extra for lap at end
-   - Segment 1: 3.5m bar with 0.480m extra for lap at start
-   - Total material: 12.480m + 3.980m = 16.460m
+   - Segment 1: 3.5m bar (No extra lap, uses incoming lap)
+   - Total material: 12.480m + 3.5m = 15.980m
    - Effective length: 15.5m (after 0.480m overlap)
 
 ## 📊 More Examples
@@ -179,10 +181,8 @@ Even though multi-bar, no lap because input = 0!
 
 **For multi-bar cuts (> 12m):**
 
-- ✅ ALL segments have lap length (if lap length > 0 in input)
-- ✅ First segment has lap at END
-- ✅ Middle segments have lap at START and END
-- ✅ Last segment has lap at START
-- ✅ They overlap at lap joints to form continuous bar
+- ✅ Non-last segments have lap length (at END)
+- ✅ Last segment has 0 lap length (conceptually has incoming lap at START)
+- ✅ Total material includes all laps correctly
 
-**This is now correctly implemented in both Greedy and Dynamic algorithms!**
+**This is now correctly implemented in MultiBarCalculator!**
