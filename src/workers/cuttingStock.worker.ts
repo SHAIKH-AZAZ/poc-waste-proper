@@ -54,28 +54,19 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
             case "dynamic":
                 try {
                     console.log(`[Worker dynamic] ========================================`);
-                    console.log(`[Worker dynamic] Starting HYBRID optimization (greedy+swap) for dia ${dia}`);
+                    console.log(`[Worker dynamic] Starting SWAP optimization for dia ${dia}`);
                     console.log(`[Worker dynamic] Requests: ${requests.length}`);
                     console.log(`[Worker dynamic] ========================================`);
-
-                    // PHASE 1: Run greedy to get initial solution
-                    sendProgress(type, "Running greedy algorithm...", 10);
-                    const greedyForDynamic = new GreedyCuttingStock();
-                    const greedyResult = greedyForDynamic.solve(requests, dia, wastePieces);
-                    console.log(`[Worker dynamic] Greedy complete: ${greedyResult.totalBarsUsed} bars`);
-
-                    // PHASE 2: Optimize greedy result with swap
-                    sendProgress(type, "Optimizing with swaps...", 30);
+                    sendProgress(type, "Preprocessing data...", 10);
+                    // Use SwapOptimization for better results
                     const swapForDynamic = new SwapOptimization();
-                    result = swapForDynamic.solve(requests, dia, wastePieces, greedyResult, (stage, percentage) => {
+                    result = swapForDynamic.solve(requests, dia, wastePieces, (stage, percentage) => {
                         sendProgress(type, stage, percentage);
                     });
-
                     // Override algorithm name to "dynamic" for display
                     (result as CuttingStockResult).algorithm = "dynamic";
                     console.log(`[Worker dynamic] ========================================`);
-                    console.log(`[Worker dynamic] HYBRID Complete: ${(result as CuttingStockResult).totalBarsUsed} bars (started with ${greedyResult.totalBarsUsed})`);
-                    console.log(`[Worker dynamic] Improvement: ${greedyResult.totalBarsUsed - (result as CuttingStockResult).totalBarsUsed} bars saved`);
+                    console.log(`[Worker dynamic] SWAP Complete, bars used: ${(result as CuttingStockResult).totalBarsUsed}`);
                     console.log(`[Worker dynamic] ========================================`);
                 } catch (dynamicError) {
                     console.error(`[Worker dynamic] Error in dynamic algorithm:`, dynamicError);
@@ -95,7 +86,7 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
             case "swap":
                 console.log(`[Worker swap] Starting swap optimization for dia ${dia}`);
                 const swap = new SwapOptimization();
-                result = swap.solve(requests, dia, wastePieces, undefined, (stage, percentage) => {
+                result = swap.solve(requests, dia, wastePieces, (stage, percentage) => {
                     sendProgress(type, stage, percentage);
                 });
                 break;

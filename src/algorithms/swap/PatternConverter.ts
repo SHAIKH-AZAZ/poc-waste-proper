@@ -4,7 +4,6 @@ import type {
     DetailedCut,
     CutInstruction,
     CuttingStockResult,
-    BarSegment,
 } from "@/types/CuttingStock";
 import type { Bin } from "./types";
 
@@ -46,44 +45,6 @@ export class PatternConverter {
                 utilization: (usedLength / barLength) * 100,
                 standardBarLength: barLength,
             };
-        });
-    }
-
-    /**
-     * Convert cutting patterns back to bins (for greedy+swap hybrid)
-     * This allows us to start optimization from greedy's solution
-     */
-    patternsToBins(patterns: CuttingPattern[], allSegments: BarSegment[]): Bin[] {
-        // Create a map of segmentId to full segment data
-        const segmentMap = new Map<string, BarSegment>();
-        for (const segment of allSegments) {
-            segmentMap.set(segment.segmentId, segment);
-        }
-
-        return patterns.map((pattern, index) => {
-            const segments: BarSegment[] = [];
-
-            // Reconstruct segments from pattern cuts
-            for (const cut of pattern.cuts) {
-                const fullSegment = segmentMap.get(cut.segmentId);
-                if (fullSegment) {
-                    // Add segment 'count' times
-                    for (let i = 0; i < cut.count; i++) {
-                        segments.push(fullSegment);
-                    }
-                }
-            }
-
-            const isWaste = pattern.id.includes('waste');
-            const bin: Bin = {
-                id: pattern.id,
-                segments,
-                remaining: pattern.waste,
-                totalLength: pattern.standardBarLength,
-                isWastePiece: isWaste,
-            };
-
-            return bin;
         });
     }
 

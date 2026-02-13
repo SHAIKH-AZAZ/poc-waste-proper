@@ -40,7 +40,6 @@ export class SwapOptimization {
     requests: MultiBarCuttingRequest[],
     dia: number,
     wastePieces?: WastePiece[],
-    greedyResult?: CuttingStockResult,  // NEW: Optional greedy result for hybrid approach
     onProgress?: (stage: string, percentage: number) => void
   ): CuttingStockResult {
     const startTime = performance.now();
@@ -64,25 +63,13 @@ export class SwapOptimization {
 
     // Extract all segments with unique identifiers (critical for same-parent constraint)
     const allSegments = this.preprocessor.extractAllSegmentsForGreedy(diaRequests);
-    if (allSegments.length === 0) {
-      return this.patternConverter.createEmptyResult(dia, startTime);
-    }
+    console.log(`[Swap] Total segments: ${allSegments.length}`);
 
-    onProgress?.("Preparing initial solution...", 0);
+    onProgress?.("Creating initial solution...", 10);
 
-    let bins: Bin[];
-
-    if (greedyResult) {
-      // HYBRID APPROACH: Start from greedy's solution
-      console.log(`[Swap] Starting from greedy solution (${greedyResult.patterns.length} bins)`);
-      bins = this.patternConverter.patternsToBins(greedyResult.patterns, allSegments);
-      onProgress?.("Optimizing greedy solution...", 10);
-    } else {
-      // STANDALONE: Create own initial solution with Best Fit Decreasing
-      const sortedSegments = [...allSegments].sort((a, b) => b.length - a.length);
-      bins = this.bestFitDecreasing(sortedSegments, wastePieces);
-      onProgress?.("Running swap optimization...", 10);
-    }
+    // Create initial solution using Best Fit Decreasing with waste reuse
+    const sortedSegments = [...allSegments].sort((a, b) => b.length - a.length);
+    let bins = this.bestFitDecreasing(sortedSegments, wastePieces);
 
     const initialBinCount = bins.length;
     const initialWaste = this.scorer.calculateTotalWaste(bins);
@@ -611,9 +598,10 @@ export class SwapOptimization {
       const progress = 70 + (iteration / this.MAX_ITERATIONS_PHASE3) * 15;
       onProgress?.(`2-2 swaps (iteration ${iteration})...`, progress);
 
-      // Randomize bin order to avoid bias
+      // Process bins in consistent order for deterministic results
+      // Note: Removed randomization to ensure same input always produces same output
       const binIndices = Array.from({ length: bins.length }, (_, i) => i);
-      this.shuffleArray(binIndices);
+      // this.shuffleArray(binIndices);  // Disabled - causes non-deterministic results
 
       // Iterate through random bin pairs
       for (let i = 0; i < binIndices.length - 1; i++) {
