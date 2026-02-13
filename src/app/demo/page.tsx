@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { ProcessingProgress } from '@/components/ProcessingProgress'
 import { useProcessingProgress } from '@/hooks/useProcessingProgress'
-import { WasteOptimizedCuttingStock } from '@/algorithms/wasteOptimizedCuttingStock'
-import { CuttingStockPreprocessor } from '@/utils/cuttingStockPreprocessor'
-import { progressEmitter } from '@/utils/progressEmitter'
+import { GreedyCuttingStock } from '@/algorithms/greedyCuttingStock'
+import { CuttingStockPreprocessor } from '@/utils/processing/cuttingStockPreprocessor'
+import { progressEmitter } from '@/utils/processing/progressEmitter'
 import type { BarCuttingDisplay } from '@/types/BarCuttingRow'
 
 export default function DemoPage() {
@@ -26,7 +26,6 @@ export default function DemoPage() {
     { BarCode: '4/B4/16', Dia: 16, 'Total Bars': 2, 'Cutting Length': 5, 'Lap Length': 0, Element: 'Column' },
     { BarCode: '5/B5/16', Dia: 16, 'Total Bars': 1, 'Cutting Length': 7, 'Lap Length': 0, Element: 'Column' },
   ]
-
   const handleProcess = async () => {
     try {
       setError(null)
@@ -36,7 +35,7 @@ export default function DemoPage() {
       const preprocessor = new CuttingStockPreprocessor()
       const requests = preprocessor.convertToCuttingRequests(sampleData)
 
-      const optimizer = new WasteOptimizedCuttingStock()
+      const optimizer = new GreedyCuttingStock()
 
       // Process each diameter
       const allResults: any[] = []
@@ -72,7 +71,7 @@ export default function DemoPage() {
         {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-4xl font-bold text-white">
-            Waste-Optimized Cutting Stock
+            Greedy Cutting Stock Demo
           </h1>
           <p className="text-slate-400">
             Real-time calculation tracking and optimization
@@ -92,11 +91,10 @@ export default function DemoPage() {
           <button
             onClick={handleProcess}
             disabled={isProcessing}
-            className={`px-8 py-3 rounded-lg font-semibold text-white transition-all ${
-              isProcessing
-                ? 'bg-slate-600 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
-            }`}
+            className={`px-8 py-3 rounded-lg font-semibold text-white transition-all ${isProcessing
+              ? 'bg-slate-600 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 active:scale-95'
+              }`}
           >
             {isProcessing ? (
               <span className="flex items-center gap-2">

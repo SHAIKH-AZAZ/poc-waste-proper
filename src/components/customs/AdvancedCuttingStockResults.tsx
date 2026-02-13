@@ -23,52 +23,36 @@ interface AlgorithmInfo {
 
 const ALGORITHMS: AlgorithmInfo[] = [
   {
-    name: "Adaptive Selection",
-    key: "adaptive",
-    description: "Automatically selects the best algorithm based on dataset characteristics",
-    bestFor: "Production use - optimal balance of speed and quality",
-    complexity: "Variable",
-    expectedQuality: "Best Available"
+    name: "Greedy (Fast)",
+    key: "greedy",
+    description: "First Fit Decreasing with waste reuse - fast results with waste piece optimization",
+    bestFor: "Quick optimization with waste reuse support",
+    complexity: "O(n log n)",
+    expectedQuality: "Good"
   },
   {
-    name: "Improved Greedy (Smart)",
-    key: "improved-greedy",
-    description: "Smart greedy with look-ahead for optimal combinations - solves 6m+4m+2m waste problem",
-    bestFor: "Fast processing with much better results than standard greedy",
-    complexity: "O(n log n)",
+    name: "Dynamic (Optimized)",
+    key: "dynamic",
+    description: "Swap optimization with greedy initialization - best quality with waste reuse",
+    bestFor: "Best quality results with waste reuse support",
+    complexity: "O(n²)",
     expectedQuality: "Excellent"
   },
   {
-    name: "Branch & Bound",
-    key: "branch-bound", 
-    description: "Exhaustive search with intelligent pruning for guaranteed optimal solutions",
-    bestFor: "Small datasets requiring optimal solutions",
-    complexity: "Exponential",
-    expectedQuality: "Optimal"
-  },
-  {
-    name: "True Dynamic Programming",
-    key: "true-dynamic",
-    description: "State space exploration with memoization for near-optimal solutions",
-    bestFor: "Medium datasets with quality priority",
-    complexity: "Exponential",
-    expectedQuality: "Near-Optimal"
-  },
-  {
-    name: "Standard Greedy (FFD)",
-    key: "greedy",
-    description: "First Fit Decreasing - has the 6m+4m+2m waste problem you identified",
-    bestFor: "Comparison baseline - shows the allocation problem",
-    complexity: "O(n log n)",
-    expectedQuality: "Fair"
-  },
-  {
-    name: "Legacy Dynamic",
-    key: "dynamic",
-    description: "Pattern-based greedy selection (not true DP)",
-    bestFor: "Comparison baseline",
+    name: "Swap Optimization",
+    key: "swap",
+    description: "Advanced swap optimization for better results",
+    bestFor: "Improved results through iterative refinement",
     complexity: "O(n²)",
-    expectedQuality: "Fair"
+    expectedQuality: "Excellent"
+  },
+  {
+    name: "Chunked Processing",
+    key: "chunked",
+    description: "Process large datasets in chunks with waste reuse",
+    bestFor: "Very large datasets requiring memory optimization",
+    complexity: "O(n log n) per chunk",
+    expectedQuality: "Good"
   }
 ];
 
@@ -84,7 +68,7 @@ export default function AdvancedCuttingStockResults({
   const [activeTab, setActiveTab] = useState<"overview" | "patterns" | "details">("overview");
 
   // Find best result (minimum bars, then minimum waste)
-  const bestResult = results.length > 0 ? 
+  const bestResult = results.length > 0 ?
     results.reduce((best, current) => {
       if (current.totalBarsUsed < best.totalBarsUsed) return current;
       if (current.totalBarsUsed === best.totalBarsUsed && current.totalWaste < best.totalWaste) return current;
@@ -93,7 +77,7 @@ export default function AdvancedCuttingStockResults({
 
   const getQualityColor = (result: CuttingStockResult) => {
     if (!bestResult) return "text-gray-600";
-    
+
     if (result.totalBarsUsed === bestResult.totalBarsUsed) {
       return "text-green-600 font-bold";
     } else if (result.totalBarsUsed <= bestResult.totalBarsUsed + 1) {
@@ -107,7 +91,7 @@ export default function AdvancedCuttingStockResults({
 
   const getQualityLabel = (result: CuttingStockResult) => {
     if (!bestResult) return "Unknown";
-    
+
     if (result.totalBarsUsed === bestResult.totalBarsUsed) {
       return "Optimal";
     } else if (result.totalBarsUsed <= bestResult.totalBarsUsed + 1) {
@@ -135,7 +119,7 @@ export default function AdvancedCuttingStockResults({
             Diameter {selectedDia}mm • File: {fileName}
           </p>
         </div>
-        
+
         {bestResult && (
           <div className="text-right">
             <div className="text-2xl font-bold text-green-600">
@@ -160,13 +144,12 @@ export default function AdvancedCuttingStockResults({
             return (
               <motion.div
                 key={alg.key}
-                className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                  hasResult 
-                    ? "border-green-300 bg-green-50" 
-                    : isRunning 
-                    ? "border-blue-300 bg-blue-50"
-                    : "border-gray-300 bg-gray-50 hover:border-gray-400"
-                }`}
+                className={`p-4 border rounded-lg cursor-pointer transition-all ${hasResult
+                    ? "border-green-300 bg-green-50"
+                    : isRunning
+                      ? "border-blue-300 bg-blue-50"
+                      : "border-gray-300 bg-gray-50 hover:border-gray-400"
+                  }`}
                 whileHover={{ scale: 1.02 }}
                 onClick={() => !hasResult && !isRunning && onRunAlgorithm(alg.key)}
               >
@@ -180,9 +163,9 @@ export default function AdvancedCuttingStockResults({
                     </div>
                   )}
                 </div>
-                
+
                 <p className="text-sm text-gray-600 mb-2">{alg.description}</p>
-                
+
                 <div className="text-xs text-gray-500">
                   <div><strong>Best for:</strong> {alg.bestFor}</div>
                   <div><strong>Quality:</strong> {alg.expectedQuality}</div>
@@ -192,7 +175,7 @@ export default function AdvancedCuttingStockResults({
                   <div className="mt-2">
                     <div className="text-xs text-blue-600 mb-1">{currentProgress.stage}</div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
+                      <div
                         className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                         style={{ width: `${currentProgress.percentage}%` }}
                       />
@@ -209,7 +192,7 @@ export default function AdvancedCuttingStockResults({
       {results.length > 0 && (
         <div className="mb-6">
           <h3 className="text-lg font-semibold text-gray-800 mb-3">Results Comparison</h3>
-          
+
           <div className="overflow-x-auto">
             <table className="w-full border-collapse border border-gray-300">
               <thead>
@@ -303,11 +286,10 @@ export default function AdvancedCuttingStockResults({
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key as "overview" | "patterns" | "details")}
-                className={`px-4 py-2 font-medium ${
-                  activeTab === tab.key
+                className={`px-4 py-2 font-medium ${activeTab === tab.key
                     ? "border-b-2 border-blue-500 text-blue-600"
                     : "text-gray-600 hover:text-gray-800"
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>
@@ -349,7 +331,7 @@ export default function AdvancedCuttingStockResults({
                   <div className="space-y-1">
                     {pattern.cuts.map((cut, cutIndex) => (
                       <div key={cutIndex} className="text-sm">
-                        <span className="font-mono">{cut.segmentId}</span>: 
+                        <span className="font-mono">{cut.segmentId}</span>:
                         {cut.count}× {cut.length.toFixed(3)}m
                         {cut.lapLength > 0 && <span className="text-blue-600"> (lap: {cut.lapLength.toFixed(3)}m)</span>}
                       </div>

@@ -2,28 +2,13 @@ import type {
   MultiBarCuttingRequest,
   BarSegment,
   CuttingStockResult,
-  CuttingPattern,
-  PatternCut,
-  DetailedCut,
-  CutInstruction,
   WastePiece,
 } from "@/types/CuttingStock";
 import { CuttingStockPreprocessor } from "@/utils/cuttingStockPreprocessor";
-
-interface Bin {
-  segments: BarSegment[];
-  remaining: number;
-  id: string;
-  totalLength: number;          // Total length of this bin (12m for new, variable for waste)
-  isWastePiece?: boolean;       // True if this bin is from waste inventory
-  wasteSourceInfo?: {           // Info about the waste piece used
-    wasteId: string;
-    sourceSheetId: number;
-    sourceSheetNumber?: number;
-    sourceBarNumber: number;
-    originalLength: number;
-  };
-}
+import type { Bin } from "./swap/types";
+import { SwapScorer } from "./swap/SwapScorer";
+import { BinManager } from "./swap/BinManager";
+import { PatternConverter } from "./swap/PatternConverter";
 
 /**
  * Swap Optimization Algorithm
@@ -44,16 +29,22 @@ export class SwapOptimization {
   private readonly MAX_ITERATIONS_PHASE1 = 100; // Reduced from 1000
   private readonly MAX_ITERATIONS_PHASE3 = 50;  // Reduced from 500
   private readonly MAX_PASSES = 3; // Multi-pass optimization
+
+  // Extracted utilities
   private preprocessor = new CuttingStockPreprocessor();
+  private scorer = new SwapScorer();
+  private binManager = new BinManager();
+  private patternConverter = new PatternConverter();
 
   solve(
     requests: MultiBarCuttingRequest[],
     dia: number,
     wastePieces?: WastePiece[],
+    greedyResult?: CuttingStockResult,  // NEW: Optional greedy result for hybrid approach
     onProgress?: (stage: string, percentage: number) => void
   ): CuttingStockResult {
     const startTime = performance.now();
-    
+
     console.log(`[Swap] Starting swap optimization for dia ${dia}`);
     if (wastePieces && wastePieces.length > 0) {
       console.log(`[Swap] Received ${wastePieces.length} waste pieces for reuse:`);
@@ -68,55 +59,67 @@ export class SwapOptimization {
     // Filter by diameter
     const diaRequests = this.preprocessor.filterByDia(requests, dia);
     if (diaRequests.length === 0) {
-      return this.createEmptyResult(dia, startTime);
+      return this.patternConverter.createEmptyResult(dia, startTime);
     }
 
     // Extract all segments with unique identifiers (critical for same-parent constraint)
     const allSegments = this.preprocessor.extractAllSegmentsForGreedy(diaRequests);
-    console.log(`[Swap] Total segments: ${allSegments.length}`);
+    if (allSegments.length === 0) {
+      return this.patternConverter.createEmptyResult(dia, startTime);
+    }
 
-    onProgress?.("Creating initial solution...", 10);
+    onProgress?.("Preparing initial solution...", 0);
 
-    // Create initial solution using Best Fit Decreasing with waste reuse
-    const sortedSegments = [...allSegments].sort((a, b) => b.length - a.length);
-    let bins = this.bestFitDecreasing(sortedSegments, wastePieces);
-    
+    let bins: Bin[];
+
+    if (greedyResult) {
+      // HYBRID APPROACH: Start from greedy's solution
+      console.log(`[Swap] Starting from greedy solution (${greedyResult.patterns.length} bins)`);
+      bins = this.patternConverter.patternsToBins(greedyResult.patterns, allSegments);
+      onProgress?.("Optimizing greedy solution...", 10);
+    } else {
+      // STANDALONE: Create own initial solution with Best Fit Decreasing
+      const sortedSegments = [...allSegments].sort((a, b) => b.length - a.length);
+      bins = this.bestFitDecreasing(sortedSegments, wastePieces);
+      onProgress?.("Running swap optimization...", 10);
+    }
+
     const initialBinCount = bins.length;
-    const initialWaste = this.calculateTotalWaste(bins);
+    const initialWaste = this.scorer.calculateTotalWaste(bins);
     const initialWasteBins = bins.filter(b => b.isWastePiece).length;
     const initialNewBars = bins.filter(b => !b.isWastePiece).length;
     console.log(`[Swap] Initial solution: ${initialBinCount} bins (${initialNewBars} new + ${initialWasteBins} waste), ${initialWaste.toFixed(3)}m waste`);
-    
+
     // Log bin distribution for debugging
     const binSegmentCounts = bins.map(b => b.segments.length).sort((a, b) => a - b);
     const singleSegmentBins = bins.filter(b => b.segments.length === 1).length;
-    console.log(`[Swap] Bin segment distribution: min=${binSegmentCounts[0]}, max=${binSegmentCounts[binSegmentCounts.length-1]}, single-segment bins=${singleSegmentBins}`);
+    console.log(`[Swap] Bin segment distribution: min=${binSegmentCounts[0]}, max=${binSegmentCounts[binSegmentCounts.length - 1]}, single-segment bins=${singleSegmentBins}`);
 
     onProgress?.("Running swap optimization...", 20);
 
     // Multi-pass optimization: Run phases multiple times until no improvement
     let previousBinCount = bins.length;
     let pass = 0;
-    
+
     while (pass < this.MAX_PASSES) {
       pass++;
       console.log(`[Swap] ========== PASS ${pass} ==========`);
 
       // Phase 1: 1-1 Swaps (move single cuts between bars)
       bins = this.oneToOneSwaps(bins, onProgress);
-      console.log(`[Swap] After 1-1 swaps: ${bins.length} bins, ${this.calculateTotalWaste(bins).toFixed(3)}m waste`);
+      console.log(`[Swap] After 1-1 swaps: ${bins.length} bins, ${this.scorer.calculateTotalWaste(bins).toFixed(3)}m waste`);
 
       onProgress?.("Consolidating bars...", 50);
 
       // Phase 2: Consolidation (try to empty bars by moving all cuts)
       bins = this.consolidateBars(bins, onProgress);
-      console.log(`[Swap] After consolidation: ${bins.length} bins, ${this.calculateTotalWaste(bins).toFixed(3)}m waste`);
+      console.log(`[Swap] After consolidation: ${bins.length} bins, ${this.scorer.calculateTotalWaste(bins).toFixed(3)}m waste`);
 
       onProgress?.("Running 2-way swaps...", 70);
 
       // Phase 3: 2-2 Swaps (exchange cuts between bars)
       bins = this.twoToTwoSwaps(bins, onProgress);
-      console.log(`[Swap] After 2-2 swaps: ${bins.length} bins, ${this.calculateTotalWaste(bins).toFixed(3)}m waste`);
+      console.log(`[Swap] After 2-2 swaps: ${bins.length} bins, ${this.scorer.calculateTotalWaste(bins).toFixed(3)}m waste`);
 
       // Check if we made progress
       if (bins.length >= previousBinCount) {
@@ -132,22 +135,28 @@ export class SwapOptimization {
     bins = bins.filter(bin => bin.segments.length > 0);
 
     const finalBinCount = bins.length;
-    const finalWaste = this.calculateTotalWaste(bins);
+    const finalWaste = this.scorer.calculateTotalWaste(bins);
     const finalWasteBins = bins.filter(b => b.isWastePiece).length;
     const finalNewBars = bins.filter(b => !b.isWastePiece).length;
     const improvement = initialBinCount - finalBinCount;
-    
+
+    // Calculate waste quality metrics
+    const initialWasteQuality = this.scorer.calculateTotalWasteQuality(bins);
+    const wasteOver2m = bins.filter(b => b.remaining >= 2000).length;
+    const wasteUnder1m = bins.filter(b => b.remaining < 1000).length;
+
     console.log(`[Swap] Optimization complete:`);
     console.log(`  Initial: ${initialBinCount} bins (${initialNewBars} new + ${initialWasteBins} waste), ${initialWaste.toFixed(3)}m waste`);
     console.log(`  Final: ${finalBinCount} bins (${finalNewBars} new + ${finalWasteBins} waste), ${finalWaste.toFixed(3)}m waste`);
     console.log(`  Improvement: ${improvement} bars saved (${((improvement / initialBinCount) * 100).toFixed(2)}%)`);
+    console.log(`  Waste Quality: ${wasteOver2m} bins with >=2m waste (reusable), ${wasteUnder1m} bins with <1m waste (unusable)`);
 
     onProgress?.("Generating results...", 95);
 
     // Convert to patterns
-    const patterns = this.binsToPatterns(bins);
-    const detailedCuts = this.generateDetailedCuts(patterns, bins);
-    const summary = this.calculateSummary(patterns, allSegments.length, finalNewBars, finalWasteBins);
+    const patterns = this.patternConverter.binsToPatterns(bins);
+    const detailedCuts = this.patternConverter.generateDetailedCuts(patterns, bins);
+    const summary = this.patternConverter.calculateSummary(patterns, allSegments.length, finalNewBars, finalWasteBins);
 
     const executionTime = performance.now() - startTime;
     console.log(`[Swap] Complete in ${executionTime.toFixed(2)}ms`);
@@ -174,13 +183,13 @@ export class SwapOptimization {
    */
   private bestFitDecreasing(segments: BarSegment[], wastePieces?: WastePiece[]): Bin[] {
     const bins: Bin[] = [];
-    
+
     // Create bins from available waste pieces (sorted by length descending for better fit)
     const availableWasteBins: Bin[] = [];
     if (wastePieces && wastePieces.length > 0) {
       const sortedWaste = [...wastePieces].sort((a, b) => b.length - a.length);
       for (const waste of sortedWaste) {
-        availableWasteBins.push(this.createWasteBin(waste));
+        availableWasteBins.push(this.binManager.createWasteBin(waste));
       }
       console.log(`[Swap] Created ${availableWasteBins.length} waste bins from inventory`);
     }
@@ -192,7 +201,7 @@ export class SwapOptimization {
 
       // 1. Try to place in existing active bins (Best Fit - tightest fit)
       for (let i = 0; i < bins.length; i++) {
-        if (this.canPlaceInBin(bins[i], segment)) {
+        if (this.binManager.canPlaceInBin(bins[i], segment)) {
           const remainingAfter = bins[i].remaining - segment.length;
           // Prefer tighter fits (less remaining space)
           if (remainingAfter < bestRemainingAfter) {
@@ -206,7 +215,7 @@ export class SwapOptimization {
       // 2. Also check waste bins for best fit
       for (let i = 0; i < availableWasteBins.length; i++) {
         const wasteBin = availableWasteBins[i];
-        if (this.canPlaceInBin(wasteBin, segment)) {
+        if (this.binManager.canPlaceInBin(wasteBin, segment)) {
           const remainingAfter = wasteBin.remaining - segment.length;
           // Prefer waste bins if they provide a tighter fit
           if (remainingAfter < bestRemainingAfter) {
@@ -258,8 +267,10 @@ export class SwapOptimization {
     }
 
     // Check if any segment in this bin is from the same parent bar
+    // Only apply constraint for multi-bar segments (those requiring lap joints)
     const hasSameParent = bin.segments.some(
-      (seg) => seg.parentBarCode === segment.parentBarCode
+      (seg) => seg.parentBarCode === segment.parentBarCode &&
+        seg.isFromMultiBar && segment.isFromMultiBar
     );
 
     return !hasSameParent;
@@ -298,11 +309,11 @@ export class SwapOptimization {
     let improved = true;
     let iteration = 0;
     let totalSwaps = 0;
-    
+
     // Stalemate detection
     let stallCount = 0;
     let minBinCount = bins.length;
-    let minWaste = this.calculateTotalWaste(bins);
+    let minWaste = this.scorer.calculateTotalWaste(bins);
 
     console.log(`[Swap] Phase 1: Starting 1-1 swaps with ${bins.length} bins`);
 
@@ -310,13 +321,13 @@ export class SwapOptimization {
       improved = false;
       iteration++;
       let swapsThisIteration = 0;
-      
+
       // Track moved segments to prevent cycles/thrashing within the same iteration
       const movedSegments = new Set<string>();
 
       const progress = 20 + (iteration / this.MAX_ITERATIONS_PHASE1) * 30;
       if (iteration % 5 === 0) { // Only update progress every 5 iterations to reduce spam
-          onProgress?.(`1-1 swaps (iteration ${iteration})...`, progress);
+        onProgress?.(`1-1 swaps (iteration ${iteration})...`, progress);
       }
 
       // Sort bins by segment count (prioritize emptying small bins)
@@ -336,10 +347,10 @@ export class SwapOptimization {
 
         for (let segIdx = 0; segIdx < sourceBin.segments.length; segIdx++) {
           const segment = sourceBin.segments[segIdx];
-          
+
           // Skip if already moved this iteration
           if (movedSegments.has(segment.segmentId)) continue;
- 
+
           // Find the BEST target bin for this segment
           let bestTargetIdx = -1;
           let bestScore = -Infinity;
@@ -352,9 +363,10 @@ export class SwapOptimization {
 
             // Check if segment fits in target bin (space + constraint check)
             if (targetBin.remaining >= segment.length) {
-              // Check same-parent constraint
+              // Check same-parent constraint (only for multi-bar segments)
               const hasSameParent = targetBin.segments.some(
-                (seg) => seg.parentBarCode === segment.parentBarCode
+                (seg) => seg.parentBarCode === segment.parentBarCode &&
+                  seg.isFromMultiBar && segment.isFromMultiBar
               );
               if (hasSameParent) continue;
 
@@ -375,12 +387,20 @@ export class SwapOptimization {
                 1.0 -
                 (targetBin.remaining - segment.length) / targetBin.totalLength;
 
+              // Calculate waste quality changes
+              const targetWasteQualityBefore = this.scorer.calculateWasteQuality(targetBin.remaining);
+              const targetWasteQualityAfter = this.scorer.calculateWasteQuality(targetBin.remaining - segment.length);
+              const wasteQualityDelta = targetWasteQualityAfter - targetWasteQualityBefore;
+
               // Score calculation:
               let score = 0;
 
               if (wouldEmptySource) {
                 // HIGHEST PRIORITY: Emptying a bin
                 score += 10000;
+
+                // Bonus if target waste quality improves
+                score += wasteQualityDelta * 50;
               } else {
                 // For non-emptying moves, we need a good reason:
                 // 1. Target bin becomes very full (>95% utilization)
@@ -398,6 +418,12 @@ export class SwapOptimization {
                 if (targetImprovement > 0.05) {
                   // At least 5% improvement
                   score += 100 * targetImprovement;
+                }
+
+                // 4. Waste quality improvement (NEW - prioritize creating reusable waste)
+                if (wasteQualityDelta > 0) {
+                  // Reward moves that improve waste reusability
+                  score += 200 * wasteQualityDelta;
                 }
               }
 
@@ -418,7 +444,7 @@ export class SwapOptimization {
             sourceBin.remaining += segment.length;
             targetBin.segments.push(segment);
             targetBin.remaining -= segment.length;
-            
+
             movedSegments.add(segment.segmentId);
 
             improved = true;
@@ -436,23 +462,23 @@ export class SwapOptimization {
       } else if (iteration === 1) {
         console.log(`[Swap] Phase 1 - No swaps possible in first iteration`);
       }
-      
+
       // CHECK FOR STALEMATE
       const currentBinCount = bins.filter(b => b.segments.length > 0).length; // Filter empty bins just in case
-      const currentWaste = this.calculateTotalWaste(bins);
-      
+      const currentWaste = this.scorer.calculateTotalWaste(bins);
+
       // If we reduced bins or reduced waste significantly (> 0.1m), reset counter
       if (currentBinCount < minBinCount || currentWaste < minWaste - 0.1) {
-          stallCount = 0;
-          minBinCount = currentBinCount;
-          minWaste = currentWaste;
+        stallCount = 0;
+        minBinCount = currentBinCount;
+        minWaste = currentWaste;
       } else {
-          stallCount++;
+        stallCount++;
       }
-      
+
       if (stallCount >= 5) {
-          console.log(`[Swap] Phase 1 - Stalemate detected (no improvement for 5 iterations), stopping early.`);
-          break;
+        console.log(`[Swap] Phase 1 - Stalemate detected (no improvement for 5 iterations), stopping early.`);
+        break;
       }
     }
 
@@ -475,10 +501,10 @@ export class SwapOptimization {
     onProgress?: (stage: string, percentage: number) => void
   ): Bin[] {
     console.log(`[Swap] Phase 2: Starting consolidation with ${bins.length} bins`);
-    
+
     // Sort bins by number of segments (try to empty small bins first)
     const sortedBins = [...bins].sort((a, b) => a.segments.length - b.segments.length);
-    
+
     let binsEmptied = 0;
     let totalMoves = 0;
     let attemptedBins = 0;
@@ -488,7 +514,7 @@ export class SwapOptimization {
       // onProgress?.(`Consolidating bar ${i + 1}/${sortedBins.length}...`, progress); 
       // Reduced spam: only update every 50 bars
       if (i % 50 === 0) {
-           onProgress?.(`Consolidating bar ${i + 1}/${bins.length}...`, progress);
+        onProgress?.(`Consolidating bar ${i + 1}/${bins.length}...`, progress);
       }
 
       const sourceBin = sortedBins[i];
@@ -507,12 +533,13 @@ export class SwapOptimization {
         // Find a bin that can fit this segment
         for (let j = 0; j < sortedBins.length; j++) {
           if (i === j) continue;
-          
+
           const targetBin = sortedBins[j];
           if (targetBin.remaining >= segment.length) {
-            // Check same-parent constraint
+            // Check same-parent constraint (only for multi-bar segments)
             const hasSameParent = targetBin.segments.some(
-              (seg) => seg.parentBarCode === segment.parentBarCode
+              (seg) => seg.parentBarCode === segment.parentBarCode &&
+                seg.isFromMultiBar && segment.isFromMultiBar
             );
             if (hasSameParent) continue;
 
@@ -544,7 +571,7 @@ export class SwapOptimization {
 
     // Remove empty bins
     const finalBins = sortedBins.filter(bin => bin.segments.length > 0);
-    
+
     console.log(`[Swap] Phase 2 Complete:`);
     console.log(`  - Bins attempted: ${attemptedBins}`);
     console.log(`  - Bins emptied: ${binsEmptied}`);
@@ -592,251 +619,93 @@ export class SwapOptimization {
       for (let i = 0; i < binIndices.length - 1; i++) {
         const bin1Idx = binIndices[i];
         const bin1 = bins[bin1Idx];
-        
+
         // Skip full processing for bins that are "perfectly packed" (>99.9%)
         const util1 = (bin1.totalLength - bin1.remaining) / bin1.totalLength;
         if (util1 > 0.999) continue;
 
         for (let j = i + 1; j < binIndices.length; j++) {
-            const bin2Idx = binIndices[j];
-            const bin2 = bins[bin2Idx];
+          const bin2Idx = binIndices[j];
+          const bin2 = bins[bin2Idx];
 
-            const util2 = (bin2.totalLength - bin2.remaining) / bin2.totalLength;
-            if (util2 > 0.999) continue; // Skip perfect bins
+          const util2 = (bin2.totalLength - bin2.remaining) / bin2.totalLength;
+          if (util2 > 0.999) continue; // Skip perfect bins
 
-            // Try swapping segments between bin1 and bin2
-            let swapFoundForPair = false;
+          // Try swapping segments between bin1 and bin2
+          let swapFoundForPair = false;
 
-            // Iterate through segments
-            for (let seg1Idx = 0; seg1Idx < bin1.segments.length; seg1Idx++) {
-                if (swapFoundForPair) break; // Move to next bin pair after a swap
+          // Iterate through segments
+          for (let seg1Idx = 0; seg1Idx < bin1.segments.length; seg1Idx++) {
+            if (swapFoundForPair) break; // Move to next bin pair after a swap
 
-                for (let seg2Idx = 0; seg2Idx < bin2.segments.length; seg2Idx++) {
-                    const seg1 = bin1.segments[seg1Idx];
-                    const seg2 = bin2.segments[seg2Idx];
+            for (let seg2Idx = 0; seg2Idx < bin2.segments.length; seg2Idx++) {
+              const seg1 = bin1.segments[seg1Idx];
+              const seg2 = bin2.segments[seg2Idx];
 
-                    // Skip similar length swaps (waste of time)
-                    if (Math.abs(seg1.length - seg2.length) < 0.05) continue;
+              // Skip similar length swaps (waste of time)
+              if (Math.abs(seg1.length - seg2.length) < 0.05) continue;
 
-                    // Check feasibility
-                    const bin1AfterSwap = bin1.remaining + seg1.length - seg2.length;
-                    const bin2AfterSwap = bin2.remaining + seg2.length - seg1.length;
+              // Check feasibility
+              const bin1AfterSwap = bin1.remaining + seg1.length - seg2.length;
+              const bin2AfterSwap = bin2.remaining + seg2.length - seg1.length;
 
-                    if (bin1AfterSwap >= -0.001 && bin2AfterSwap >= -0.001) { // Floating point tolerance
-                        // Check constraints
-                        const bin1HasSameParent = bin1.segments.some((seg, idx) => idx !== seg1Idx && seg.parentBarCode === seg2.parentBarCode);
-                        if (bin1HasSameParent) continue;
-                        
-                        const bin2HasSameParent = bin2.segments.some((seg, idx) => idx !== seg2Idx && seg.parentBarCode === seg1.parentBarCode);
-                        if (bin2HasSameParent) continue;
+              if (bin1AfterSwap >= -0.001 && bin2AfterSwap >= -0.001) { // Floating point tolerance
+                // Check constraints
+                const bin1HasSameParent = bin1.segments.some((seg, idx) => idx !== seg1Idx && seg.parentBarCode === seg2.parentBarCode);
+                if (bin1HasSameParent) continue;
 
-                        // Calculate Score
-                        const util1After = (bin1.totalLength - bin1AfterSwap) / bin1.totalLength;
-                        const util2After = (bin2.totalLength - bin2AfterSwap) / bin2.totalLength;
+                const bin2HasSameParent = bin2.segments.some((seg, idx) => idx !== seg2Idx && seg.parentBarCode === seg1.parentBarCode);
+                if (bin2HasSameParent) continue;
 
-                        // Goal: make bins either filled (>95%) or empty (0%)
-                        // We also reward variance increase (one gets fuller, one gets emptier)
-                        
-                        const utilBeforeSum = (util1*util1) + (util2*util2);
-                        const utilAfterSum = (util1After*util1After) + (util2After*util2After);
-                        
-                        // If sum of squares increases, variance has increased (good for bin packing)
-                        const score = utilAfterSum - utilBeforeSum;
-  
-                        // First Improvement Threshold
-                        // Only take swaps that significantly improve the state
-                        if (score > 0.0001) {
-                            // Execute Swap IMMEDIATELY
-                            bin1.segments[seg1Idx] = seg2;
-                            bin2.segments[seg2Idx] = seg1;
-                            bin1.remaining = bin1AfterSwap;
-                            bin2.remaining = bin2AfterSwap;
-                            
-                            swapsThisIteration++;
-                            totalSwaps++;
-                            improved = true;
-                            swapFoundForPair = true;
-                            break; // Break inner loop
-                        }
-                    }
+                // Calculate Score
+                const util1After = (bin1.totalLength - bin1AfterSwap) / bin1.totalLength;
+                const util2After = (bin2.totalLength - bin2AfterSwap) / bin2.totalLength;
+
+                // Goal: make bins either filled (>95%) or empty (0%)
+                // We also reward variance increase (one gets fuller, one gets emptier)
+
+                const utilBeforeSum = (util1 * util1) + (util2 * util2);
+                const utilAfterSum = (util1After * util1After) + (util2After * util2After);
+
+                // If sum of squares increases, variance has increased (good for bin packing)
+                const score = utilAfterSum - utilBeforeSum;
+
+                // First Improvement Threshold
+                // Only take swaps that significantly improve the state
+                if (score > 0.0001) {
+                  // Execute Swap IMMEDIATELY
+                  bin1.segments[seg1Idx] = seg2;
+                  bin2.segments[seg2Idx] = seg1;
+                  bin1.remaining = bin1AfterSwap;
+                  bin2.remaining = bin2AfterSwap;
+
+                  swapsThisIteration++;
+                  totalSwaps++;
+                  improved = true;
+                  swapFoundForPair = true;
+                  break; // Break inner loop
                 }
+              }
             }
+          }
         }
       }
 
       if (swapsThisIteration > 0) {
         // console.log(`[Swap] Phase 3 - Iteration ${iteration}: ${swapsThisIteration} swaps executed`);
       }
-      
+
       if (totalSwaps >= MAX_SWAPS_PER_PASS) {
-          console.log(`[Swap] Phase 3 hit safety limit of ${MAX_SWAPS_PER_PASS} swaps`);
-          break;
+        console.log(`[Swap] Phase 3 hit safety limit of ${MAX_SWAPS_PER_PASS} swaps`);
+        break;
       }
     }
 
     console.log(`[Swap] Phase 3 Complete: ${totalSwaps} swaps executed`);
     return bins;
   }
-  
+
   private shuffleArray(array: any[]) {
-      for (let i = array.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [array[i], array[j]] = [array[j], array[i]];
-      }
-  }
-
-  /**
-   * Calculate total waste across all bins
-   */
-  private calculateTotalWaste(bins: Bin[]): number {
-    return bins.reduce((sum, bin) => sum + bin.remaining, 0);
-  }
-
-  /**
-   * Convert bins to cutting patterns
-   */
-  private binsToPatterns(bins: Bin[]): CuttingPattern[] {
-    return bins.map((bin, index) => {
-      const cutMap = new Map<string, PatternCut>();
-
-      for (const segment of bin.segments) {
-        const existing = cutMap.get(segment.segmentId);
-        if (existing) {
-          existing.count++;
-        } else {
-          cutMap.set(segment.segmentId, {
-            segmentId: segment.segmentId,
-            parentBarCode: segment.parentBarCode,
-            length: segment.length,
-            count: 1,
-            segmentIndex: segment.segmentIndex,
-            lapLength: segment.lapLength,
-          });
-        }
-      }
-
-      // Use actual bin length (waste pieces have variable length)
-      const barLength = bin.totalLength;
-      const usedLength = barLength - bin.remaining;
-
-      return {
-        id: bin.isWastePiece ? `waste_pattern_${index + 1}` : `swap_pattern_${index + 1}`,
-        cuts: Array.from(cutMap.values()),
-        waste: bin.remaining,
-        utilization: (usedLength / barLength) * 100,
-        standardBarLength: barLength,
-      };
-    });
-  }
-
-  /**
-   * Generate detailed cutting instructions
-   */
-  private generateDetailedCuts(patterns: CuttingPattern[], bins?: Bin[]): DetailedCut[] {
-    return patterns.map((pattern, index) => {
-      let currentPosition = 0;
-      const cuts: CutInstruction[] = [];
-      const bin = bins?.[index];
-
-      for (const cut of pattern.cuts) {
-        for (let i = 0; i < cut.count; i++) {
-          const hasLap = cut.lapLength > 0;
-
-          cuts.push({
-            barCode: cut.parentBarCode,
-            segmentId: cut.segmentId,
-            length: cut.length,
-            quantity: 1,
-            position: currentPosition,
-            segmentIndex: cut.segmentIndex,
-            hasLap,
-            lapLength: hasLap ? cut.lapLength : 0,
-          });
-          currentPosition += cut.length;
-        }
-      }
-
-      const detailedCut: DetailedCut = {
-        patternId: pattern.id,
-        barNumber: index + 1,
-        cuts,
-        waste: pattern.waste,
-        utilization: pattern.utilization,
-        isFromWaste: bin?.isWastePiece ?? false,
-        wasteSource: bin?.wasteSourceInfo,
-      };
-
-      return detailedCut;
-    });
-  }
-
-  /**
-   * Calculate summary statistics
-   */
-  private calculateSummary(patterns: CuttingPattern[], totalCuts: number, newBarsUsed?: number, wastePiecesUsed?: number) {
-    const totalBars = patterns.length;
-    
-    // Separate waste calculation: new bars vs reused pieces
-    let wasteFromNewBars = 0;
-    let wasteFromReusedPieces = 0;
-    
-    patterns.forEach((pattern, index) => {
-      const isWasteBin = pattern.id.startsWith('waste_pattern_');
-      if (isWasteBin) {
-        wasteFromReusedPieces += pattern.waste;
-      } else {
-        wasteFromNewBars += pattern.waste;
-      }
-    });
-    
-    const totalWaste = wasteFromNewBars + wasteFromReusedPieces;
-    
-    const avgUtilization =
-      totalBars > 0
-        ? patterns.reduce((sum, p) => sum + p.utilization, 0) / totalBars
-        : 0;
-
-    // Calculate total material length (accounting for different bar lengths)
-    const totalMaterialLength = patterns.reduce((sum, p) => sum + p.standardBarLength, 0);
-
-    return {
-      totalStandardBars: totalBars,
-      newBarsUsed: newBarsUsed ?? totalBars,
-      wastePiecesReused: wastePiecesUsed ?? 0,
-      totalWasteLength: Math.round(totalWaste * 1000) / 1000,
-      wasteFromNewBars: Math.round(wasteFromNewBars * 1000) / 1000,
-      wasteFromReusedPieces: Math.round(wasteFromReusedPieces * 1000) / 1000,
-      totalWastePercentage:
-        totalMaterialLength > 0
-          ? Math.round((totalWaste / totalMaterialLength) * 10000) / 100
-          : 0,
-      averageUtilization: Math.round(avgUtilization * 100) / 100,
-      patternCount: patterns.length,
-      totalCutsProduced: totalCuts,
-    };
-  }
-
-  /**
-   * Create empty result
-   */
-  private createEmptyResult(dia: number, startTime: number): CuttingStockResult {
-    return {
-      algorithm: "swap",
-      dia,
-      patterns: [],
-      totalBarsUsed: 0,
-      totalWaste: 0,
-      averageUtilization: 0,
-      executionTime: performance.now() - startTime,
-      summary: {
-        totalStandardBars: 0,
-        totalWasteLength: 0,
-        totalWastePercentage: 0,
-        averageUtilization: 0,
-        patternCount: 0,
-        totalCutsProduced: 0,
-      },
-      detailedCuts: [],
-    };
+    this.binManager.shuffleArray(array);
   }
 }

@@ -5,6 +5,7 @@ export class WorkerManager {
   private greedyWorker: Worker | null = null;
   private dynamicWorker: Worker | null = null;
 
+
   /**
    * Initialize workers
    */
@@ -21,6 +22,7 @@ export class WorkerManager {
         new URL("@/workers/cuttingStock.worker.ts", import.meta.url),
         { type: "module" }
       );
+
     } catch (error) {
       console.error("Failed to initialize workers:", error);
     }
@@ -156,8 +158,14 @@ export class WorkerManager {
     });
   }
 
+  /**
+   * Run true dynamic algorithm in worker
+   */
 
 
+  /**
+   * Run improved greedy algorithm in worker
+   */
 
 
   /**
@@ -195,6 +203,7 @@ export class WorkerManager {
       this.dynamicWorker.terminate();
       this.dynamicWorker = null;
     }
+
   }
 }
 

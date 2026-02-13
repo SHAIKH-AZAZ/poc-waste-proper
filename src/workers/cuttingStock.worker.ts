@@ -1,15 +1,10 @@
 import { GreedyCuttingStock } from "@/algorithms/greedyCuttingStock";
-
-import { TrueDynamicCuttingStock } from "@/algorithms/trueDynamicCuttingStock";
-import { BranchAndBoundCuttingStock } from "@/algorithms/branchAndBoundCuttingStock";
-import { AdaptiveCuttingStock } from "@/algorithms/adaptiveCuttingStock";
-import { ImprovedGreedyCuttingStock } from "@/algorithms/improvedGreedyCuttingStock";
 import { ChunkedOptimization } from "@/algorithms/chunkedOptimization";
 import { SwapOptimization } from "@/algorithms/swapOptimization";
 import type { MultiBarCuttingRequest, CuttingStockResult, WastePiece } from "@/types/CuttingStock";
 
 export interface WorkerMessage {
-    type: "greedy" | "dynamic" | "true-dynamic" | "branch-and-bound" | "adaptive" | "improved-greedy" | "chunked" | "swap";
+    type: "greedy" | "dynamic" | "chunked" | "swap";
     requests: MultiBarCuttingRequest[];
     dia: number;
     wastePieces?: WastePiece[];  // Available waste pieces to reuse
@@ -26,7 +21,7 @@ export interface WorkerResponse {
 }
 
 // Helper to send progress updates
-function sendProgress(type: "greedy" | "dynamic" | "true-dynamic" | "branch-and-bound" | "adaptive" | "improved-greedy" | "chunked" | "swap", stage: string, percentage: number) {
+function sendProgress(type: "greedy" | "dynamic" | "chunked" | "swap", stage: string, percentage: number) {
     const response: WorkerResponse = {
         type,
         progress: { stage, percentage },
@@ -59,64 +54,33 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
             case "dynamic":
                 try {
                     console.log(`[Worker dynamic] ========================================`);
-                    console.log(`[Worker dynamic] Starting SWAP optimization for dia ${dia}`);
+                    console.log(`[Worker dynamic] Starting HYBRID optimization (greedy+swap) for dia ${dia}`);
                     console.log(`[Worker dynamic] Requests: ${requests.length}`);
                     console.log(`[Worker dynamic] ========================================`);
-                    sendProgress(type, "Preprocessing data...", 10);
-                    // Use SwapOptimization for better results
+
+                    // PHASE 1: Run greedy to get initial solution
+                    sendProgress(type, "Running greedy algorithm...", 10);
+                    const greedyForDynamic = new GreedyCuttingStock();
+                    const greedyResult = greedyForDynamic.solve(requests, dia, wastePieces);
+                    console.log(`[Worker dynamic] Greedy complete: ${greedyResult.totalBarsUsed} bars`);
+
+                    // PHASE 2: Optimize greedy result with swap
+                    sendProgress(type, "Optimizing with swaps...", 30);
                     const swapForDynamic = new SwapOptimization();
-                    result = swapForDynamic.solve(requests, dia, wastePieces, (stage, percentage) => {
+                    result = swapForDynamic.solve(requests, dia, wastePieces, greedyResult, (stage, percentage) => {
                         sendProgress(type, stage, percentage);
                     });
+
                     // Override algorithm name to "dynamic" for display
                     (result as CuttingStockResult).algorithm = "dynamic";
                     console.log(`[Worker dynamic] ========================================`);
-                    console.log(`[Worker dynamic] SWAP Complete, bars used: ${(result as CuttingStockResult).totalBarsUsed}`);
+                    console.log(`[Worker dynamic] HYBRID Complete: ${(result as CuttingStockResult).totalBarsUsed} bars (started with ${greedyResult.totalBarsUsed})`);
+                    console.log(`[Worker dynamic] Improvement: ${greedyResult.totalBarsUsed - (result as CuttingStockResult).totalBarsUsed} bars saved`);
                     console.log(`[Worker dynamic] ========================================`);
                 } catch (dynamicError) {
                     console.error(`[Worker dynamic] Error in dynamic algorithm:`, dynamicError);
                     throw dynamicError;
                 }
-                break;
-
-            case "true-dynamic":
-                sendProgress(type, "Analyzing dataset...", 10);
-                const trueDynamic = new TrueDynamicCuttingStock();
-                sendProgress(type, "Generating optimal patterns...", 30);
-                sendProgress(type, "State space exploration...", 50);
-                sendProgress(type, "Finding optimal solution...", 70);
-                result = trueDynamic.solve(requests, dia);
-                sendProgress(type, "Finalizing results...", 90);
-                break;
-
-            case "branch-and-bound":
-                sendProgress(type, "Initializing search tree...", 10);
-                const branchBound = new BranchAndBoundCuttingStock();
-                sendProgress(type, "Calculating bounds...", 30);
-                sendProgress(type, "Exploring solution space...", 50);
-                sendProgress(type, "Pruning suboptimal branches...", 70);
-                result = branchBound.solve(requests, dia);
-                sendProgress(type, "Verifying optimality...", 90);
-                break;
-
-            case "adaptive":
-                sendProgress(type, "Analyzing dataset characteristics...", 10);
-                const adaptive = new AdaptiveCuttingStock();
-                sendProgress(type, "Selecting optimal algorithm...", 20);
-                sendProgress(type, "Running recommended algorithms...", 40);
-                sendProgress(type, "Comparing solutions...", 80);
-                result = await adaptive.solve(requests, dia);
-                sendProgress(type, "Generating recommendations...", 95);
-                break;
-
-            case "improved-greedy":
-                sendProgress(type, "Analyzing segment combinations...", 10);
-                const improvedGreedy = new ImprovedGreedyCuttingStock();
-                sendProgress(type, "Finding optimal combinations...", 30);
-                sendProgress(type, "Applying smart allocation...", 60);
-                sendProgress(type, "Minimizing waste...", 80);
-                result = improvedGreedy.solve(requests, dia);
-                sendProgress(type, "Optimizing results...", 95);
                 break;
 
             case "chunked":
@@ -131,7 +95,7 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
             case "swap":
                 console.log(`[Worker swap] Starting swap optimization for dia ${dia}`);
                 const swap = new SwapOptimization();
-                result = swap.solve(requests, dia, wastePieces, (stage, percentage) => {
+                result = swap.solve(requests, dia, wastePieces, undefined, (stage, percentage) => {
                     sendProgress(type, stage, percentage);
                 });
                 break;

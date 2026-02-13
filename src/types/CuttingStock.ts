@@ -18,6 +18,7 @@ export interface BarSegment {
   hasLapEnd: boolean;          // Lap at end
   effectiveLength: number;     // Length including laps
   lapLength: number;           // Actual lap length from input data
+  isFromMultiBar?: boolean;    // True if segment is part of multi-bar (>12m) requiring lap joints
 }
 
 export interface MultiBarCuttingRequest {
@@ -27,7 +28,7 @@ export interface MultiBarCuttingRequest {
   dia: number;                 // Diameter for grouping
   element: string;             // Structural element
   lapLength: number;           // Lap overlap length
-  
+
   // Calculated fields
   isMultiBar: boolean;         // Whether > 12m
   subBarInfo: SubBarInfo;      // Multi-bar calculations
@@ -61,7 +62,7 @@ export interface CuttingBin {
 }
 
 export interface CuttingStockResult {
-  algorithm: 'greedy' | 'dynamic' | 'true-dynamic' | 'branch-and-bound' | 'column-generation' | 'heuristic' | 'adaptive' | 'improved-greedy' | 'chunked' | 'swap' | 'waste-optimized';
+  algorithm: 'greedy' | 'dynamic' | 'chunked' | 'swap';
   dia: number;
   patterns: CuttingPattern[];
   totalBarsUsed: number;
@@ -120,27 +121,27 @@ export interface CutInstruction {
 export interface WastePiece {
   id: string;
   projectId: number;
-  
+
   // Origin tracking
   sourceSheetId: number;        // Database ID
   sourceSheetNumber: number;    // Display number (#1, #2, etc.)
   sourceSheetName: string;      // Filename
   sourceBarNumber: number;      // Which 12m standard bar (Bar #1, #2, etc.)
   sourcePatternId: string;
-  
+
   // What cuts were made on that bar (that produced this waste)
   cutsOnSourceBar: WasteOriginCut[];
-  
+
   // Waste details
   dia: number;
   length: number;               // in mm
   status: "available" | "used" | "discarded";
-  
+
   // If used
   usedInSheetId?: number;
   usedInSheetName?: string;
   usedForBarCode?: string;
-  
+
   createdAt: Date;
 }
 
@@ -157,7 +158,7 @@ export interface WasteUsageRecord {
   sourceBarNumber: number;
   wasteLength: number;          // Original waste piece length
   cutsOnSourceBar: WasteOriginCut[];
-  
+
   // What it was used for
   usedForBarCode: string;
   cutLength: number;
@@ -171,7 +172,7 @@ export interface CuttingStockResultWithWaste extends CuttingStockResult {
   newBarsUsed: number;          // Only new 12m bars
   wastePiecesReused: number;    // Count of waste pieces used
   totalWasteSaved: number;      // mm saved by reusing waste
-  
+
   // New waste generated
   newWasteGenerated: WastePiece[];
 }

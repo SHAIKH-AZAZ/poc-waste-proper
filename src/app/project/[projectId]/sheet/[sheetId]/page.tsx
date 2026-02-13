@@ -440,42 +440,7 @@ export default function SheetPage() {
     }
   };
 
-  // Run True Dynamic calculation
-  const runTrueDynamic = async () => {
-    if (!displayData || !selectedDia) return;
 
-    // Warning for large datasets
-    if (displayData.length > 50) {
-      if (!confirm(`Warning: You have ${displayData.length} items. "True Dynamic" (Exact) optimization is extremely computationally expensive. \n\nIt works best for < 50 items. For larger datasets, it may hang your browser or crash. \n\nAre you sure you want to proceed?`)) {
-        return;
-      }
-    }
-
-    setIsCalculating(true);
-    setDynamicProgress({ stage: "Starting True Dynamic...", percentage: 0 });
-
-    try {
-      const preprocessor = new CuttingStockPreprocessor();
-      const requests = preprocessor.convertToCuttingRequests(displayData);
-
-      const workerManager = getWorkerManager();
-      const result = await workerManager.runTrueDynamic(
-        requests,
-        selectedDia,
-        (stage, percentage) => setDynamicProgress({ stage, percentage })
-      );
-
-      setDynamicResult(result);
-      // Save result (keeping existing greedy result)
-      await saveResults(selectedDia, greedyResult, result, useWaste ? wasteForCurrentDia : undefined);
-
-    } catch (error) {
-      console.error("[Sheet] True Dynamic error:", error);
-      setCalculationError(error instanceof Error ? error.message : "Calculation failed");
-    } finally {
-      setIsCalculating(false);
-    }
-  };
 
   // Save results to database
   const saveResults = async (
@@ -890,18 +855,7 @@ export default function SheetPage() {
           />
         )}
 
-        {/* Manual Advanced Trigger */}
-        {selectedDia && !isCalculating && (greedyResult || dynamicResult) && (
-          <div className="flex justify-end mb-8 -mt-4">
-            <button
-              onClick={runTrueDynamic}
-              className="text-xs text-slate-400 hover:text-blue-600 underline flex items-center gap-1 transition-colors"
-              title="Run exact optimization algorithm (slow)"
-            >
-              ⚡ Run Exact Optimization (True Dynamic)
-            </button>
-          </div>
-        )}
+
 
         {/* Data Preview */}
         {filteredDisplayData && <ExcelPreviewTable data={filteredDisplayData} selectedDia={selectedDia} />}

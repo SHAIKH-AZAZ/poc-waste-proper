@@ -21,7 +21,7 @@
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
     "@prisma/adapter-pg": "^7.3.0",
-    "@prisma/client": "7.3.0",
+    "@prisma/client": "^7.4.0",
     "@tabler/icons-react": "^3.36.1",
     "@types/xlsx": "^0.0.36",
     "@vercel/analytics": "^1.6.1",
@@ -50,7 +50,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "prisma": "7.3.0",
+    "prisma": "^7.4.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
