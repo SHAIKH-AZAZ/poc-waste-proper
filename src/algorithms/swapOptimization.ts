@@ -129,8 +129,8 @@ export class SwapOptimization {
 
     // Calculate waste quality metrics
     const initialWasteQuality = this.scorer.calculateTotalWasteQuality(bins);
-    const wasteOver2m = bins.filter(b => b.remaining >= 2000).length;
-    const wasteUnder1m = bins.filter(b => b.remaining < 1000).length;
+    const wasteOver2m = bins.filter(b => b.remaining >= 2.0).length;
+    const wasteUnder1m = bins.filter(b => b.remaining < 1.0).length;
 
     console.log(`[Swap] Optimization complete:`);
     console.log(`  Initial: ${initialBinCount} bins (${initialNewBars} new + ${initialWasteBins} waste), ${initialWaste.toFixed(3)}m waste`);
@@ -242,47 +242,8 @@ export class SwapOptimization {
     return bins;
   }
 
-  /**
-   * Check if segment can fit in bin
-   * Constraint: Segments from the same parent bar cannot be in the same bin
-   * (they need to be joined together with lap joints)
-   */
-  private canPlaceInBin(bin: Bin, segment: BarSegment): boolean {
-    // Check if there's enough space
-    if (bin.remaining < segment.length) {
-      return false;
-    }
-
-    // Check if any segment in this bin is from the same parent bar
-    // Only apply constraint for multi-bar segments (those requiring lap joints)
-    const hasSameParent = bin.segments.some(
-      (seg) => seg.parentBarCode === segment.parentBarCode &&
-        seg.isFromMultiBar && segment.isFromMultiBar
-    );
-
-    return !hasSameParent;
-  }
-
-  /**
-   * Create bin from waste piece
-   */
-  private createWasteBin(waste: WastePiece): Bin {
-    const lengthInMeters = waste.length / 1000; // Convert mm to meters
-    return {
-      id: `waste_${waste.id}_${Date.now()}`,
-      segments: [],
-      remaining: lengthInMeters,
-      totalLength: lengthInMeters,  // Track actual waste piece length
-      isWastePiece: true,
-      wasteSourceInfo: {
-        wasteId: waste.id,
-        sourceSheetId: waste.sourceSheetId,
-        sourceSheetNumber: waste.sourceSheetNumber,
-        sourceBarNumber: waste.sourceBarNumber,
-        originalLength: waste.length,
-      },
-    };
-  }
+  // canPlaceInBin and createWasteBin are delegated to this.binManager
+  // to avoid duplication and ensure consistent behavior across all phases.
 
   /**
    * Phase 1: Try moving single cuts between bars
@@ -375,8 +336,8 @@ export class SwapOptimization {
                 (targetBin.remaining - segment.length) / targetBin.totalLength;
 
               // Calculate waste quality changes
-              const targetWasteQualityBefore = this.scorer.calculateWasteQuality(targetBin.remaining);
-              const targetWasteQualityAfter = this.scorer.calculateWasteQuality(targetBin.remaining - segment.length);
+              const targetWasteQualityBefore = this.scorer.calculateWasteQuality(targetBin.remaining * 1000);
+              const targetWasteQualityAfter = this.scorer.calculateWasteQuality((targetBin.remaining - segment.length) * 1000);
               const wasteQualityDelta = targetWasteQualityAfter - targetWasteQualityBefore;
 
               // Score calculation:

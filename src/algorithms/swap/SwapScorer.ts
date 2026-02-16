@@ -31,7 +31,7 @@ export class SwapScorer {
      */
     calculateTotalWasteQuality(bins: Bin[]): number {
         return bins.reduce((total, bin) => {
-            return total + this.calculateWasteQuality(bin.remaining);
+            return total + this.calculateWasteQuality(bin.remaining * 1000);
         }, 0);
     }
 

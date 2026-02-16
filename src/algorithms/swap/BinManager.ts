@@ -43,8 +43,8 @@ export class BinManager {
         return {
             id: `waste_${waste.id}`,
             segments: [],
-            remaining: waste.length,
-            totalLength: waste.length,
+            remaining: waste.length / 1000,
+            totalLength: waste.length / 1000,
             isWastePiece: true,
             wasteSourceInfo: wasteInfo,
         };

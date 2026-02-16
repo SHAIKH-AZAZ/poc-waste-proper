@@ -39,7 +39,7 @@ export class PatternConverter {
             const usedLength = barLength - bin.remaining;
 
             return {
-                id: bin.isWastePiece ? `waste_pattern_${index + 1} ` : `swap_pattern_${index + 1} `,
+                id: bin.isWastePiece ? `waste_pattern_${index + 1}` : `swap_pattern_${index + 1}`,
                 cuts: Array.from(cutMap.values()),
                 waste: bin.remaining,
                 utilization: (usedLength / barLength) * 100,

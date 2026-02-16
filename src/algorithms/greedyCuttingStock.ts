@@ -86,7 +86,7 @@ export class GreedyCuttingStock {
    */
   private firstFitDecreasingWithWaste(segments: BarSegment[], wastePieces?: WastePiece[]): Bin[] {
     const bins: Bin[] = [];
-    
+
     // Create bins from available waste pieces (sorted by length descending for better fit)
     const availableWasteBins: Bin[] = [];
     if (wastePieces && wastePieces.length > 0) {
@@ -145,25 +145,28 @@ export class GreedyCuttingStock {
 
   /**
    * Check if segment can fit in bin
-   * Constraint: Segments from the same parent bar cannot be in the same bin
-   * (they need to be joined together with lap joints)
+   * Constraint: Only multi-bar segments (requiring lap joints) from the same
+   * parent bar cannot be in the same bin — they need separate bars for joining.
+   * Regular segments with the same parentBarCode CAN share a bin.
    */
   private canPlaceInBin(bin: Bin, segment: BarSegment): boolean {
     // Use cutting length (which includes lap) for space calculation
     const requiredSpace = segment.length;
-    const tolerance = 0; // 1mm tolerance for cutting precision
 
     // Check if there's enough space (allow exact fits)
-    if (bin.remainingLength < requiredSpace - tolerance) {
+    if (bin.remainingLength < requiredSpace) {
       return false;
     }
 
-    // Check if any cut in this bin is from the same parent bar
-    const hasSameParent = bin.cuts.some(
-      (cut) => cut.parentBarCode === segment.parentBarCode
-    );
+    // Same-parent constraint only applies to multi-bar segments
+    if (segment.isFromMultiBar) {
+      const hasSameParent = bin.cuts.some(
+        (cut) => cut.parentBarCode === segment.parentBarCode
+      );
+      if (hasSameParent) return false;
+    }
 
-    return !hasSameParent;
+    return true;
   }
 
   /**
@@ -235,10 +238,10 @@ export class GreedyCuttingStock {
    */
   private binsToPatterns(bins: Bin[]): CuttingPattern[] {
     return bins.map((bin, index) => {
-      const barLength = bin.isWastePiece && bin.wasteSourceInfo 
-        ? bin.wasteSourceInfo.originalLength / 1000 
+      const barLength = bin.isWastePiece && bin.wasteSourceInfo
+        ? bin.wasteSourceInfo.originalLength / 1000
         : this.STANDARD_LENGTH;
-      
+
       return {
         id: bin.isWastePiece ? `waste_pattern_${index + 1}` : `pattern_${index + 1}`,
         cuts: bin.cuts,
