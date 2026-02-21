@@ -531,16 +531,25 @@ function DetailedResultCard({
 }
 
 function CutsDisplay({ cuts }: { cuts: CutInstruction[] }) {
-  // Group cuts by parent BarCode
+  // Group cuts by parent BarCode AND Length to consolidate identical cuts
   const groupedCuts = React.useMemo(() => {
-    const groups = new Map<string, { length: number; lapLength: number; count: number }>();
+    // Key: BaseBarCode + Length + LapLength
+    const groups = new Map<string, { barCode: string; length: number; lapLength: number; count: number }>();
 
     for (const cut of cuts) {
-      const existing = groups.get(cut.barCode);
+      // Clean up barcode for grouping: remove _instance_X suffix
+      // This allows grouping "Bar1_instance_0" and "Bar1_instance_1" together if they have same length
+      const baseBarCode = cut.barCode.split('_instance')[0];
+      
+      // Create a unique key for grouping
+      const key = `${baseBarCode}-${cut.length}-${cut.lapLength}`;
+
+      const existing = groups.get(key);
       if (existing) {
         existing.count += cut.quantity;
       } else {
-        groups.set(cut.barCode, {
+        groups.set(key, {
+          barCode: baseBarCode, // Store the clean/base barcode
           length: cut.length,
           lapLength: cut.lapLength,
           count: cut.quantity,
@@ -548,7 +557,8 @@ function CutsDisplay({ cuts }: { cuts: CutInstruction[] }) {
       }
     }
 
-    return Array.from(groups.entries());
+    // Sort by barcode for consistent display
+    return Array.from(groups.values()).sort((a, b) => a.barCode.localeCompare(b.barCode));
   }, [cuts]);
 
   // Calculate total length used
@@ -559,35 +569,28 @@ function CutsDisplay({ cuts }: { cuts: CutInstruction[] }) {
 
   return (
     <div className="flex flex-wrap gap-2">
-      {groupedCuts.map(([barCode, info], i) => {
-        // Clean up barcode display: remove _instance_X suffix
-        const cleanBarCode = barCode.replace(/_|instance|\[\d+\]|\d+$/g, '').replace(/\/+$/, '');
-        // Or simpler: just take the part before _instance if it exists
-        const displayBarCode = barCode.split('_instance')[0];
-
-        return (
-          <div key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm group hover:border-blue-300 hover:bg-blue-50/50 transition-colors">
-            <span className="font-mono text-blue-600 font-semibold text-xs tracking-tight" title={barCode}>
-              {displayBarCode}
+      {groupedCuts.map((info, i) => (
+        <div key={i} className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm group hover:border-blue-300 hover:bg-blue-50/50 transition-colors">
+          <span className="font-mono text-blue-600 font-semibold text-xs tracking-tight">
+            {info.barCode}
+          </span>
+          <div className="flex flex-col leading-none gap-0.5">
+            <span className="font-bold text-slate-700 text-xs">
+              {(info.length - info.lapLength).toFixed(3)}m
             </span>
-            <div className="flex flex-col leading-none gap-0.5">
-              <span className="font-bold text-slate-700 text-xs">
-                {(info.length - info.lapLength).toFixed(3)}m
-              </span>
-              {info.lapLength > 0 && (
-                <span className="text-[10px] text-orange-600 font-medium bg-orange-50 px-1 rounded-sm">
-                  +Lap
-                </span>
-              )}
-            </div>
-            {info.count > 1 && (
-              <span className="ml-1 text-xs font-bold text-white bg-slate-400 px-1.5 py-0.5 rounded-md">
-                ×{info.count}
+            {info.lapLength > 0 && (
+              <span className="text-[10px] text-orange-600 font-medium bg-orange-50 px-1 rounded-sm">
+                +Lap
               </span>
             )}
           </div>
-        );
-      })}
+          {info.count > 1 && (
+            <span className="ml-1 text-xs font-bold text-white bg-slate-400 px-1.5 py-0.5 rounded-md">
+              ×{info.count}
+            </span>
+          )}
+        </div>
+      ))}
       {groupedCuts.length > 0 && (
         <div className="flex items-center ml-2">
           <span className="text-[10px] text-slate-400 bg-slate-50 px-2 py-1 rounded-full border border-slate-100">
