@@ -1,0 +1,122 @@
+[
+  {
+    "BarCode": "1/B53/16",
+    "Dia": 16,
+    "Total Bars": 26,
+    "Cutting Length": 2.888,
+    "Lap Length": 0,
+    "Element": "Staircase"
+  },
+  {
+    "BarCode": "2/B88/10",
+    "Dia": 10,
+    "Total Bars": 27,
+    "Cutting Length": 3.699,
+    "Lap Length": 0,
+    "Element": "Retaining Wall"
+  },
+  {
+    "BarCode": "3/B61/20",
+    "Dia": 20,
+    "Total Bars": 7,
+    "Cutting Length": 8.415,
+    "Lap Length": 0,
+    "Element": "Footing"
+  },
+  {
+    "BarCode": "4/B4/8",
+    "Dia": 8,
+    "Total Bars": 26,
+    "Cutting Length": 19.312,
+    "Lap Length": 0.38,
+    "Element": "Staircase"
+  },
+  {
+    "BarCode": "5/B3/10",
+    "Dia": 10,
+    "Total Bars": 7,
+    "Cutting Length": 6.728,
+    "Lap Length": 0,
+    "Element": "Beam"
+  },
+  {
+    "BarCode": "6/B45/10",
+    "Dia": 10,
+    "Total Bars": 16,
+    "Cutting Length": 4.45,
+    "Lap Length": 0,
+    "Element": "Raft"
+  },
+  {
+    "BarCode": "7/B64/8",
+    "Dia": 8,
+    "Total Bars": 18,
+    "Cutting Length": 3.648,
+    "Lap Length": 0,
+    "Element": "Beam"
+  },
+  {
+    "BarCode": "8/B21/10",
+    "Dia": 10,
+    "Total Bars": 23,
+    "Cutting Length": 6.486,
+    "Lap Length": 0,
+    "Element": "Footing"
+  },
+  {
+    "BarCode": "9/B69/10",
+    "Dia": 10,
+    "Total Bars": 4,
+    "Cutting Length": 8.352,
+    "Lap Length": 0,
+    "Element": "Slab"
+  },
+  {
+    "BarCode": "10/B14/25",
+    "Dia": 25,
+    "Total Bars": 29,
+    "Cutting Length": 11.177,
+    "Lap Length": 0,
+    "Element": "Beam"
+  },
+  {
+    "BarCode": "11/B90/8",
+    "Dia": 8,
+    "Total Bars": 12,
+    "Cutting Length": 7.609,
+    "Lap Length": 0,
+    "Element": "Beam"
+  },
+  {
+    "BarCode": "12/B18/8",
+    "Dia": 8,
+    "Total Bars": 29,
+    "Cutting Length": 8.631,
+    "Lap Length": 0,
+    "Element": "Pile Cap"
+  },
+  {
+    "BarCode": "13/B91/16",
+    "Dia": 16,
+    "Total Bars": 5,
+    "Cutting Length": 7.078,
+    "Lap Length": 0,
+    "Element": "Raft"
+  },
+  {
+    "BarCode": "14/B73/12",
+    "Dia": 12,
+    "Total Bars": 11,
+    "Cutting Length": 4.488,
+    "Lap Length": 0,
+    "Element": "Lintel"
+  },
+  {
+    "BarCode": "15/B89/10",
+    "Dia": 10,
+    "Total Bars": 26,
+    "Cutting Length": 11.735,
+    "Lap Length": 0,
+    "Element": "Staircase"
+  }
+]

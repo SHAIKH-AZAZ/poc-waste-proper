@@ -16,7 +16,9 @@
     "db:studio": "prisma studio",
     "db:reset": "prisma db push --force-reset && prisma generate",
     "db:setup": "docker-compose up -d && sleep 3 && prisma db push && prisma generate",
-    "test:algorithms": "node scripts/test-server-algorithms.js"
+    "test:algorithms": "node scripts/test-server-algorithms.js",
+    "cli:run": "tsx cli/run.ts",
+    "cli:generate": "tsx cli/generateDataset.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
@@ -52,6 +54,7 @@
     "eslint-config-next": "16.1.6",
     "prisma": "7.3.0",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
