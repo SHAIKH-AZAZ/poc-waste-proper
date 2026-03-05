@@ -1,0 +1,38 @@
+[
+    {
+        "BarCode": "B1/1",
+        "Dia": 12,
+        "Qty": 1,
+        "Total Bars": 2,
+        "Cutting Length": 4,
+        "Lap Length": 0,
+        "Element": "Beam"
+    },
+    {
+        "BarCode": "B2/2",
+        "Dia": 12,
+        "Qty": 2,
+        "Total Bars": 2,
+        "Cutting Length": 5.5,
+        "Lap Length": 0.5,
+        "Element": "Beam"
+    },
+    {
+        "BarCode": "B3/3",
+        "Dia": 16,
+        "Qty": 1,
+        "Total Bars": 1,
+        "Cutting Length": 10,
+        "Lap Length": 0,
+        "Element": "Column"
+    },
+    {
+        "BarCode": "B3/4",
+        "Dia": 16,
+        "Qty": 1,
+        "Total Bars": 1,
+        "Cutting Length": 3.4,
+        "Lap Length": 0,
+        "Element": "Column"
+    }
+]

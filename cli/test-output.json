@@ -1,0 +1,222 @@
+{
+  "12": {
+    "algorithm": "greedy",
+    "dia": 12,
+    "patterns": [
+      {
+        "id": "pattern_1",
+        "cuts": [
+          {
+            "segmentId": "B2/2_seg_0_instance_0",
+            "parentBarCode": "B2/2_instance_0",
+            "length": 5.5,
+            "count": 1,
+            "segmentIndex": 0,
+            "lapLength": 0
+          },
+          {
+            "segmentId": "B2/2_seg_0_instance_1",
+            "parentBarCode": "B2/2_instance_1",
+            "length": 5.5,
+            "count": 1,
+            "segmentIndex": 0,
+            "lapLength": 0
+          }
+        ],
+        "waste": 1,
+        "utilization": 91.66666666666666,
+        "standardBarLength": 12
+      },
+      {
+        "id": "pattern_2",
+        "cuts": [
+          {
+            "segmentId": "B1/1_seg_0_instance_0",
+            "parentBarCode": "B1/1_instance_0",
+            "length": 4,
+            "count": 1,
+            "segmentIndex": 0,
+            "lapLength": 0
+          },
+          {
+            "segmentId": "B1/1_seg_0_instance_1",
+            "parentBarCode": "B1/1_instance_1",
+            "length": 4,
+            "count": 1,
+            "segmentIndex": 0,
+            "lapLength": 0
+          }
+        ],
+        "waste": 4,
+        "utilization": 66.66666666666666,
+        "standardBarLength": 12
+      }
+    ],
+    "totalBarsUsed": 2,
+    "totalWaste": 5,
+    "averageUtilization": 79.17,
+    "executionTime": 0.6314669999999865,
+    "summary": {
+      "totalStandardBars": 2,
+      "newBarsUsed": 2,
+      "wastePiecesReused": 0,
+      "totalWasteLength": 5,
+      "totalWastePercentage": 20.83,
+      "averageUtilization": 79.17,
+      "patternCount": 2,
+      "totalCutsProduced": 4
+    },
+    "detailedCuts": [
+      {
+        "patternId": "pattern_1",
+        "barNumber": 1,
+        "cuts": [
+          {
+            "barCode": "B2/2_instance_0",
+            "segmentId": "B2/2_seg_0_instance_0",
+            "length": 5.5,
+            "quantity": 1,
+            "position": 0,
+            "segmentIndex": 0,
+            "hasLap": false,
+            "lapLength": 0
+          },
+          {
+            "barCode": "B2/2_instance_1",
+            "segmentId": "B2/2_seg_0_instance_1",
+            "length": 5.5,
+            "quantity": 1,
+            "position": 5.5,
+            "segmentIndex": 0,
+            "hasLap": false,
+            "lapLength": 0
+          }
+        ],
+        "waste": 1,
+        "utilization": 91.66666666666666,
+        "isFromWaste": false
+      },
+      {
+        "patternId": "pattern_2",
+        "barNumber": 2,
+        "cuts": [
+          {
+            "barCode": "B1/1_instance_0",
+            "segmentId": "B1/1_seg_0_instance_0",
+            "length": 4,
+            "quantity": 1,
+            "position": 0,
+            "segmentIndex": 0,
+            "hasLap": false,
+            "lapLength": 0
+          },
+          {
+            "barCode": "B1/1_instance_1",
+            "segmentId": "B1/1_seg_0_instance_1",
+            "length": 4,
+            "quantity": 1,
+            "position": 4,
+            "segmentIndex": 0,
+            "hasLap": false,
+            "lapLength": 0
+          }
+        ],
+        "waste": 4,
+        "utilization": 66.66666666666666,
+        "isFromWaste": false
+      }
+    ]
+  },
+  "16": {
+    "algorithm": "greedy",
+    "dia": 16,
+    "patterns": [
+      {
+        "id": "pattern_1",
+        "cuts": [
+          {
+            "segmentId": "B3/3_seg_0_instance_0",
+            "parentBarCode": "B3/3_instance_0",
+            "length": 10,
+            "count": 1,
+            "segmentIndex": 0,
+            "lapLength": 0
+          }
+        ],
+        "waste": 2,
+        "utilization": 83.33333333333334,
+        "standardBarLength": 12
+      },
+      {
+        "id": "pattern_2",
+        "cuts": [
+          {
+            "segmentId": "B3/4_seg_0_instance_0",
+            "parentBarCode": "B3/4_instance_0",
+            "length": 3.4,
+            "count": 1,
+            "segmentIndex": 0,
+            "lapLength": 0
+          }
+        ],
+        "waste": 8.6,
+        "utilization": 28.333333333333332,
+        "standardBarLength": 12
+      }
+    ],
+    "totalBarsUsed": 2,
+    "totalWaste": 10.6,
+    "averageUtilization": 55.83,
+    "executionTime": 0.08313899999998853,
+    "summary": {
+      "totalStandardBars": 2,
+      "newBarsUsed": 2,
+      "wastePiecesReused": 0,
+      "totalWasteLength": 10.6,
+      "totalWastePercentage": 44.17,
+      "averageUtilization": 55.83,
+      "patternCount": 2,
+      "totalCutsProduced": 2
+    },
+    "detailedCuts": [
+      {
+        "patternId": "pattern_1",
+        "barNumber": 1,
+        "cuts": [
+          {
+            "barCode": "B3/3_instance_0",
+            "segmentId": "B3/3_seg_0_instance_0",
+            "length": 10,
+            "quantity": 1,
+            "position": 0,
+            "segmentIndex": 0,
+            "hasLap": false,
+            "lapLength": 0
+          }
+        ],
+        "waste": 2,
+        "utilization": 83.33333333333334,
+        "isFromWaste": false
+      },
+      {
+        "patternId": "pattern_2",
+        "barNumber": 2,
+        "cuts": [
+          {
+            "barCode": "B3/4_instance_0",
+            "segmentId": "B3/4_seg_0_instance_0",
+            "length": 3.4,
+            "quantity": 1,
+            "position": 0,
+            "segmentIndex": 0,
+            "hasLap": false,
+            "lapLength": 0
+          }
+        ],
+        "waste": 8.6,
+        "utilization": 28.333333333333332,
+        "isFromWaste": false
+      }
+    ]
+  }
+}
