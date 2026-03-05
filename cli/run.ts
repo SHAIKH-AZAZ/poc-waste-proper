@@ -7,10 +7,10 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import type { BarCuttingDisplay } from '@/types/BarCuttingRow';
-import type { CuttingStockResult } from '@/types/CuttingStock';
-import { CuttingStockPreprocessor } from '@/utils/cuttingStockPreprocessor';
-import { GreedyCuttingStock } from '@/algorithms/greedyCuttingStock';
+import type { BarCuttingDisplay } from './types/BarCuttingRow';
+import type { CuttingStockResult } from './types/CuttingStock';
+import { CuttingStockPreprocessor } from './utils/cuttingStockPreprocessor';
+import { GreedyCuttingStock } from './algorithms/greedyCuttingStock';
 
 // ─── Parse CLI args ───────────────────────────────────────────
 const args = process.argv.slice(2);

@@ -1,5 +1,16 @@
 # Visual Guide - Live Calculations Display
 
+```
+# PostgreSQL (matches docker-compose.yml)
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/cutting_stock"
+
+# MongoDB (matches docker-compose.yml)
+MONGODB_URI="mongodb://localhost:27017/cutting_stock"
+MONGODB_DB="cutting_stock"
+
+
+```
+
 ## Complete System Overview
 
 ```
