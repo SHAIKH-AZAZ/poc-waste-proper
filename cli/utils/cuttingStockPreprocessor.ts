@@ -92,18 +92,31 @@ export class CuttingStockPreprocessor {
    * This creates individual segment instances to avoid grouping issues
    */
   extractAllSegmentsForGreedy(requests: MultiBarCuttingRequest[]): BarSegment[] {
-    const allSegments: BarSegment[] = [];
+    let totalSegments = 0;
+    for (const request of requests) {
+      totalSegments += request.quantity * request.segments.length;
+    }
+
+    const allSegments = new Array<BarSegment>(totalSegments);
+    let writeIndex = 0;
 
     for (const request of requests) {
-      // Expand segments by quantity - create unique instances
       for (let i = 0; i < request.quantity; i++) {
-        // Create unique segments for each bar instance
-        const instanceSegments = request.segments.map(segment => ({
-          ...segment,
-          segmentId: `${segment.segmentId}_instance_${i}`, // Make segmentId unique
-          parentBarCode: `${segment.parentBarCode}_instance_${i}`, // Make parent unique per instance
-        }));
-        allSegments.push(...instanceSegments);
+        const instanceSuffix = `_instance_${i}`;
+
+        for (const segment of request.segments) {
+          allSegments[writeIndex++] = {
+            segmentId: `${segment.segmentId}${instanceSuffix}`,
+            parentBarCode: `${segment.parentBarCode}${instanceSuffix}`,
+            segmentIndex: segment.segmentIndex,
+            length: segment.length,
+            quantity: segment.quantity,
+            hasLapStart: segment.hasLapStart,
+            hasLapEnd: segment.hasLapEnd,
+            effectiveLength: segment.effectiveLength,
+            lapLength: segment.lapLength,
+          };
+        }
       }
     }
 
@@ -114,7 +127,8 @@ export class CuttingStockPreprocessor {
    * Sort segments by length (descending) for greedy algorithm
    */
   sortSegmentsByLength(segments: BarSegment[]): BarSegment[] {
-    return [...segments].sort((a, b) => b.length - a.length);
+    segments.sort((a, b) => b.length - a.length);
+    return segments;
   }
 
   /**
