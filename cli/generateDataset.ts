@@ -4,12 +4,14 @@
  * Usage:
  *   npx tsx cli/generateDataset.ts                     → prints to stdout
  *   npx tsx cli/generateDataset.ts -o dataset.json     → saves to file
+ *   npx tsx cli/generateDataset.ts -o dataset.xlsx     → saves Excel workbook in ./dataset
  *   npx tsx cli/generateDataset.ts -n 50 -o data.json  → 50 entries
  *   npx tsx cli/generateDataset.ts --seed 42           → reproducible
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
+import * as XLSX from 'xlsx';
 
 // ─── Parse CLI args ───────────────────────────────────────────
 const args = process.argv.slice(2);
@@ -24,6 +26,21 @@ function getArg(flag: string, short?: string): string | undefined {
 const count = parseInt(getArg('-n', '--count') || '20', 10);
 const outputFile = getArg('-o', '--output');
 const seed = parseInt(getArg('--seed') || String(Date.now()), 10);
+
+function isExcelFile(filePath: string): boolean {
+  const ext = path.extname(filePath).toLowerCase();
+  return ext === '.xlsx' || ext === '.xls';
+}
+
+function resolveOutputPath(filePath: string): string {
+  const hasExplicitDirectory = path.dirname(filePath) !== '.';
+
+  if (isExcelFile(filePath) && !path.isAbsolute(filePath) && !hasExplicitDirectory) {
+    return path.resolve('dataset', filePath);
+  }
+
+  return path.resolve(filePath);
+}
 
 // ─── Seeded random ────────────────────────────────────────────
 // Simple mulberry32 PRNG for reproducibility
@@ -54,8 +71,7 @@ function pick<T>(arr: T[]): T {
 const DIAS = [8, 10, 12, 16, 20, 25];
 
 const ELEMENTS = [
-  'Beam', 'Column', 'Slab', 'Footing', 'Staircase',
-  'Lintel', 'Retaining Wall', 'Pile Cap', 'Raft', 'Shear Wall',
+  'Beam', 'Column', 'Slab', 'Footing'
 ];
 
 // Standard lap lengths by diameter (in meters) — IS 456 approximation
@@ -78,7 +94,25 @@ interface DatasetRow {
   Element: string;
 }
 
+interface BbsDatasetRow {
+  'SI no': number;
+  Label: string;
+  Dia: number;
+  'Total Bars': number;
+  'Cutting Length': number;
+  'Lap Length': number | null;
+  'No of lap': number | null;
+  Element: string;
+}
+
 const dataset: DatasetRow[] = [];
+const bbsDataset: BbsDatasetRow[] = [];
+
+function generateLabel(): string {
+  const beamNo = randInt(1, 99);
+  const suffix = pick(['', '', '', '-TOP', '-BOTTOM', '-EXTRA']);
+  return `B${beamNo}${suffix}`;
+}
 
 for (let i = 1; i <= count; i++) {
   const dia = pick(DIAS);
@@ -92,8 +126,19 @@ for (let i = 1; i <= count; i++) {
     : randFloat(1.0, 11.8);
 
   const lapLength = isMultiBar ? LAP_LENGTHS[dia] : 0;
-  const label = `B${randInt(1, 99)}`;
+  const label = generateLabel();
   const barCode = `${i}/${label}/${dia}`;
+
+  bbsDataset.push({
+    'SI no': i,
+    Label: label,
+    Dia: dia,
+    'Total Bars': quantity,
+    'Cutting Length': cuttingLength,
+    'Lap Length': isMultiBar ? lapLength : null,
+    'No of lap': null,
+    Element: element,
+  });
 
   dataset.push({
     BarCode: barCode,
@@ -109,8 +154,30 @@ for (let i = 1; i <= count; i++) {
 const json = JSON.stringify(dataset, null, 2);
 
 if (outputFile) {
-  const outPath = path.resolve(outputFile);
-  fs.writeFileSync(outPath, json);
+  const outPath = resolveOutputPath(outputFile);
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+
+  if (isExcelFile(outPath)) {
+    const worksheet = XLSX.utils.json_to_sheet(bbsDataset, {
+      header: ['SI no', 'Label', 'Dia', 'Total Bars', 'Cutting Length', 'Lap Length', 'No of lap', 'Element'],
+    });
+    const workbook = XLSX.utils.book_new();
+    worksheet['!cols'] = [
+      { wch: 8 },
+      { wch: 16 },
+      { wch: 8 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 12 },
+      { wch: 10 },
+      { wch: 14 },
+    ];
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+    XLSX.writeFile(workbook, outPath);
+  } else {
+    fs.writeFileSync(outPath, json);
+  }
+
   console.log(`✓ Generated ${count} entries → ${outPath}`);
   console.log(`  Seed: ${seed}`);
 } else {
