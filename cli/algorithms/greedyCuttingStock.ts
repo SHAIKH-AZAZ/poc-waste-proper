@@ -14,6 +14,7 @@ import { CuttingStockPreprocessor } from "../utils/cuttingStockPreprocessor";
 interface Bin {
   id: string;
   cuts: PatternCut[];
+  parentBarCodes: Set<string>;
   usedLength: number;
   remainingLength: number;
   totalLength: number;          // Total length of this bin (12m for new, variable for waste)
@@ -31,10 +32,13 @@ export class GreedyCuttingStock {
   private readonly STANDARD_LENGTH = 12.0;
   private preprocessor = new CuttingStockPreprocessor();
   private wasteUsageRecords: WasteUsageRecord[] = [];
+  private nextBinId = 0;
+  private readonly debugLogging = false;
 
   solve(requests: MultiBarCuttingRequest[], dia: number, wastePieces?: WastePiece[]): CuttingStockResult {
     const startTime = performance.now();
     this.wasteUsageRecords = [];
+    this.nextBinId = 0;
 
     // Filter by diameter
     const diaRequests = this.preprocessor.filterByDia(requests, dia);
@@ -51,10 +55,17 @@ export class GreedyCuttingStock {
     const bins = this.firstFitDecreasingWithWaste(sortedSegments, wastePieces);
 
     // Count new bars vs waste pieces used
-    const newBarsUsed = bins.filter(b => !b.isWastePiece).length;
-    const wastePiecesUsed = bins.filter(b => b.isWastePiece).length;
+    let wastePiecesUsed = 0;
+    for (const bin of bins) {
+      if (bin.isWastePiece) {
+        wastePiecesUsed++;
+      }
+    }
+    const newBarsUsed = bins.length - wastePiecesUsed;
 
-    console.log(`[Greedy] Used ${newBarsUsed} new bars + ${wastePiecesUsed} waste pieces = ${bins.length} total`);
+    this.log(
+      `[Greedy] Used ${newBarsUsed} new bars + ${wastePiecesUsed} waste pieces = ${bins.length} total`
+    );
 
     // Convert bins to patterns
     const patterns = this.binsToPatterns(bins);
@@ -88,14 +99,13 @@ export class GreedyCuttingStock {
     const bins: Bin[] = [];
     
     // Create bins from available waste pieces (sorted by length descending for better fit)
-    const availableWasteBins: Bin[] = [];
-    if (wastePieces && wastePieces.length > 0) {
-      const sortedWaste = [...wastePieces].sort((a, b) => b.length - a.length);
-      for (const waste of sortedWaste) {
-        availableWasteBins.push(this.createWasteBin(waste));
-      }
-      console.log(`[Greedy] Created ${availableWasteBins.length} waste bins from inventory`);
-    }
+    const availableWasteBins = wastePieces && wastePieces.length > 0
+      ? [...wastePieces]
+          .sort((a, b) => b.length - a.length)
+          .map((waste) => this.createWasteBin(waste))
+      : [];
+
+    this.log(`[Greedy] Created ${availableWasteBins.length} waste bins from inventory`);
 
     for (const segment of segments) {
       let placed = false;
@@ -119,7 +129,9 @@ export class GreedyCuttingStock {
             bins.push(wasteBin);
             availableWasteBins.splice(i, 1);
             placed = true;
-            console.log(`[Greedy] Placed segment in waste piece (${wasteBin.wasteSourceInfo?.originalLength}mm from sheet ${wasteBin.wasteSourceInfo?.sourceSheetId})`);
+            this.log(
+              `[Greedy] Placed segment in waste piece (${wasteBin.wasteSourceInfo?.originalLength}mm from sheet ${wasteBin.wasteSourceInfo?.sourceSheetId})`
+            );
             break;
           }
         }
@@ -158,35 +170,22 @@ export class GreedyCuttingStock {
       return false;
     }
 
-    // Check if any cut in this bin is from the same parent bar
-    const hasSameParent = bin.cuts.some(
-      (cut) => cut.parentBarCode === segment.parentBarCode
-    );
-
-    return !hasSameParent;
+    return !bin.parentBarCodes.has(segment.parentBarCode);
   }
 
   /**
    * Place segment in bin
    */
   private placeInBin(bin: Bin, segment: BarSegment): void {
-    // Check if this segment type already exists in bin
-    const existingCut = bin.cuts.find(
-      (cut) => cut.segmentId === segment.segmentId
-    );
-
-    if (existingCut) {
-      existingCut.count++;
-    } else {
-      bin.cuts.push({
-        segmentId: segment.segmentId,
-        parentBarCode: segment.parentBarCode,
-        length: segment.length,
-        count: 1,
-        segmentIndex: segment.segmentIndex,
-        lapLength: segment.lapLength, // Pass through actual lap length
-      });
-    }
+    bin.cuts.push({
+      segmentId: segment.segmentId,
+      parentBarCode: segment.parentBarCode,
+      length: segment.length,
+      count: 1,
+      segmentIndex: segment.segmentIndex,
+      lapLength: segment.lapLength, // Pass through actual lap length
+    });
+    bin.parentBarCodes.add(segment.parentBarCode);
 
     // Use cutting length (which includes lap) for space tracking
     bin.usedLength += segment.length;
@@ -199,8 +198,9 @@ export class GreedyCuttingStock {
    */
   private createNewBin(): Bin {
     return {
-      id: `bin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `bin_${this.nextBinId++}`,
       cuts: [],
+      parentBarCodes: new Set<string>(),
       usedLength: 0,
       remainingLength: this.STANDARD_LENGTH,
       totalLength: this.STANDARD_LENGTH,
@@ -214,8 +214,9 @@ export class GreedyCuttingStock {
   private createWasteBin(waste: WastePiece): Bin {
     const lengthInMeters = waste.length / 1000; // Convert mm to meters
     return {
-      id: `waste_${waste.id}_${Date.now()}`,
+      id: `waste_${waste.id}_${this.nextBinId++}`,
       cuts: [],
+      parentBarCodes: new Set<string>(),
       usedLength: 0,
       remainingLength: lengthInMeters,
       totalLength: lengthInMeters,  // Track actual waste piece length
@@ -228,6 +229,12 @@ export class GreedyCuttingStock {
         originalLength: waste.length,
       },
     };
+  }
+
+  private log(message: string): void {
+    if (this.debugLogging) {
+      console.log(message);
+    }
   }
 
   /**
