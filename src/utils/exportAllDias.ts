@@ -4,6 +4,7 @@ import type { CuttingStockResult } from "@/types/CuttingStock";
 import { getUniqueDiaFromDisplay } from "./barCodeUtils";
 import { CuttingStockPreprocessor } from "./cuttingStockPreprocessor";
 import { getWorkerManager } from "./workerManager";
+import { getAlgorithmInfo } from "@/constants/algorithmInfo";
 
 /**
  * Export cutting stock results for all diameters to a single Excel file
@@ -28,7 +29,17 @@ export async function exportAllDiasToExcel(
     ["Generated:", new Date().toLocaleString()],
     ["Total Diameters:", uniqueDias.length],
     [],
-    ["Dia", "Greedy Bars", "Greedy Waste (m)", "Greedy Waste (%)", "Greedy Waste Reused", "Dynamic Bars", "Dynamic Waste (m)", "Dynamic Waste (%)", "Best Algorithm"],
+    [
+      "Dia",
+      `${getAlgorithmInfo("greedy").shortName} Bars`,
+      `${getAlgorithmInfo("greedy").shortName} Waste (m)`,
+      `${getAlgorithmInfo("greedy").shortName} Waste (%)`,
+      `${getAlgorithmInfo("greedy").shortName} Waste Reused`,
+      `${getAlgorithmInfo("dynamic").shortName} Bars`,
+      `${getAlgorithmInfo("dynamic").shortName} Waste (m)`,
+      `${getAlgorithmInfo("dynamic").shortName} Waste (%)`,
+      "Best Method",
+    ],
   ];
 
   // Process each diameter
@@ -40,7 +51,7 @@ export async function exportAllDiasToExcel(
       // Preprocess data for this diameter
       const requests = preprocessor.convertToCuttingRequests(displayData);
 
-      // Run both algorithms
+      // Run both bar-cutting methods
       let { greedy, dynamic } = await workerManager.runBoth(requests, dia);
 
       // Patch results with live waste data if available
@@ -52,9 +63,9 @@ export async function exportAllDiasToExcel(
       // Add to summary
       const bestAlgorithm =
         greedy.totalBarsUsed < dynamic.totalBarsUsed
-          ? "Greedy"
+          ? getAlgorithmInfo(greedy.algorithm).shortName
           : dynamic.totalBarsUsed < greedy.totalBarsUsed
-          ? "Dynamic"
+          ? getAlgorithmInfo(dynamic.algorithm).shortName
           : "Equal";
 
       // Count waste pieces reused in greedy result
@@ -75,8 +86,8 @@ export async function exportAllDiasToExcel(
       ]);
 
       // Add detailed sheets for this diameter
-      addDiaSheet(workbook, greedy, `Dia ${dia} - Greedy`);
-      addDiaSheet(workbook, dynamic, `Dia ${dia} - Dynamic`);
+      addDiaSheet(workbook, greedy, `Dia ${dia} - ${getAlgorithmInfo(greedy.algorithm).excelSheetName}`);
+      addDiaSheet(workbook, dynamic, `Dia ${dia} - ${getAlgorithmInfo(dynamic.algorithm).excelSheetName}`);
     } catch (error) {
       console.error(`Error processing dia ${dia}:`, error);
       summaryData.push([

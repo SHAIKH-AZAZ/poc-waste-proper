@@ -7,7 +7,8 @@ import {
   exportCuttingInstructions,
 } from "@/utils/cuttingStockExport";
 import { exportToExcel } from "@/utils/excelExport";
-import { IconScissors, IconFileSpreadsheet, IconFileCode, IconChartBar, IconClock, IconRecycle, IconRuler2, IconLayoutList } from "@tabler/icons-react";
+import { getAlgorithmInfo } from "@/constants/algorithmInfo";
+import { IconScissors, IconFileSpreadsheet, IconFileCode, IconChartBar, IconClock, IconRecycle, IconLayoutList } from "@tabler/icons-react";
 
 interface CuttingStockResultsProps {
   greedyResult: CuttingStockResult | null;
@@ -26,6 +27,8 @@ export default function CuttingStockResults({
   greedyProgress = { stage: "", percentage: 0 },
   dynamicProgress = { stage: "", percentage: 0 },
 }: CuttingStockResultsProps) {
+  const greedyDisplay = getAlgorithmInfo(greedyResult?.algorithm || "greedy");
+  const dynamicDisplay = getAlgorithmInfo(dynamicResult?.algorithm || "dynamic");
 
   const handleExportAll = () => {
     exportCuttingStockResults(greedyResult, dynamicResult, fileName);
@@ -42,10 +45,10 @@ export default function CuttingStockResults({
             Calculating Optimal Cutting Patterns...
           </h3>
 
-          {/* Greedy Algorithm Progress */}
+          {/* First-fit bar cutting progress */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-blue-700">Greedy Algorithm</span>
+              <span className="text-sm font-medium text-blue-700">{getAlgorithmInfo("greedy").shortName}</span>
               <span className="text-sm font-medium text-blue-700">{greedyProgress.percentage}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
@@ -59,10 +62,10 @@ export default function CuttingStockResults({
             )}
           </div>
 
-          {/* Dynamic Programming Progress */}
+          {/* Swap optimization progress */}
           <div className="mb-4">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-green-700">Dynamic Programming</span>
+              <span className="text-sm font-medium text-green-700">{getAlgorithmInfo("dynamic").shortName}</span>
               <span className="text-sm font-medium text-green-700">{dynamicProgress.percentage}%</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
@@ -77,7 +80,7 @@ export default function CuttingStockResults({
           </div>
 
           <p className="text-center text-sm text-gray-500 mt-6">
-            Running algorithms in parallel using Web Workers...
+            Running bar-cutting methods in parallel using Web Workers...
           </p>
         </div>
       </div>
@@ -118,12 +121,12 @@ export default function CuttingStockResults({
         {greedyResult && dynamicResult && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <ComparisonCard
-              title="Greedy Algorithm"
+              title={greedyDisplay.name}
               result={greedyResult}
               color="blue"
             />
             <ComparisonCard
-              title="Dynamic Programming"
+              title={dynamicDisplay.name}
               result={dynamicResult}
               color="green"
             />
@@ -132,12 +135,12 @@ export default function CuttingStockResults({
 
         {/* Detailed Results */}
         {greedyResult && (
-          <DetailedResultCard title="Greedy Algorithm" result={greedyResult} />
+          <DetailedResultCard title={getAlgorithmInfo(greedyResult.algorithm).name} result={greedyResult} />
         )}
 
         {dynamicResult && (
           <DetailedResultCard
-            title="Dynamic Programming"
+            title={getAlgorithmInfo(dynamicResult.algorithm).name}
             result={dynamicResult}
           />
         )}

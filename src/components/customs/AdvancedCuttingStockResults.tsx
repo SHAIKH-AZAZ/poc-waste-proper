@@ -2,6 +2,11 @@
 import React, { useState } from "react";
 import { motion } from "motion/react";
 import type { CuttingStockResult } from "@/types/CuttingStock";
+import {
+  RUNNABLE_BAR_CUTTING_ALGORITHM_KEYS,
+  algorithmKeysMatch,
+  getAlgorithmInfo,
+} from "@/constants/algorithmInfo";
 
 interface AdvancedCuttingStockResultsProps {
   results: CuttingStockResult[];
@@ -19,58 +24,21 @@ interface AlgorithmInfo {
   bestFor: string;
   complexity: string;
   expectedQuality: string;
+  implementedIn: string;
 }
 
-const ALGORITHMS: AlgorithmInfo[] = [
-  {
-    name: "Adaptive Selection",
-    key: "adaptive",
-    description: "Automatically selects the best algorithm based on dataset characteristics",
-    bestFor: "Production use - optimal balance of speed and quality",
-    complexity: "Variable",
-    expectedQuality: "Best Available"
-  },
-  {
-    name: "Improved Greedy (Smart)",
-    key: "improved-greedy",
-    description: "Smart greedy with look-ahead for optimal combinations - solves 6m+4m+2m waste problem",
-    bestFor: "Fast processing with much better results than standard greedy",
-    complexity: "O(n log n)",
-    expectedQuality: "Excellent"
-  },
-  {
-    name: "Branch & Bound",
-    key: "branch-bound", 
-    description: "Exhaustive search with intelligent pruning for guaranteed optimal solutions",
-    bestFor: "Small datasets requiring optimal solutions",
-    complexity: "Exponential",
-    expectedQuality: "Optimal"
-  },
-  {
-    name: "True Dynamic Programming",
-    key: "true-dynamic",
-    description: "State space exploration with memoization for near-optimal solutions",
-    bestFor: "Medium datasets with quality priority",
-    complexity: "Exponential",
-    expectedQuality: "Near-Optimal"
-  },
-  {
-    name: "Standard Greedy (FFD)",
-    key: "greedy",
-    description: "First Fit Decreasing - has the 6m+4m+2m waste problem you identified",
-    bestFor: "Comparison baseline - shows the allocation problem",
-    complexity: "O(n log n)",
-    expectedQuality: "Fair"
-  },
-  {
-    name: "Legacy Dynamic",
-    key: "dynamic",
-    description: "Pattern-based greedy selection (not true DP)",
-    bestFor: "Comparison baseline",
-    complexity: "O(n²)",
-    expectedQuality: "Fair"
-  }
-];
+const ALGORITHMS: AlgorithmInfo[] = RUNNABLE_BAR_CUTTING_ALGORITHM_KEYS.map((key) => {
+  const info = getAlgorithmInfo(key);
+  return {
+    name: info.name,
+    key: info.key,
+    description: info.description,
+    bestFor: info.bestFor,
+    complexity: info.complexity,
+    expectedQuality: info.expectedQuality,
+    implementedIn: info.implementedIn,
+  };
+});
 
 export default function AdvancedCuttingStockResults({
   results,
@@ -129,7 +97,7 @@ export default function AdvancedCuttingStockResults({
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-800 mb-2">
-            Advanced Cutting Stock Optimization
+            Bar Cutting Algorithm List
           </h2>
           <p className="text-gray-600">
             Diameter {selectedDia}mm • File: {fileName}
@@ -150,10 +118,10 @@ export default function AdvancedCuttingStockResults({
 
       {/* Algorithm Selection */}
       <div className="mb-6">
-        <h3 className="text-lg font-semibold text-gray-800 mb-3">Available Algorithms</h3>
+        <h3 className="text-lg font-semibold text-gray-800 mb-3">Implemented Bar-Cutting Methods</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {ALGORITHMS.map((alg) => {
-            const hasResult = results.some(r => r.algorithm === alg.key);
+            const hasResult = results.some(r => algorithmKeysMatch(r.algorithm, alg.key));
             const isRunning = progress[alg.key]?.percentage > 0 && progress[alg.key]?.percentage < 100;
             const currentProgress = progress[alg.key];
 
@@ -185,7 +153,9 @@ export default function AdvancedCuttingStockResults({
                 
                 <div className="text-xs text-gray-500">
                   <div><strong>Best for:</strong> {alg.bestFor}</div>
+                  <div><strong>Method:</strong> {alg.complexity}</div>
                   <div><strong>Quality:</strong> {alg.expectedQuality}</div>
+                  <div><strong>Code:</strong> {alg.implementedIn}</div>
                 </div>
 
                 {isRunning && (
@@ -224,7 +194,7 @@ export default function AdvancedCuttingStockResults({
                 </tr>
               </thead>
               <tbody>
-                {results
+                {[...results]
                   .sort((a, b) => {
                     if (a.totalBarsUsed !== b.totalBarsUsed) {
                       return a.totalBarsUsed - b.totalBarsUsed;
@@ -235,7 +205,7 @@ export default function AdvancedCuttingStockResults({
                     <tr key={`${result.algorithm}-${index}`} className="hover:bg-gray-50">
                       <td className="border border-gray-300 px-4 py-2">
                         <div>
-                          <div className="font-medium">{ALGORITHMS.find(a => a.key === result.algorithm)?.name || result.algorithm}</div>
+                          <div className="font-medium">{getAlgorithmInfo(result.algorithm).name}</div>
                           <div className="text-sm text-gray-500">{result.algorithm}</div>
                         </div>
                       </td>
@@ -283,7 +253,7 @@ export default function AdvancedCuttingStockResults({
         >
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-gray-800">
-              {ALGORITHMS.find(a => a.key === selectedResult.algorithm)?.name || selectedResult.algorithm} - Detailed Results
+              {getAlgorithmInfo(selectedResult.algorithm).name} - Detailed Results
             </h3>
             <button
               onClick={() => setSelectedResult(null)}

@@ -143,7 +143,7 @@ export class AdaptiveCuttingStock {
       };
     }
 
-    // Small-medium datasets with low complexity: True Dynamic Programming
+    // Small-medium datasets with low complexity: pattern DP search
     if (totalSegments <= 50 && uniqueSegmentTypes <= 10 && complexityScore < 0.6) {
       return {
         primary: "true-dynamic",
@@ -175,7 +175,7 @@ export class AdaptiveCuttingStock {
       };
     }
 
-    // Default: True Dynamic Programming
+    // Default: pattern DP search
     return {
       primary: "true-dynamic",
       secondary: "greedy",

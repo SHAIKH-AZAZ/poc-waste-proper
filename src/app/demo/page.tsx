@@ -294,9 +294,9 @@ export default function DemoPage() {
                 3
               </div>
               <div>
-                <p className="font-semibold text-white">DP Solving</p>
+                <p className="font-semibold text-white">Pattern DP Search</p>
                 <p className="text-slate-400">
-                  Minimizes bars first, then waste using dynamic programming
+                  Minimizes bars first, then waste with bounded pattern-state search
                 </p>
               </div>
             </div>

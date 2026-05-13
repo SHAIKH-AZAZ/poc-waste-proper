@@ -440,19 +440,19 @@ export default function SheetPage() {
     }
   };
 
-  // Run True Dynamic calculation
+  // Run exact pattern-search calculation
   const runTrueDynamic = async () => {
     if (!displayData || !selectedDia) return;
 
     // Warning for large datasets
     if (displayData.length > 50) {
-      if (!confirm(`Warning: You have ${displayData.length} items. "True Dynamic" (Exact) optimization is extremely computationally expensive. \n\nIt works best for < 50 items. For larger datasets, it may hang your browser or crash. \n\nAre you sure you want to proceed?`)) {
+      if (!confirm(`Warning: You have ${displayData.length} items. Pattern DP cutting-stock search is extremely computationally expensive. \n\nIt works best for < 50 items. For larger datasets, it may hang your browser or crash. \n\nAre you sure you want to proceed?`)) {
         return;
       }
     }
 
     setIsCalculating(true);
-    setDynamicProgress({ stage: "Starting True Dynamic...", percentage: 0 });
+    setDynamicProgress({ stage: "Starting pattern DP search...", percentage: 0 });
 
     try {
       const preprocessor = new CuttingStockPreprocessor();
@@ -470,7 +470,7 @@ export default function SheetPage() {
       await saveResults(selectedDia, greedyResult, result, useWaste ? wasteForCurrentDia : undefined);
 
     } catch (error) {
-      console.error("[Sheet] True Dynamic error:", error);
+      console.error("[Sheet] Pattern DP search error:", error);
       setCalculationError(error instanceof Error ? error.message : "Calculation failed");
     } finally {
       setIsCalculating(false);
@@ -896,9 +896,9 @@ export default function SheetPage() {
             <button
               onClick={runTrueDynamic}
               className="text-xs text-slate-400 hover:text-blue-600 underline flex items-center gap-1 transition-colors"
-              title="Run exact optimization algorithm (slow)"
+              title="Run exact cutting-stock pattern search (slow)"
             >
-              ⚡ Run Exact Optimization (True Dynamic)
+              ⚡ Run Exact Cutting-Stock Search
             </button>
           </div>
         )}

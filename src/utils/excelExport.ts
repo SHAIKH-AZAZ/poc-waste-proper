@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx";
 import type { CuttingStockResult, CutInstruction } from "@/types/CuttingStock";
+import { getAlgorithmInfo } from "@/constants/algorithmInfo";
 
 /**
  * Export cutting stock results to Excel with multiple sheets
@@ -17,16 +18,24 @@ export function exportToExcel(
   // Create workbook
   const workbook = XLSX.utils.book_new();
 
-  // Add Greedy Algorithm sheet
+  // Add first-fit cutting-stock sheet
   if (greedyResult) {
     const greedySheet = createAlgorithmSheet(greedyResult);
-    XLSX.utils.book_append_sheet(workbook, greedySheet, "Greedy Algorithm");
+    XLSX.utils.book_append_sheet(
+      workbook,
+      greedySheet,
+      toExcelSheetName(getAlgorithmInfo(greedyResult.algorithm).excelSheetName)
+    );
   }
 
-  // Add Dynamic Programming sheet
+  // Add optimized cutting-stock sheet
   if (dynamicResult) {
     const dynamicSheet = createAlgorithmSheet(dynamicResult);
-    XLSX.utils.book_append_sheet(workbook, dynamicSheet, "Dynamic Programming");
+    XLSX.utils.book_append_sheet(
+      workbook,
+      dynamicSheet,
+      toExcelSheetName(getAlgorithmInfo(dynamicResult.algorithm).excelSheetName)
+    );
   }
 
   // Add Comparison sheet
@@ -203,6 +212,9 @@ function createComparisonSheet(
   greedyResult: CuttingStockResult,
   dynamicResult: CuttingStockResult
 ): XLSX.WorkSheet {
+  const greedyLabel = getAlgorithmInfo(greedyResult.algorithm).shortName;
+  const dynamicLabel = getAlgorithmInfo(dynamicResult.algorithm).shortName;
+
   // Count waste pieces reused
   const greedyWasteReused = greedyResult.detailedCuts.filter(
     (d) => d.isFromWaste || d.patternId?.startsWith("waste_")
@@ -214,7 +226,7 @@ function createComparisonSheet(
   // Summary comparison
   const summaryData = [
     ["SUMMARY COMPARISON", "", "", ""],
-    ["Metric", "Greedy Algorithm", "Dynamic Programming", "Difference"],
+    ["Metric", greedyLabel, dynamicLabel, "Difference"],
     [
       "Total Bars Used",
       greedyResult.totalBarsUsed,
@@ -288,7 +300,7 @@ function createComparisonSheet(
     ],
     [],
     ["DETAILED PATTERN COMPARISON", "", "", ""],
-    ["Bar #", "Greedy Cuts", "Dynamic Cuts", "Difference"],
+    ["Bar #", `${greedyLabel} Cuts`, `${dynamicLabel} Cuts`, "Difference"],
   ];
 
   // Detailed pattern comparison
@@ -328,23 +340,23 @@ function createComparisonSheet(
 
   if (barsSaved > 0) {
     summaryData.push([
-      "Best Algorithm",
-      "Dynamic Programming",
+      "Best Method",
+      dynamicLabel,
       `Saves ${barsSaved} bars and ${wasteSaved.toFixed(3)}m waste`,
       "",
     ]);
   } else if (barsSaved < 0) {
     summaryData.push([
-      "Best Algorithm",
-      "Greedy",
+      "Best Method",
+      greedyLabel,
       `Saves ${Math.abs(barsSaved)} bars and ${Math.abs(wasteSaved).toFixed(3)}m waste`,
       "",
     ]);
   } else {
     summaryData.push([
-      "Best Algorithm",
+      "Best Method",
       "Both Equal",
-      "Both algorithms produce same results",
+      "Both bar-cutting methods produce same results",
       "",
     ]);
   }
@@ -355,8 +367,8 @@ function createComparisonSheet(
     summaryData.push(["NOTE", "", "", ""]);
     summaryData.push([
       "Waste Reuse",
-      greedyWasteReused > 0 ? `Greedy reused ${greedyWasteReused} waste pieces` : "Greedy: No waste reused",
-      dynamicWasteReused > 0 ? `Dynamic reused ${dynamicWasteReused} waste pieces` : "Dynamic: No waste reused (not supported)",
+      greedyWasteReused > 0 ? `${greedyLabel} reused ${greedyWasteReused} waste pieces` : `${greedyLabel}: No waste reused`,
+      dynamicWasteReused > 0 ? `${dynamicLabel} reused ${dynamicWasteReused} waste pieces` : `${dynamicLabel}: No waste reused`,
       "",
     ]);
   }
@@ -373,4 +385,9 @@ function createComparisonSheet(
   ];
 
   return worksheet;
+}
+
+function toExcelSheetName(name: string): string {
+  const safeName = name.replace(/[\\/?*\[\]:]/g, "").trim();
+  return (safeName || "Algorithm").slice(0, 31);
 }

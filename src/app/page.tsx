@@ -30,7 +30,7 @@ export default function Home() {
               Cutting Stock Optimizer
             </h2>
             <p className="text-slate-500 max-w-md mx-auto">
-              Optimize your rebar cutting with advanced algorithms. Create projects, upload sheets, and minimize waste.
+              Optimize your rebar cutting with implemented cutting-stock methods. Create projects, upload sheets, and minimize waste.
             </p>
           </div>
 
@@ -101,8 +101,8 @@ export default function Home() {
           </div>
           <div className="p-4 bg-white rounded-xl border border-slate-200 text-center">
             <div className="text-2xl mb-1">⚡</div>
-            <div className="text-sm font-medium text-slate-900">Fast Algorithms</div>
-            <div className="text-xs text-slate-500">Greedy & Dynamic</div>
+            <div className="text-sm font-medium text-slate-900">Bar Cutting Methods</div>
+            <div className="text-xs text-slate-500">FFD & Swap</div>
           </div>
           <div className="p-4 bg-white rounded-xl border border-slate-200 text-center">
             <div className="text-2xl mb-1">📊</div>

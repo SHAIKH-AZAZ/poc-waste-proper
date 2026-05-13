@@ -5,8 +5,8 @@ export function HeadDemo() {
   const words = [
     "Buniadbyte",
     "Bar Cutting Optimization",
-    "Dynamic Bar Cutting",
-    "Greedy Bar Cutting",
+    "Best-Fit Swap Cutting",
+    "First-Fit Decreasing Cutting",
   ];
   return (
     <div>
