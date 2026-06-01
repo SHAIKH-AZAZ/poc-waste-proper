@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import type { BarCuttingDisplay } from "@/types/BarCuttingRow";
-import type { CuttingStockResult } from "@/types/CuttingStock";
+import type { CuttingStockResult, WastePiece } from "@/types/CuttingStock";
 import { getUniqueDiaFromDisplay } from "./barCodeUtils";
 import { CuttingStockPreprocessor } from "./cuttingStockPreprocessor";
 import { getWorkerManager } from "./workerManager";
@@ -13,7 +13,8 @@ export async function exportAllDiasToExcel(
   displayData: BarCuttingDisplay[],
   fileName: string,
   onProgress?: (dia: number, current: number, total: number) => void,
-  generatedWaste: any[] = [] // Optional generated waste for live tracking
+  generatedWaste: any[] = [], // Optional generated waste for live tracking
+  availableWaste: WastePiece[] = [] // Inventory to reuse (always-reuse on export)
 ): Promise<void> {
   const uniqueDias = getUniqueDiaFromDisplay(displayData);
   const preprocessor = new CuttingStockPreprocessor();
@@ -51,8 +52,11 @@ export async function exportAllDiasToExcel(
       // Preprocess data for this diameter
       const requests = preprocessor.convertToCuttingRequests(displayData);
 
-      // Run both bar-cutting methods
-      let { greedy, dynamic } = await workerManager.runBoth(requests, dia);
+      // Always reuse inventory: feed this dia's available waste into the algorithms
+      const wasteForDia = availableWaste.filter((w) => w.dia === dia);
+
+      // Run both bar-cutting methods (with inventory reuse)
+      let { greedy, dynamic } = await workerManager.runBoth(requests, dia, undefined, wasteForDia);
 
       // Patch results with live waste data if available
       if (generatedWaste.length > 0) {

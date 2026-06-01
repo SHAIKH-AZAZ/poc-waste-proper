@@ -417,6 +417,8 @@ function DetailedResultCard({
                                 From: Sheet{" "}
                                 {detail.wasteSource.sourceSheetNumber ||
                                   detail.wasteSource.sourceSheetId}
+                                {" · Bar #"}
+                                {detail.wasteSource.sourceBarNumber || "?"}
                               </span>
                             </div>
                           </div>

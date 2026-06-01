@@ -667,14 +667,54 @@ export default function SheetPage() {
 
     setIsDownloadingAll(true);
     try {
-      await exportAllDiasToExcel(displayData, sheetInfo.fileName, () => { }, generatedWaste);
+      // Always reuse inventory: load all available waste for this project and
+      // map it into WastePiece[] (same shape the calculation flow uses).
+      let availableWaste: WastePiece[] = [];
+      try {
+        const wasteRes = await fetch(`/api/waste?projectId=${projectId}&status=available`);
+        const wasteData = await wasteRes.json();
+        if (wasteData.success && Array.isArray(wasteData.waste)) {
+          availableWaste = wasteData.waste.map((w: {
+            id: number;
+            dia: number;
+            length: number;
+            sourceSheetId?: number;
+            sourceBarNumber?: number;
+            sourceSheet?: { id: number; sheetNumber: number; fileName: string };
+            cutsOnSourceBar?: { barCode: string; length: number; element: string }[];
+          }) => ({
+            id: String(w.id),
+            projectId: parseInt(projectId),
+            sourceSheetId: w.sourceSheetId || w.sourceSheet?.id || 0,
+            sourceSheetNumber: w.sourceSheet?.sheetNumber || 0,
+            sourceSheetName: w.sourceSheet?.fileName || `Sheet #${w.sourceSheet?.sheetNumber}`,
+            sourceBarNumber: w.sourceBarNumber || 0,
+            sourcePatternId: "",
+            cutsOnSourceBar: w.cutsOnSourceBar || [],
+            dia: w.dia,
+            length: w.length,
+            status: "available" as const,
+            createdAt: new Date(),
+          }));
+        }
+      } catch (e) {
+        console.warn("[Sheet] Could not load waste inventory for export:", e);
+      }
+
+      await exportAllDiasToExcel(
+        displayData,
+        sheetInfo.fileName,
+        () => { },
+        generatedWaste,
+        availableWaste
+      );
     } catch (error) {
       console.error("[Sheet] Error downloading all dias:", error);
       setCalculationError(error instanceof Error ? error.message : "Failed to download");
     } finally {
       setIsDownloadingAll(false);
     }
-  }, [displayData, sheetInfo]);
+  }, [displayData, sheetInfo, projectId, generatedWaste]);
 
   // Clear data (reset view)
   const handleClearData = useCallback(() => {
