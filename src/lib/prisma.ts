@@ -1,5 +1,4 @@
 import { PrismaClient } from "@prisma/client";
-import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { config } from "dotenv";
 
@@ -18,8 +17,9 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-const pool = new Pool({ connectionString });
-const adapter = new PrismaPg(pool);
+// PrismaPg accepts a pg.PoolConfig directly and manages the pool internally,
+// so we avoid importing pg.Pool (which pulls a duplicate @types/pg version).
+const adapter = new PrismaPg({ connectionString });
 
 export const prisma =
   globalForPrisma.prisma ??
