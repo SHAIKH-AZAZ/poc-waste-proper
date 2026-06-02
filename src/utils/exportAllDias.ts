@@ -5,6 +5,23 @@ import { getUniqueDiaFromDisplay } from "./barCodeUtils";
 import { CuttingStockPreprocessor } from "./cuttingStockPreprocessor";
 import { getWorkerManager } from "./workerManager";
 
+type SummaryCell = string | number;
+type AlgorithmKey = "greedy" | "dynamic";
+
+const STANDARD_BAR_LENGTH_M = 12.0;
+const STANDARD_REPORT_DIAS = [8, 10, 12, 16, 20, 25, 32, 40];
+
+interface DiaSummaryResult {
+  dia: number;
+  demandLength: number;
+  greedy?: CuttingStockResult;
+  dynamic?: CuttingStockResult;
+  greedyFromInventory: number;
+  dynamicFromInventory: number;
+  bestAlgorithm?: string;
+  error?: string;
+}
+
 /**
  * Export cutting stock results for all diameters to a single Excel file
  */
@@ -18,72 +35,25 @@ export async function exportAllDiasToExcel(
   const uniqueDias = getUniqueDiaFromDisplay(displayData);
   const preprocessor = new CuttingStockPreprocessor();
   const workerManager = getWorkerManager();
+  const allRequests = preprocessor.convertToCuttingRequests(displayData);
+  const diaResults = new Map<number, DiaSummaryResult>();
 
   // Create workbook
   const workbook = XLSX.utils.book_new();
-
-  // Build summary header (2-row, grouped).
-  //
-  // Layout (16 columns):
-  //   A          B─────────────H               I─────────────O               P
-  //   Dia        GREEDY (7 cols)               DYNAMIC (7 cols)              Best
-  //   Dia        Bars | Waste(m) | Waste% |    Bars | Waste(m) | Waste% |    Method
-  //              From Inv | New Pcs(≥1m) |     From Inv | New Pcs(≥1m) |
-  //              New (m) | Largest Offcut    New (m) | Largest Offcut
-  //
-  // Column labels avoid algorithm jargon ("FFD with waste reuse" was opaque to users).
-  // "From Inventory" = count of inventory pieces consumed (INPUT side).
-  // "New Reusable Pcs / (m)" = new offcuts ≥1m this run produced (OUTPUT side).
-  // These two are semantically different and used to sit side-by-side under the same
-  // ambiguous name; now they're plainly labelled.
-  const GREEDY_HDRS = [
-    "Bars Used",
-    "Total Waste (m)",
-    "Waste %",
-    "From Inventory",
-    "New Reusable Pcs (≥1m)",
-    "New Reusable (m)",
-    "Largest Offcut (m)",
-  ];
-  const DYNAMIC_HDRS = GREEDY_HDRS; // symmetric
-
-  const groupRow: (string | number)[] = [
-    "",
-    "GREEDY", "", "", "", "", "", "",          // merged B-H
-    "DYNAMIC", "", "", "", "", "", "",          // merged I-O
-    "",
-  ];
-  const columnRow: (string | number)[] = [
-    "Dia",
-    ...GREEDY_HDRS,
-    ...DYNAMIC_HDRS,
-    "Best Method",
-  ];
-
-  const summaryData: (string | number)[][] = [
-    ["CUTTING STOCK OPTIMIZATION - ALL DIAMETERS"],
-    ["File:", fileName],
-    ["Generated:", new Date().toLocaleString()],
-    ["Total Diameters:", uniqueDias.length],
-    [],
-    groupRow,
-    columnRow,
-  ];
 
   // Process each diameter
   for (let i = 0; i < uniqueDias.length; i++) {
     const dia = uniqueDias[i];
     onProgress?.(dia, i + 1, uniqueDias.length);
+    const diaRequests = preprocessor.filterByDia(allRequests, dia);
+    const demandLength = preprocessor.calculateTotalMaterial(diaRequests);
 
     try {
-      // Preprocess data for this diameter
-      const requests = preprocessor.convertToCuttingRequests(displayData);
-
       // Always reuse inventory: feed this dia's available waste into the algorithms
       const wasteForDia = availableWaste.filter((w) => w.dia === dia);
 
       // Run both bar-cutting methods (with inventory reuse)
-      let { greedy, dynamic } = await workerManager.runBoth(requests, dia, undefined, wasteForDia);
+      let { greedy, dynamic } = await workerManager.runBoth(diaRequests, dia, undefined, wasteForDia);
 
       // Patch results with live waste data if available
       if (generatedWaste.length > 0) {
@@ -91,43 +61,29 @@ export async function exportAllDiasToExcel(
         dynamic = patchResultWithLiveWaste(dynamic, generatedWaste);
       }
 
-      // Best-method label uses plain user-facing names (matches the UI buttons)
-      // instead of internal algorithm IDs like "FFD with waste reuse".
+      // Count waste pieces reused from inventory (input side) for each algorithm.
+      const greedyFromInv = countFromInventory(greedy);
+      const dynamicFromInv = countFromInventory(dynamic);
+      const greedyNewBars = getNewBarCount(greedy, greedyFromInv);
+      const dynamicNewBars = getNewBarCount(dynamic, dynamicFromInv);
+
+      // Best-method label uses the same "New 12m Bars" basis shown in the Summary.
       const bestAlgorithm =
-        greedy.totalBarsUsed < dynamic.totalBarsUsed
+        greedyNewBars < dynamicNewBars
           ? "Greedy"
-          : dynamic.totalBarsUsed < greedy.totalBarsUsed
+          : dynamicNewBars < greedyNewBars
           ? "Dynamic"
           : "Equal";
 
-      // Count waste pieces reused from inventory (input side) for each algorithm.
-      const countFromInv = (r: CuttingStockResult) =>
-        r.detailedCuts.filter(
-          (d) => (d as { isFromWaste?: boolean }).isFromWaste || d.patternId?.startsWith("waste_")
-        ).length;
-      const greedyFromInv = countFromInv(greedy);
-      const dynamicFromInv = countFromInv(dynamic);
-
-      summaryData.push([
+      diaResults.set(dia, {
         dia,
-        // ── GREEDY (7 cols) ──────────────────────────────────────────────
-        greedy.totalBarsUsed,
-        parseFloat(greedy.totalWaste.toFixed(3)),
-        parseFloat(greedy.summary.totalWastePercentage.toFixed(2)),
-        greedyFromInv,
-        greedy.summary.reusablePieces ?? 0,
-        parseFloat((greedy.summary.reusableWasteLength ?? 0).toFixed(3)),
-        parseFloat((greedy.summary.largestOffcut ?? 0).toFixed(3)),
-        // ── DYNAMIC (7 cols, symmetric) ──────────────────────────────────
-        dynamic.totalBarsUsed,
-        parseFloat(dynamic.totalWaste.toFixed(3)),
-        parseFloat(dynamic.summary.totalWastePercentage.toFixed(2)),
-        dynamicFromInv,
-        dynamic.summary.reusablePieces ?? 0,
-        parseFloat((dynamic.summary.reusableWasteLength ?? 0).toFixed(3)),
-        parseFloat((dynamic.summary.largestOffcut ?? 0).toFixed(3)),
+        demandLength,
+        greedy,
+        dynamic,
+        greedyFromInventory: greedyFromInv,
+        dynamicFromInventory: dynamicFromInv,
         bestAlgorithm,
-      ]);
+      });
 
       // Add detailed sheets for this diameter. Tabs use plain "Greedy"/"Dynamic"
       // to match the UI buttons rather than internal algorithm IDs.
@@ -136,55 +92,253 @@ export async function exportAllDiasToExcel(
     } catch (error) {
       console.error(`Error processing dia ${dia}:`, error);
       const msg = error instanceof Error ? error.message : "Unknown error";
-      // Pad to match the 16-column header (Dia + 7 greedy + 7 dynamic + Best).
-      summaryData.push([
+      diaResults.set(dia, {
         dia,
-        "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR",
-        "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR",
-        msg,
-      ]);
+        demandLength,
+        greedyFromInventory: 0,
+        dynamicFromInventory: 0,
+        error: msg,
+      });
     }
   }
+
+  const reportDias = getReportDias(uniqueDias);
+  const summaryData = createSummaryData(fileName, uniqueDias.length, reportDias, diaResults);
 
   // Create summary sheet
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
 
-  // Merge the two algorithm group banners on the group-header row.
-  // groupRow is row index 5 (rows 0-4: title/meta/blank). 0-indexed.
-  // Greedy spans cols B–H (1–7); Dynamic spans cols I–O (8–14).
-  const GROUP_HEADER_ROW = 5;
-  summarySheet["!merges"] = [
-    { s: { r: GROUP_HEADER_ROW, c: 1 }, e: { r: GROUP_HEADER_ROW, c: 7 } },
-    { s: { r: GROUP_HEADER_ROW, c: 8 }, e: { r: GROUP_HEADER_ROW, c: 14 } },
-  ];
-
-  // Column widths — symmetric between Greedy and Dynamic, padded for readability.
+  // Column widths for the stacked summary tables.
   summarySheet["!cols"] = [
-    { wch: 6 },   // Dia
-    // GREEDY
-    { wch: 10 },  // Bars Used
-    { wch: 15 },  // Total Waste (m)
-    { wch: 9 },   // Waste %
+    { wch: 8 },   // Dia
+    { wch: 22 },  // Total Cutting Length
+    { wch: 14 },  // New 12m Bars
+    { wch: 18 },  // Total Stock Length
+    { wch: 12 },  // Waste
+    { wch: 10 },  // Waste %
+    { wch: 14 },  // Utilization %
     { wch: 14 },  // From Inventory
-    { wch: 22 },  // New Reusable Pcs (≥1m)
-    { wch: 17 },  // New Reusable (m)
-    { wch: 18 },  // Largest Offcut (m)
-    // DYNAMIC (same widths)
-    { wch: 10 },
-    { wch: 15 },
-    { wch: 9 },
-    { wch: 14 },
-    { wch: 22 },
-    { wch: 17 },
-    { wch: 18 },
-    // BEST
-    { wch: 12 },  // Best Method
+    { wch: 23 },  // New Reusable Pcs
+    { wch: 18 },  // New Reusable
+    { wch: 18 },  // Largest Offcut
   ];
   XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
 
   // Generate Excel file
   const excelFileName = `cutting_stock_all_dias_${fileName.replace(/\.[^/.]+$/, "")}.xlsx`;
   XLSX.writeFile(workbook, excelFileName);
+}
+
+function getReportDias(uniqueDias: number[]): number[] {
+  const extraDias = uniqueDias.filter((dia) => !STANDARD_REPORT_DIAS.includes(dia));
+  return [...STANDARD_REPORT_DIAS, ...extraDias.sort((a, b) => a - b)];
+}
+
+function createSummaryData(
+  fileName: string,
+  uniqueDiaCount: number,
+  reportDias: number[],
+  diaResults: Map<number, DiaSummaryResult>
+): SummaryCell[][] {
+  const summaryData: SummaryCell[][] = [
+    ["CUTTING STOCK OPTIMIZATION - ALL DIAMETERS"],
+    ["File:", fileName],
+    ["Generated:", new Date().toLocaleString()],
+    ["Diameters in File:", uniqueDiaCount],
+    [],
+    ...createAlgorithmSummaryTable("GREEDY SUMMARY", "greedy", reportDias, diaResults),
+    [],
+    ...createAlgorithmSummaryTable("DYNAMIC SUMMARY", "dynamic", reportDias, diaResults),
+    [],
+    ...createMethodComparisonTable(reportDias, diaResults),
+  ];
+
+  return summaryData;
+}
+
+function createAlgorithmSummaryTable(
+  title: string,
+  algorithm: AlgorithmKey,
+  reportDias: number[],
+  diaResults: Map<number, DiaSummaryResult>
+): SummaryCell[][] {
+  const rows: SummaryCell[][] = [
+    [title],
+    [
+      "Dia",
+      "Total Cutting Length (m)",
+      "New 12m Bars",
+      "Total Stock Length (m)",
+      "Waste (m)",
+      "Waste %",
+      "Utilization %",
+      "From Inventory",
+      "New Reusable Pcs (>=1m)",
+      "New Reusable (m)",
+      "Largest Offcut (m)",
+    ],
+  ];
+
+  const totals = {
+    demandLength: 0,
+    newBars: 0,
+    stockLength: 0,
+    wasteLength: 0,
+    fromInventory: 0,
+    reusablePieces: 0,
+    reusableWasteLength: 0,
+    largestOffcut: 0,
+  };
+
+  for (const dia of reportDias) {
+    const diaResult = diaResults.get(dia);
+    const result = getAlgorithmResult(diaResult, algorithm);
+
+    if (!diaResult) {
+      rows.push([dia, "", "", "", "", "", "", "", "", "", ""]);
+      continue;
+    }
+
+    if (diaResult.error || !result) {
+      rows.push([dia, roundValue(diaResult.demandLength), "ERROR", "", "", "", "", "", "", "", diaResult.error ?? "ERROR"]);
+      continue;
+    }
+
+    const fromInventory = getFromInventory(diaResult, algorithm);
+    const newBars = getNewBarCount(result, fromInventory);
+    const stockLength = getTotalStockLength(result);
+    const wasteLength = result.totalWaste;
+    const wastePercentage = stockLength > 0 ? (wasteLength / stockLength) * 100 : 0;
+    const utilizationPercentage = stockLength > 0 ? 100 - wastePercentage : 0;
+    const reusablePieces = result.summary.reusablePieces ?? 0;
+    const reusableWasteLength = result.summary.reusableWasteLength ?? 0;
+    const largestOffcut = result.summary.largestOffcut ?? 0;
+
+    totals.demandLength += diaResult.demandLength;
+    totals.newBars += newBars;
+    totals.stockLength += stockLength;
+    totals.wasteLength += wasteLength;
+    totals.fromInventory += fromInventory;
+    totals.reusablePieces += reusablePieces;
+    totals.reusableWasteLength += reusableWasteLength;
+    totals.largestOffcut = Math.max(totals.largestOffcut, largestOffcut);
+
+    rows.push([
+      dia,
+      roundValue(diaResult.demandLength),
+      newBars,
+      roundValue(stockLength),
+      roundValue(wasteLength),
+      roundValue(wastePercentage, 2),
+      roundValue(utilizationPercentage, 2),
+      fromInventory,
+      reusablePieces,
+      roundValue(reusableWasteLength),
+      roundValue(largestOffcut),
+    ]);
+  }
+
+  const totalWastePercentage =
+    totals.stockLength > 0 ? (totals.wasteLength / totals.stockLength) * 100 : 0;
+  const totalUtilization =
+    totals.stockLength > 0 ? 100 - totalWastePercentage : 0;
+
+  rows.push([
+    "TOTAL",
+    roundValue(totals.demandLength),
+    totals.newBars,
+    roundValue(totals.stockLength),
+    roundValue(totals.wasteLength),
+    roundValue(totalWastePercentage, 2),
+    roundValue(totalUtilization, 2),
+    totals.fromInventory,
+    totals.reusablePieces,
+    roundValue(totals.reusableWasteLength),
+    roundValue(totals.largestOffcut),
+  ]);
+
+  return rows;
+}
+
+function createMethodComparisonTable(
+  reportDias: number[],
+  diaResults: Map<number, DiaSummaryResult>
+): SummaryCell[][] {
+  const rows: SummaryCell[][] = [
+    ["METHOD COMPARISON"],
+    ["Dia", "Best Method", "Greedy New 12m Bars", "Dynamic New 12m Bars", "Bars Saved by Dynamic", "Greedy Waste %", "Dynamic Waste %"],
+  ];
+
+  for (const dia of reportDias) {
+    const diaResult = diaResults.get(dia);
+    if (!diaResult) {
+      rows.push([dia, "", "", "", "", "", ""]);
+      continue;
+    }
+
+    const { greedy, dynamic } = diaResult;
+    if (diaResult.error || !greedy || !dynamic) {
+      rows.push([dia, diaResult.error ?? "ERROR", "", "", "", "", ""]);
+      continue;
+    }
+
+    const greedyNewBars = getNewBarCount(greedy, diaResult.greedyFromInventory);
+    const dynamicNewBars = getNewBarCount(dynamic, diaResult.dynamicFromInventory);
+    const greedyStockLength = getTotalStockLength(greedy);
+    const dynamicStockLength = getTotalStockLength(dynamic);
+    const greedyWastePercentage =
+      greedyStockLength > 0 ? (greedy.totalWaste / greedyStockLength) * 100 : 0;
+    const dynamicWastePercentage =
+      dynamicStockLength > 0 ? (dynamic.totalWaste / dynamicStockLength) * 100 : 0;
+
+    rows.push([
+      dia,
+      diaResult.bestAlgorithm ?? "Equal",
+      greedyNewBars,
+      dynamicNewBars,
+      greedyNewBars - dynamicNewBars,
+      roundValue(greedyWastePercentage, 2),
+      roundValue(dynamicWastePercentage, 2),
+    ]);
+  }
+
+  return rows;
+}
+
+function getAlgorithmResult(
+  diaResult: DiaSummaryResult | undefined,
+  algorithm: AlgorithmKey
+): CuttingStockResult | undefined {
+  if (!diaResult) return undefined;
+  return algorithm === "greedy" ? diaResult.greedy : diaResult.dynamic;
+}
+
+function getFromInventory(diaResult: DiaSummaryResult, algorithm: AlgorithmKey): number {
+  return algorithm === "greedy"
+    ? diaResult.greedyFromInventory
+    : diaResult.dynamicFromInventory;
+}
+
+function countFromInventory(result: CuttingStockResult): number {
+  return result.detailedCuts.filter(
+    (d) => d.isFromWaste || d.patternId?.startsWith("waste_")
+  ).length;
+}
+
+function getNewBarCount(result: CuttingStockResult, fromInventory: number): number {
+  return result.summary.newBarsUsed ?? Math.max(0, result.totalBarsUsed - fromInventory);
+}
+
+function getTotalStockLength(result: CuttingStockResult): number {
+  const patternLength = result.patterns.reduce((sum, pattern) => {
+    return sum + (Number.isFinite(pattern.standardBarLength) ? pattern.standardBarLength : 0);
+  }, 0);
+
+  return patternLength > 0 ? patternLength : result.totalBarsUsed * STANDARD_BAR_LENGTH_M;
+}
+
+function roundValue(value: number, digits = 3): number {
+  return parseFloat(value.toFixed(digits));
 }
 
 /**
