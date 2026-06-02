@@ -32,14 +32,14 @@ const BAR_CELL_START_COLUMN = START_COLUMN + 1;
 const LEFT_MARGIN_WIDTH_PX = 24;
 const DEFAULT_CUT_FILL = "FCD5B4";
 const DIA_CUT_FILLS: Record<number, string> = {
-  "8": "B7A1C9",
-  "10": "A8C69F",
-  "12": "9FC5E8",
-  "16": "F4D88A",
-  "20": "B4A7D6",
-  "25": "C9B2E6",
-  "32": "A2C4C9",
-  "40": "E6B8AF",
+  "8": "D5A6BD",
+  "10": "B6D7A8",
+  "12": "C9DAF8",
+  "16": "FFE599",
+  "20": "D9D2E9",
+  "25": "D9B8F0",
+  "32": "B7D7DB",
+  "40": "F4CCCC",
 };
 const WASTE_FILL = "FFFFFF";
 const BORDER_COLOR = "000000";

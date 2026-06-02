@@ -1,5 +1,5 @@
 import { GreedyCuttingStock } from "@/algorithms/greedyCuttingStock";
-
+import { BoundedKnapsackCuttingStock } from "@/algorithms/boundedKnapsackCuttingStock";
 import { TrueDynamicCuttingStock } from "@/algorithms/trueDynamicCuttingStock";
 import { BranchAndBoundCuttingStock } from "@/algorithms/branchAndBoundCuttingStock";
 import { AdaptiveCuttingStock } from "@/algorithms/adaptiveCuttingStock";
@@ -59,30 +59,21 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
             case "dynamic":
                 try {
                     console.log(`[Worker dynamic] ========================================`);
-                    console.log(`[Worker dynamic] Starting DYNAMIC for dia ${dia}, requests: ${requests.length}`);
+                    console.log(`[Worker dynamic] Starting Bounded Knapsack DP for dia ${dia}`);
+                    console.log(`[Worker dynamic] Requests: ${requests.length}`);
                     console.log(`[Worker dynamic] ========================================`);
                     sendProgress(type, "Preprocessing data...", 10);
 
-                    // Routing:
-                    //   • Waste inventory present → SwapOptimization (it supports wastePieces)
-                    //   • Otherwise → TrueDynamicCuttingStock (true DP / column generation)
-                    //     with a 90s soft deadline; falls back to greedy via Set Cover if hit.
-                    // This gives Dynamic a genuinely different algorithm from Greedy when
-                    // there's no inventory to honor.
-                    if (wastePieces && wastePieces.length > 0) {
-                        console.log(`[Worker dynamic] Inventory present (${wastePieces.length} pcs) → SwapOptimization`);
-                        const swapForDynamic = new SwapOptimization();
-                        result = swapForDynamic.solve(requests, dia, wastePieces, (stage, percentage) => {
-                            sendProgress(type, stage, percentage);
-                        });
-                    } else {
-                        console.log(`[Worker dynamic] No inventory → TrueDynamicCuttingStock (DP / column-gen)`);
-                        sendProgress(type, "Running dynamic programming...", 30);
-                        const trueDP = new TrueDynamicCuttingStock();
-                        result = trueDP.solve(requests, dia, 90_000 /* 90s budget */);
-                        sendProgress(type, "Finalizing results...", 90);
-                    }
-                    // Override algorithm name to "dynamic" for UI/Excel consistency
+                    // Bounded Knapsack DP — bar-by-bar optimization.
+                    // Matches the proven C# POC algorithm: fills each 12m bar as
+                    // full as possible using a bounded knapsack DP, then moves to
+                    // the next bar. Supports waste-inventory reuse natively.
+                    const knapsack = new BoundedKnapsackCuttingStock();
+                    sendProgress(type, "Running bounded knapsack DP...", 30);
+                    result = knapsack.solve(requests, dia, wastePieces, 90_000);
+                    sendProgress(type, "Finalizing results...", 90);
+
+                    // Ensure algorithm name is "dynamic" for UI consistency
                     (result as CuttingStockResult).algorithm = "dynamic";
                     console.log(`[Worker dynamic] Complete, bars used: ${(result as CuttingStockResult).totalBarsUsed}`);
                 } catch (dynamicError) {
