@@ -30,7 +30,17 @@ const SERIAL_COLUMN_WIDTH_PX = 60;
 const START_COLUMN = 1; // Start visual content from Excel column B.
 const BAR_CELL_START_COLUMN = START_COLUMN + 1;
 const LEFT_MARGIN_WIDTH_PX = 24;
-const CUT_FILL = "FCD5B4";
+const DEFAULT_CUT_FILL = "FCD5B4";
+const DIA_CUT_FILLS: Record<number, string> = {
+  "8": "B7A1C9",
+  "10": "A8C69F",
+  "12": "9FC5E8",
+  "16": "F4D88A",
+  "20": "B4A7D6",
+  "25": "C9B2E6",
+  "32": "A2C4C9",
+  "40": "E6B8AF",
+};
 const WASTE_FILL = "FFFFFF";
 const BORDER_COLOR = "000000";
 
@@ -51,12 +61,6 @@ const TITLE_STYLE = {
   alignment: { vertical: "center", wrapText: true },
 };
 
-const CUT_STYLE = {
-  fill: { patternType: "solid", fgColor: { rgb: CUT_FILL } },
-  border: THIN_BLACK_BORDER,
-  alignment: { vertical: "top", wrapText: true },
-};
-
 const WASTE_STYLE = {
   fill: { patternType: "solid", fgColor: { rgb: WASTE_FILL } },
   border: THIN_BLACK_BORDER,
@@ -70,6 +74,7 @@ export function createVisualCuttingMethodSheet(
   const groups = buildPatternGroups(result);
   const gridColumns = getGridColumnCount(groups);
   const worksheet: XLSX.WorkSheet = {};
+  const cutStyle = createCutStyle(result.dia);
 
   setCell(
     worksheet,
@@ -119,7 +124,7 @@ export function createVisualCuttingMethodSheet(
     let col = BAR_CELL_START_COLUMN;
 
     group.segments.forEach((segment) => {
-      const style = segment.type === "waste" ? WASTE_STYLE : CUT_STYLE;
+      const style = segment.type === "waste" ? WASTE_STYLE : cutStyle;
       const text = `${segment.label}\n${formatMeters(segment.length)} m`;
 
       setCell(worksheet, row, col, text, style);
@@ -277,6 +282,17 @@ function getGridColumnCount(groups: PatternGroup[]): number {
 
 function formatBarDescription(dia: number, group: PatternGroup): string {
   return `${dia} mm dia (Bar length - ${formatMeters(group.barLength)} m${group.sourceDescription})`;
+}
+
+function createCutStyle(dia: number): Record<string, any> {
+  return {
+    fill: {
+      patternType: "solid",
+      fgColor: { rgb: DIA_CUT_FILLS[dia] ?? DEFAULT_CUT_FILL },
+    },
+    border: THIN_BLACK_BORDER,
+    alignment: { vertical: "top", wrapText: true },
+  };
 }
 
 function formatMeters(value: number): string {
