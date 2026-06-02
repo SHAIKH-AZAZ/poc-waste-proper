@@ -25,7 +25,11 @@ interface PatternGroup {
   segments: VisualSegment[];
 }
 
-const CELL_WIDTH_PX = 200;
+const CELL_WIDTH_PX = 210;
+const SERIAL_COLUMN_WIDTH_PX = 60;
+const START_COLUMN = 1; // Start visual content from Excel column B.
+const BAR_CELL_START_COLUMN = START_COLUMN + 1;
+const LEFT_MARGIN_WIDTH_PX = 24;
 const CUT_FILL = "FCD5B4";
 const WASTE_FILL = "FFFFFF";
 const BORDER_COLOR = "000000";
@@ -67,11 +71,17 @@ export function createVisualCuttingMethodSheet(
   const gridColumns = getGridColumnCount(groups);
   const worksheet: XLSX.WorkSheet = {};
 
-  setCell(worksheet, 1, 0, `Project name: ${options.projectName}`, META_STYLE);
+  setCell(
+    worksheet,
+    1,
+    START_COLUMN + 1,
+    `Project name: ${options.projectName}`,
+    META_STYLE,
+  );
   setCell(
     worksheet,
     2,
-    0,
+    START_COLUMN + 1,
     `Date: ${formatExportDate(options.generatedAt ?? new Date())}`,
     META_STYLE,
   );
@@ -79,15 +89,34 @@ export function createVisualCuttingMethodSheet(
   let row = 5;
 
   if (groups.length === 0) {
-    setCell(worksheet, row, 0, "No cutting patterns available", TITLE_STYLE);
+    setCell(
+      worksheet,
+      row,
+      START_COLUMN,
+      "No cutting patterns available",
+      TITLE_STYLE,
+    );
   }
 
   for (const group of groups) {
-    const title = formatPatternTitle(result.dia, group);
-    setCell(worksheet, row, 0, title, TITLE_STYLE);
+    setCell(worksheet, row, START_COLUMN, group.firstBarNumber, TITLE_STYLE);
+    setCell(
+      worksheet,
+      row,
+      START_COLUMN + 1,
+      formatBarDescription(result.dia, group),
+      TITLE_STYLE,
+    );
+    setCell(
+      worksheet,
+      row,
+      START_COLUMN + 2,
+      `${group.repetition} Repetition`,
+      TITLE_STYLE,
+    );
     row += 1;
 
-    let col = 0;
+    let col = BAR_CELL_START_COLUMN;
 
     group.segments.forEach((segment) => {
       const style = segment.type === "waste" ? WASTE_STYLE : CUT_STYLE;
@@ -100,12 +129,23 @@ export function createVisualCuttingMethodSheet(
     row += 3;
   }
 
-  worksheet["!cols"] = Array.from({ length: gridColumns }, () => ({
-    wpx: CELL_WIDTH_PX,
-  }));
+  const dataColumnCount = Math.max(
+    3,
+    gridColumns + BAR_CELL_START_COLUMN - START_COLUMN,
+  );
+  worksheet["!cols"] = [
+    { wpx: LEFT_MARGIN_WIDTH_PX },
+    { wpx: SERIAL_COLUMN_WIDTH_PX },
+    ...Array.from({ length: Math.max(0, dataColumnCount - 1) }, () => ({
+      wpx: CELL_WIDTH_PX,
+    })),
+  ];
   worksheet["!ref"] = XLSX.utils.encode_range({
     s: { r: 0, c: 0 },
-    e: { r: Math.max(row - 1, 5), c: gridColumns - 1 },
+    e: {
+      r: Math.max(row - 1, 5),
+      c: START_COLUMN + dataColumnCount - 1,
+    },
   });
 
   return worksheet;
@@ -235,8 +275,8 @@ function getGridColumnCount(groups: PatternGroup[]): number {
   return Math.max(1, maxSegments);
 }
 
-function formatPatternTitle(dia: number, group: PatternGroup): string {
-  return `${group.firstBarNumber} ${dia} mm dia (Bar length - ${formatMeters(group.barLength)} m${group.sourceDescription}) - ${group.repetition} Repetition`;
+function formatBarDescription(dia: number, group: PatternGroup): string {
+  return `${dia} mm dia (Bar length - ${formatMeters(group.barLength)} m${group.sourceDescription})`;
 }
 
 function formatMeters(value: number): string {
