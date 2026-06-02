@@ -1,0 +1,333 @@
+import * as XLSX from "xlsx-js-style";
+import type {
+  CutInstruction,
+  CuttingStockResult,
+  DetailedCut,
+} from "@/types/CuttingStock";
+
+interface VisualCuttingMethodSheetOptions {
+  projectName: string;
+  generatedAt?: Date;
+}
+
+interface VisualSegment {
+  type: "cut" | "waste";
+  label: string;
+  length: number;
+}
+
+interface PatternGroup {
+  key: string;
+  firstBarNumber: number;
+  repetition: number;
+  barLength: number;
+  sourceDescription: string;
+  segments: VisualSegment[];
+}
+
+const CELL_WIDTH_PX = 200;
+const CUT_FILL = "FCD5B4";
+const WASTE_FILL = "FFFFFF";
+const BORDER_COLOR = "000000";
+
+const THIN_BLACK_BORDER = {
+  top: { style: "thin", color: { rgb: BORDER_COLOR } },
+  bottom: { style: "thin", color: { rgb: BORDER_COLOR } },
+  left: { style: "thin", color: { rgb: BORDER_COLOR } },
+  right: { style: "thin", color: { rgb: BORDER_COLOR } },
+};
+
+const META_STYLE = {
+  font: { bold: true, sz: 12 },
+  alignment: { vertical: "center", wrapText: true },
+};
+
+const TITLE_STYLE = {
+  font: { bold: true, sz: 11 },
+  alignment: { vertical: "center", wrapText: true },
+};
+
+const CUT_STYLE = {
+  fill: { patternType: "solid", fgColor: { rgb: CUT_FILL } },
+  border: THIN_BLACK_BORDER,
+  alignment: { vertical: "top", wrapText: true },
+};
+
+const WASTE_STYLE = {
+  fill: { patternType: "solid", fgColor: { rgb: WASTE_FILL } },
+  border: THIN_BLACK_BORDER,
+  alignment: { vertical: "top", wrapText: true },
+};
+
+export function createVisualCuttingMethodSheet(
+  result: CuttingStockResult,
+  options: VisualCuttingMethodSheetOptions,
+): XLSX.WorkSheet {
+  const groups = buildPatternGroups(result);
+  const gridColumns = getGridColumnCount(groups);
+  const worksheet: XLSX.WorkSheet = {};
+
+  setCell(worksheet, 1, 0, `Project name: ${options.projectName}`, META_STYLE);
+  setCell(
+    worksheet,
+    2,
+    0,
+    `Date: ${formatExportDate(options.generatedAt ?? new Date())}`,
+    META_STYLE,
+  );
+
+  let row = 5;
+
+  if (groups.length === 0) {
+    setCell(worksheet, row, 0, "No cutting patterns available", TITLE_STYLE);
+  }
+
+  for (const group of groups) {
+    const title = formatPatternTitle(result.dia, group);
+    setCell(worksheet, row, 0, title, TITLE_STYLE);
+    row += 1;
+
+    let col = 0;
+
+    group.segments.forEach((segment) => {
+      const style = segment.type === "waste" ? WASTE_STYLE : CUT_STYLE;
+      const text = `${segment.label}\n${formatMeters(segment.length)} m`;
+
+      setCell(worksheet, row, col, text, style);
+      col += 1;
+    });
+
+    row += 3;
+  }
+
+  worksheet["!cols"] = Array.from({ length: gridColumns }, () => ({
+    wpx: CELL_WIDTH_PX,
+  }));
+  worksheet["!ref"] = XLSX.utils.encode_range({
+    s: { r: 0, c: 0 },
+    e: { r: Math.max(row - 1, 5), c: gridColumns - 1 },
+  });
+
+  return worksheet;
+}
+
+export function getProjectNameFromFileName(fileName: string): string {
+  const withoutPath = fileName.split(/[\\/]/).pop() ?? fileName;
+  const withoutExtension = withoutPath.replace(/\.[^/.]+$/, "").trim();
+  return withoutExtension || "Waste";
+}
+
+function buildPatternGroups(result: CuttingStockResult): PatternGroup[] {
+  const groups: PatternGroup[] = [];
+  const groupsByKey = new Map<string, PatternGroup>();
+
+  result.detailedCuts.forEach((detail, index) => {
+    const barLength = getBarLength(result, detail, index);
+    const expandedCuts = expandCuts(detail.cuts);
+    const usedLength = expandedCuts.reduce((sum, cut) => sum + cut.length, 0);
+    const wasteLength = Math.max(0, roundValue(barLength - usedLength));
+    const isFromWaste =
+      detail.isFromWaste || detail.patternId?.startsWith("waste_") || false;
+    const segments: VisualSegment[] = [
+      ...expandedCuts.map((cut) => ({
+        type: "cut" as const,
+        label: normalizeBarCode(cut.barCode),
+        length: roundValue(cut.length),
+      })),
+      {
+        type: "waste",
+        label: "Waste",
+        length: wasteLength,
+      },
+    ];
+    const key = createGroupKey(isFromWaste, barLength, segments);
+    const existing = groupsByKey.get(key);
+
+    if (existing) {
+      existing.repetition += 1;
+      return;
+    }
+
+    const group: PatternGroup = {
+      key,
+      firstBarNumber: detail.barNumber,
+      repetition: 1,
+      barLength: roundValue(barLength),
+      sourceDescription: getSourceDescription(detail),
+      segments,
+    };
+
+    groupsByKey.set(key, group);
+    groups.push(group);
+  });
+
+  return groups;
+}
+
+function expandCuts(cuts: CutInstruction[]): CutInstruction[] {
+  const expanded: CutInstruction[] = [];
+
+  for (const cut of [...cuts].sort((a, b) => a.position - b.position)) {
+    const quantity = Math.max(1, cut.quantity || 1);
+    for (let i = 0; i < quantity; i++) {
+      expanded.push(cut);
+    }
+  }
+
+  return expanded;
+}
+
+function getBarLength(
+  result: CuttingStockResult,
+  detail: DetailedCut,
+  index: number,
+): number {
+  if (detail.wasteSource?.originalLength) {
+    return detail.wasteSource.originalLength / 1000;
+  }
+
+  const patternLength = result.patterns[index]?.standardBarLength;
+  if (Number.isFinite(patternLength) && patternLength > 0) {
+    return patternLength;
+  }
+
+  const usedLength = detail.cuts.reduce(
+    (sum, cut) => sum + cut.length * Math.max(1, cut.quantity || 1),
+    0,
+  );
+  return usedLength + Math.max(0, detail.waste);
+}
+
+function getSourceDescription(detail: DetailedCut): string {
+  const source = detail.wasteSource;
+  if (!source) return "";
+
+  const sheet = source.sourceSheetNumber || source.sourceSheetId || "?";
+  const bar = source.sourceBarNumber || "?";
+  return `, Waste source: Sheet #${sheet}, Bar #${bar}`;
+}
+
+function normalizeBarCode(barCode: string): string {
+  return barCode.replace(/_instance_\d+$/, "");
+}
+
+function createGroupKey(
+  isFromWaste: boolean,
+  barLength: number,
+  segments: VisualSegment[],
+): string {
+  return JSON.stringify({
+    source: isFromWaste ? "waste" : "new",
+    barLength: roundValue(barLength),
+    segments: segments.map((segment) => ({
+      type: segment.type,
+      label: segment.label,
+      length: roundValue(segment.length),
+    })),
+  });
+}
+
+function getGridColumnCount(groups: PatternGroup[]): number {
+  const maxSegments = groups.reduce(
+    (max, group) => Math.max(max, group.segments.length),
+    0,
+  );
+  return Math.max(1, maxSegments);
+}
+
+function formatPatternTitle(dia: number, group: PatternGroup): string {
+  return `${group.firstBarNumber} ${dia} mm dia (Bar length - ${formatMeters(group.barLength)} m${group.sourceDescription}) - ${group.repetition} Repetition`;
+}
+
+function formatMeters(value: number): string {
+  const rounded = roundValue(value);
+  return rounded.toFixed(3).replace(/\.?0+$/, "");
+}
+
+function formatExportDate(date: Date): string {
+  const day = pad2(date.getDate());
+  const month = pad2(date.getMonth() + 1);
+  const year = date.getFullYear();
+  const hours24 = date.getHours();
+  const period = hours24 >= 12 ? "PM" : "AM";
+  const hours12 = hours24 % 12 || 12;
+  const minutes = pad2(date.getMinutes());
+  const seconds = pad2(date.getSeconds());
+
+  return `${day}/${month}/${year} ${pad2(hours12)}:${minutes}:${seconds} ${period}`;
+}
+
+function pad2(value: number): string {
+  return value.toString().padStart(2, "0");
+}
+
+function roundValue(value: number, digits = 3): number {
+  return parseFloat(value.toFixed(digits));
+}
+
+function setCell(
+  worksheet: XLSX.WorkSheet,
+  row: number,
+  col: number,
+  value: string | number,
+  style?: Record<string, any>,
+): void {
+  const cell = ensureCell(worksheet, row, col);
+  cell.v = value;
+  cell.t = typeof value === "number" ? "n" : "s";
+
+  if (style) {
+    cell.s = mergeCellStyles(cell.s, style);
+  }
+}
+
+function applyStyleToRange(
+  worksheet: XLSX.WorkSheet,
+  startRow: number,
+  startCol: number,
+  endRow: number,
+  endCol: number,
+  style: Record<string, any>,
+): void {
+  for (let row = startRow; row <= endRow; row++) {
+    for (let col = startCol; col <= endCol; col++) {
+      const cell = ensureCell(worksheet, row, col);
+      cell.s = mergeCellStyles(cell.s, style);
+    }
+  }
+}
+
+function ensureCell(
+  worksheet: XLSX.WorkSheet,
+  row: number,
+  col: number,
+): XLSX.CellObject {
+  const address = XLSX.utils.encode_cell({ r: row, c: col });
+  if (!worksheet[address]) {
+    worksheet[address] = { t: "s", v: "" };
+  }
+  return worksheet[address] as XLSX.CellObject;
+}
+
+function mergeCellStyles(
+  ...styles: Array<Record<string, any> | undefined>
+): Record<string, any> {
+  const merged: Record<string, any> = {};
+
+  for (const style of styles) {
+    if (!style) continue;
+    for (const [key, value] of Object.entries(style)) {
+      if (isPlainObject(value)) {
+        merged[key] = mergeCellStyles(merged[key], value);
+      } else {
+        merged[key] = value;
+      }
+    }
+  }
+
+  return merged;
+}
+
+function isPlainObject(value: unknown): value is Record<string, any> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}

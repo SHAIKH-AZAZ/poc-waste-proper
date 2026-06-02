@@ -3,6 +3,10 @@ import type { BarCuttingDisplay } from "@/types/BarCuttingRow";
 import type { CuttingStockResult, WastePiece } from "@/types/CuttingStock";
 import { getUniqueDiaFromDisplay } from "./barCodeUtils";
 import { CuttingStockPreprocessor } from "./cuttingStockPreprocessor";
+import {
+  createVisualCuttingMethodSheet,
+  getProjectNameFromFileName,
+} from "./visualCuttingMethodSheet";
 import { getWorkerManager } from "./workerManager";
 
 type SummaryCell = string | number;
@@ -37,6 +41,8 @@ export async function exportAllDiasToExcel(
   const workerManager = getWorkerManager();
   const allRequests = preprocessor.convertToCuttingRequests(displayData);
   const diaResults = new Map<number, DiaSummaryResult>();
+  const generatedAt = new Date();
+  const projectName = getProjectNameFromFileName(fileName);
 
   // Create workbook
   const workbook = XLSX.utils.book_new();
@@ -87,8 +93,8 @@ export async function exportAllDiasToExcel(
 
       // Add detailed sheets for this diameter. Tabs use plain "Greedy"/"Dynamic"
       // to match the UI buttons rather than internal algorithm IDs.
-      addDiaSheet(workbook, greedy, `Dia ${dia} - Greedy`);
-      addDiaSheet(workbook, dynamic, `Dia ${dia} - Dynamic`);
+      addDiaSheet(workbook, greedy, `Dia ${dia} - Greedy`, projectName, generatedAt);
+      addDiaSheet(workbook, dynamic, `Dia ${dia} - Dynamic`, projectName, generatedAt);
     } catch (error) {
       console.error(`Error processing dia ${dia}:`, error);
       const msg = error instanceof Error ? error.message : "Unknown error";
@@ -686,168 +692,18 @@ function isPlainObject(value: unknown): value is Record<string, any> {
 function addDiaSheet(
   workbook: XLSX.WorkBook,
   result: CuttingStockResult,
-  sheetName: string
+  sheetName: string,
+  projectName: string,
+  generatedAt: Date
 ): void {
-  const STANDARD_BAR_LENGTH = 12.0;
-
-  // Create header row - added "Source" column to show if bar is from waste inventory
-  const headers = [
-    "Bar #",
-    "Source",
-    "Bar Length (m)",
-    "BarCode",
-    "Effective Length (m)",
-    "Lap Length (m)",
-    "Waste (m)",
-    "Waste (%)",
-    "Utilization (%)",
-  ];
-
-  // Create data rows
-  const data: (string | number)[][] = [headers];
-
-  for (const detail of result.detailedCuts) {
-    // Group cuts by BarCode
-    const cutGroups = groupCutsByBarCode(detail.cuts);
-
-    // Check if this bar is from waste inventory
-    const detailWithWaste = detail as typeof detail & { 
-      isFromWaste?: boolean; 
-      wasteSource?: { 
-        wasteId: string; 
-        sourceSheetId: number;
-        sourceSheetNumber?: number;
-        sourceBarNumber: number; 
-        originalLength: number; 
-      } 
-    };
-    
-    const isFromWaste = detailWithWaste.isFromWaste || detail.patternId?.startsWith("waste_");
-    const wasteSource = detailWithWaste.wasteSource;
-    
-    // Determine bar length (waste pieces have different lengths)
-    const barLength = wasteSource 
-      ? wasteSource.originalLength / 1000  // Convert mm to m
-      : STANDARD_BAR_LENGTH;
-
-    // Calculate total used length and waste for this bar
-    let totalUsedLength = 0;
-    cutGroups.forEach((cut) => {
-      totalUsedLength += cut.length;
-    });
-    const barWaste = barLength - totalUsedLength;
-    const barUtilization = (totalUsedLength / barLength) * 100;
-
-    // Source description
-    const sourceDesc = isFromWaste 
-      ? `Waste (Sheet #${wasteSource?.sourceSheetNumber || wasteSource?.sourceSheetId || "?"}, Bar #${wasteSource?.sourceBarNumber || "?"})`
-      : "New 12m Bar";
-
-    // Add each cut as a separate row
-    cutGroups.forEach((cut, index) => {
-      const row: (string | number)[] = [];
-
-      // Bar # only on first cut
-      if (index === 0) {
-        row.push(detail.barNumber);
-        row.push(sourceDesc);
-        row.push(parseFloat(barLength.toFixed(3)));
-      } else {
-        row.push("");
-        row.push("");
-        row.push("");
-      }
-
-      // BarCode, Effective Length, and Lap Length for all cuts
-      row.push(cut.barCode);
-      // Effective length = cutting length - lap length
-      row.push(parseFloat((cut.length - cut.lapLength).toFixed(3)));
-      row.push(parseFloat(cut.lapLength.toFixed(3)));
-
-      // Waste and Utilization only on first cut
-      if (index === 0) {
-        // If recovered, show text
-        const isRecovered = (detail as any).isWasteRecovered;
-        if (isRecovered) {
-          row.push(`${parseFloat(barWaste.toFixed(3))} (Recovered)`);
-        } else {
-          row.push(parseFloat(barWaste.toFixed(3)));
-        }
-        
-        row.push(parseFloat((100 - barUtilization).toFixed(2))); // Waste %
-        row.push(parseFloat(barUtilization.toFixed(2)));
-      } else {
-        row.push("");
-        row.push("");
-        row.push("");
-      }
-
-      data.push(row);
-    });
-  }
-
-  // Create worksheet
-  const worksheet = XLSX.utils.aoa_to_sheet(data);
-  worksheet["!cols"] = [
-    { wch: 8 },   // Bar #
-    { wch: 28 },  // Source
-    { wch: 14 },  // Bar Length
-    { wch: 25 },  // BarCode
-    { wch: 18 },  // Effective Length
-    { wch: 15 },  // Lap Length
-    { wch: 12 },  // Waste
-    { wch: 12 },  // Waste %
-    { wch: 15 },  // Utilization
-  ];
+  const worksheet = createVisualCuttingMethodSheet(result, {
+    projectName,
+    generatedAt,
+  });
 
   // Truncate sheet name if too long (Excel limit is 31 characters)
   const truncatedName = sheetName.substring(0, 31);
   XLSX.utils.book_append_sheet(workbook, worksheet, truncatedName);
-}
-
-interface GroupedCut {
-  barCode: string;
-  length: number;
-  lapLength: number;
-}
-
-/**
- * Group cuts by BarCode
- */
-function groupCutsByBarCode(cuts: { barCode: string; length: number; lapLength: number; quantity: number }[]): GroupedCut[] {
-  const groups = new Map<
-    string,
-    { barCode: string; length: number; lapLength: number; count: number }
-  >();
-
-  for (const cut of cuts) {
-    const existing = groups.get(cut.barCode);
-    if (existing) {
-      existing.count += cut.quantity;
-    } else {
-      const lapLength = cut.lapLength || 0;
-      groups.set(cut.barCode, {
-        barCode: cut.barCode,
-        length: cut.length,
-        lapLength: parseFloat(lapLength.toFixed(3)),
-        count: cut.quantity,
-      });
-    }
-  }
-
-  // Convert to array and expand by count
-  const result: GroupedCut[] = [];
-  for (const group of groups.values()) {
-    for (let i = 0; i < group.count; i++) {
-      result.push({
-        barCode: group.barCode,
-        length: group.length,
-        lapLength: group.lapLength,
-      });
-    }
-  }
-
-  return result;
 }
 
 /**

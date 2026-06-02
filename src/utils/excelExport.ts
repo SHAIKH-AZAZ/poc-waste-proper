@@ -1,6 +1,10 @@
-import * as XLSX from "xlsx";
-import type { CuttingStockResult, CutInstruction } from "@/types/CuttingStock";
+import * as XLSX from "xlsx-js-style";
 import { getAlgorithmInfo } from "@/constants/algorithmInfo";
+import type { CuttingStockResult } from "@/types/CuttingStock";
+import {
+  createVisualCuttingMethodSheet,
+  getProjectNameFromFileName,
+} from "./visualCuttingMethodSheet";
 
 /**
  * Export cutting stock results to Excel with multiple sheets
@@ -17,10 +21,15 @@ export function exportToExcel(
 
   // Create workbook
   const workbook = XLSX.utils.book_new();
+  const projectName = getProjectNameFromFileName(fileName);
+  const generatedAt = new Date();
 
   // Add first-fit cutting-stock sheet
   if (greedyResult) {
-    const greedySheet = createAlgorithmSheet(greedyResult);
+    const greedySheet = createVisualCuttingMethodSheet(greedyResult, {
+      projectName,
+      generatedAt,
+    });
     XLSX.utils.book_append_sheet(
       workbook,
       greedySheet,
@@ -30,7 +39,10 @@ export function exportToExcel(
 
   // Add optimized cutting-stock sheet
   if (dynamicResult) {
-    const dynamicSheet = createAlgorithmSheet(dynamicResult);
+    const dynamicSheet = createVisualCuttingMethodSheet(dynamicResult, {
+      projectName,
+      generatedAt,
+    });
     XLSX.utils.book_append_sheet(
       workbook,
       dynamicSheet,
@@ -46,163 +58,7 @@ export function exportToExcel(
 
   // Generate Excel file
   const excelFileName = `cutting_stock_${fileName.replace(/\.[^/.]+$/, "")}_dia_${greedyResult?.dia || dynamicResult?.dia}.xlsx`;
-  XLSX.writeFile(workbook, excelFileName);
-}
-
-/**
- * Create sheet for algorithm results
- * Format: Each bar's cuts listed vertically (one cut per row)
- */
-function createAlgorithmSheet(result: CuttingStockResult): XLSX.WorkSheet {
-  // Create header row - added "Source", "Bar Length", and "Total Used" columns
-  const headers = [
-    "Bar #",
-    "Source",
-    "Bar Length (m)",
-    "Total Used (m)",
-    "BarCode",
-    "Effective Length (m)",
-    "Lap Length (m)",
-    "Waste (m)",
-    "Waste (%)",
-    "Utilization (%)",
-  ];
-
-  // Create data rows
-  const data: (string | number)[][] = [headers];
-  const STANDARD_BAR_LENGTH = 12.0;
-
-  for (const detail of result.detailedCuts) {
-    // Group cuts by BarCode to get unique cuts
-    const cutGroups = groupCutsByBarCode(detail.cuts);
-
-    // Check if this bar is from waste inventory
-    const isFromWaste = detail.isFromWaste || detail.patternId?.startsWith("waste_");
-    const wasteSource = detail.wasteSource;
-    
-    // Determine bar length (waste pieces have different lengths)
-    const barLength = wasteSource 
-      ? wasteSource.originalLength / 1000  // Convert mm to m
-      : STANDARD_BAR_LENGTH;
-
-    // Calculate total used length and waste for this bar
-    // Note: cut.length already includes lap (cutting length = effective + lap)
-    let totalUsedLength = 0;
-    cutGroups.forEach((cut) => {
-      totalUsedLength += cut.length;
-    });
-    const barWaste = barLength - totalUsedLength;
-    const barUtilization = (totalUsedLength / barLength) * 100;
-
-    // Source description
-    const sourceDesc = isFromWaste 
-      ? `Waste (Sheet #${wasteSource?.sourceSheetNumber || wasteSource?.sourceSheetId || "?"}, Bar #${wasteSource?.sourceBarNumber || "?"})`
-      : "New 12m Bar";
-
-    // Add each cut as a separate row
-    cutGroups.forEach((cut, index) => {
-      const row: (string | number)[] = [];
-
-      // Bar #, Source, Bar Length, Total Used only on first cut
-      if (index === 0) {
-        row.push(detail.barNumber);
-        row.push(sourceDesc);
-        row.push(parseFloat(barLength.toFixed(3)));
-        row.push(parseFloat(totalUsedLength.toFixed(3))); // Total used (with laps)
-      } else {
-        row.push(""); // Empty for subsequent cuts
-        row.push("");
-        row.push("");
-        row.push("");
-      }
-
-      // BarCode, Effective Length, and Lap Length for all cuts
-      row.push(cut.barCode);
-      // Effective length = cutting length - lap length (since cut.length includes lap)
-      row.push(parseFloat((cut.length - cut.lapLength).toFixed(3))); // Effective length
-      row.push(parseFloat(cut.lapLength.toFixed(3))); // Lap length
-
-      // Waste and Utilization only on first cut
-      if (index === 0) {
-        row.push(parseFloat(barWaste.toFixed(3)));
-        row.push(parseFloat((100 - barUtilization).toFixed(2))); // Waste %
-        row.push(parseFloat(barUtilization.toFixed(2)));
-      } else {
-        row.push(""); // Empty for subsequent cuts
-        row.push(""); // Empty for subsequent cuts
-        row.push(""); // Empty for subsequent cuts
-      }
-
-      data.push(row);
-    });
-  }
-
-  // Create worksheet
-  const worksheet = XLSX.utils.aoa_to_sheet(data);
-
-  // Set column widths
-  worksheet["!cols"] = [
-    { wch: 8 },   // Bar #
-    { wch: 28 },  // Source
-    { wch: 14 },  // Bar Length
-    { wch: 14 },  // Total Used
-    { wch: 20 },  // BarCode
-    { wch: 18 },  // Effective Length
-    { wch: 15 },  // Lap Length
-    { wch: 12 },  // Waste
-    { wch: 12 },  // Waste %
-    { wch: 15 },  // Utilization
-  ];
-
-  return worksheet;
-}
-
-interface GroupedCut {
-  barCode: string;
-  length: number;
-  lapLength: number;
-}
-
-/**
- * Group cuts by BarCode and get lap length
- */
-function groupCutsByBarCode(cuts: CutInstruction[]): GroupedCut[] {
-  const groups = new Map<
-    string,
-    { barCode: string; length: number; lapLength: number; count: number }
-  >();
-
-  for (const cut of cuts) {
-    const existing = groups.get(cut.barCode);
-    if (existing) {
-      existing.count += cut.quantity;
-    } else {
-      // Get lap length from cut data - use actual value from input
-      // If lapLength is 0 or undefined, use 0 (no lap)
-      const lapLength = cut.lapLength || 0;
-
-      groups.set(cut.barCode, {
-        barCode: cut.barCode,
-        length: cut.length,
-        lapLength: parseFloat(lapLength.toFixed(3)),
-        count: cut.quantity,
-      });
-    }
-  }
-
-  // Convert to array and expand by count
-  const result: GroupedCut[] = [];
-  for (const group of groups.values()) {
-    for (let i = 0; i < group.count; i++) {
-      result.push({
-        barCode: group.barCode,
-        length: group.length,
-        lapLength: group.lapLength,
-      });
-    }
-  }
-
-  return result;
+  XLSX.writeFile(workbook, excelFileName, { cellStyles: true });
 }
 
 /**
