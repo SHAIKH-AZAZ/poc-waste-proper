@@ -27,9 +27,18 @@ export class TrueDynamicCuttingStock {
   private memo = new Map<string, MemoEntry>();
   private maxMemoSize = 10000; // Prevent memory explosion
   private maxPatterns = 200; // Limit patterns for performance
+  // Soft deadline. When performance.now() > this, recursion/loops bail with best-so-far.
+  // Caller sets this via the 3rd arg to solve(); default 60s.
+  private deadlineAt = Infinity;
 
-  solve(requests: MultiBarCuttingRequest[], dia: number): CuttingStockResult {
+  /**
+   * @param maxTimeMs  Soft time budget. After this elapses, the DP recursion and
+   *                   column-gen loop stop expanding new states and return the
+   *                   best-so-far. Default 60_000 (60s).
+   */
+  solve(requests: MultiBarCuttingRequest[], dia: number, maxTimeMs: number = 60_000): CuttingStockResult {
     const startTime = performance.now();
+    this.deadlineAt = startTime + maxTimeMs;
 
     // Filter by diameter
     const diaRequests = this.preprocessor.filterByDia(requests, dia);
@@ -105,6 +114,12 @@ export class TrueDynamicCuttingStock {
         };
       }
 
+      // Deadline guard: stop expanding new states and let caller fall back.
+      // Returning Infinity propagates upward so any parent picks a finite alternative.
+      if (performance.now() > this.deadlineAt) {
+        return { barsUsed: Infinity, patterns: [], totalWaste: Infinity };
+      }
+
       // Check memoization
       const stateKey = this.encodeState(remainingDemand);
       if (this.memo.has(stateKey)) {
@@ -178,14 +193,20 @@ export class TrueDynamicCuttingStock {
     const maxIterations = 10;
 
     while (iteration < maxIterations) {
+      // Deadline guard — stop generating new patterns if budget is exceeded
+      if (performance.now() > this.deadlineAt) {
+        console.warn(`[ColumnGen] Time budget exceeded after ${iteration} iterations, returning best-so-far`);
+        break;
+      }
+
       console.log(`[ColumnGen] Iteration ${iteration + 1}, patterns: ${patterns.length}`);
 
       // Solve current problem with existing patterns
       const currentSolution = this.solveSetCover(demand, patterns);
-      
+
       // Generate new pattern based on unmet demand (Shadow Prices approximation)
       const newPattern = this.generateImprovedPattern(segments, currentSolution.patterns, currentSolution.remainingSegments);
-      
+
       if (!newPattern || this.patternExists(patterns, newPattern)) {
         console.log(`[ColumnGen] No improving pattern found, stopping`);
         break;
@@ -680,6 +701,15 @@ export class TrueDynamicCuttingStock {
         ? patterns.reduce((sum, p) => sum + p.utilization, 0) / totalBars
         : 0;
 
+    // Reusable-waste accounting (offcuts ≥ 1m). TrueDynamic doesn't track waste-bin
+    // patterns here, so every pattern is from a new 12m bar.
+    const WASTE_MIN_M = 1.0;
+    const reusableOffcuts = patterns
+      .filter((p) => p.waste >= WASTE_MIN_M)
+      .map((p) => p.waste);
+    const reusableWasteLength = reusableOffcuts.reduce((s, w) => s + w, 0);
+    const largestOffcut = patterns.reduce((m, p) => Math.max(m, p.waste), 0);
+
     return {
       totalStandardBars: totalBars,
       totalWasteLength: Math.round(totalWaste * 1000) / 1000,
@@ -692,6 +722,12 @@ export class TrueDynamicCuttingStock {
       averageUtilization: Math.round(avgUtilization * 100) / 100,
       patternCount: patterns.length,
       totalCutsProduced: totalCuts,
+      reusablePieces: reusableOffcuts.length,
+      reusableWasteLength: Math.round(reusableWasteLength * 1000) / 1000,
+      reusablePercentage: totalWaste > 0
+        ? Math.round((reusableWasteLength / totalWaste) * 10000) / 100
+        : 0,
+      largestOffcut: Math.round(largestOffcut * 1000) / 1000,
     };
   }
 

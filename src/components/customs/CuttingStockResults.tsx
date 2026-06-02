@@ -298,6 +298,22 @@ function DetailedResultCard({
               label="Waste %"
               value={`${result.summary.totalWastePercentage.toFixed(2)}%`}
             />
+            {/* Reusable Waste — offcuts ≥ 1m that can return to inventory.
+                Differentiates algorithms even when bar count is identical. */}
+            <StatCard
+              label="Reusable Pieces"
+              value={result.summary.reusablePieces ?? 0}
+              subValue={`≥ 1m offcuts`}
+            />
+            <StatCard
+              label="Reusable Waste"
+              value={`${(result.summary.reusableWasteLength ?? 0).toFixed(3)}m`}
+              subValue={`${(result.summary.reusablePercentage ?? 0).toFixed(1)}% of waste`}
+            />
+            <StatCard
+              label="Largest Offcut"
+              value={`${(result.summary.largestOffcut ?? 0).toFixed(3)}m`}
+            />
             <StatCard label="Patterns" value={result.summary.patternCount} />
             <StatCard
               label="Cuts Produced"

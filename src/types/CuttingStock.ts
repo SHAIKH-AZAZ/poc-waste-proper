@@ -83,6 +83,13 @@ export interface CuttingSummary {
   averageUtilization: number;
   patternCount: number;
   totalCutsProduced: number;
+  // Reusable waste — offcuts ≥ WASTE_MIN_LENGTH_M (1m) that can re-enter inventory.
+  // Distinguishes algorithms even when bar count is identical: spread-thin waste
+  // (Greedy) yields fewer reusable pieces than concentrated waste (Dynamic).
+  reusablePieces?: number;                 // Count of offcuts ≥ 1m
+  reusableWasteLength?: number;            // Sum of those offcuts (meters)
+  reusablePercentage?: number;             // reusableWasteLength / totalWasteLength × 100
+  largestOffcut?: number;                  // Single largest offcut (meters)
 }
 
 export interface DetailedCut {

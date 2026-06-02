@@ -298,6 +298,31 @@ function createComparisonSheet(
         ).toFixed(2)
       ),
     ],
+    // Reusable-waste metrics: distinguish algorithms even when bar count is identical.
+    [
+      "Reusable Pieces (≥1m)",
+      greedyResult.summary.reusablePieces ?? 0,
+      dynamicResult.summary.reusablePieces ?? 0,
+      (dynamicResult.summary.reusablePieces ?? 0) - (greedyResult.summary.reusablePieces ?? 0),
+    ],
+    [
+      "Reusable Waste (m)",
+      parseFloat((greedyResult.summary.reusableWasteLength ?? 0).toFixed(3)),
+      parseFloat((dynamicResult.summary.reusableWasteLength ?? 0).toFixed(3)),
+      parseFloat(((dynamicResult.summary.reusableWasteLength ?? 0) - (greedyResult.summary.reusableWasteLength ?? 0)).toFixed(3)),
+    ],
+    [
+      "Reusable % of Waste",
+      parseFloat((greedyResult.summary.reusablePercentage ?? 0).toFixed(2)),
+      parseFloat((dynamicResult.summary.reusablePercentage ?? 0).toFixed(2)),
+      parseFloat(((dynamicResult.summary.reusablePercentage ?? 0) - (greedyResult.summary.reusablePercentage ?? 0)).toFixed(2)),
+    ],
+    [
+      "Largest Single Offcut (m)",
+      parseFloat((greedyResult.summary.largestOffcut ?? 0).toFixed(3)),
+      parseFloat((dynamicResult.summary.largestOffcut ?? 0).toFixed(3)),
+      parseFloat(((dynamicResult.summary.largestOffcut ?? 0) - (greedyResult.summary.largestOffcut ?? 0)).toFixed(3)),
+    ],
     [],
     ["DETAILED PATTERN COMPARISON", "", "", ""],
     ["Bar #", `${greedyLabel} Cuts`, `${dynamicLabel} Cuts`, "Difference"],

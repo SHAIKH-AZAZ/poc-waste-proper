@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { IconArrowLeft, IconRecycle } from "@tabler/icons-react";
+import { IconArrowLeft, IconRecycle, IconX } from "@tabler/icons-react";
 import ExcelPreviewTable from "@/components/customs/ExcelPreviewTable";
 import DiaFilter from "@/components/customs/DiaFilter";
 import FileInfoCard from "@/components/customs/FileInfoCard";
@@ -58,6 +58,8 @@ export default function SheetPage() {
 
   // Download all state
   const [isDownloadingAll, setIsDownloadingAll] = useState(false);
+  const [showDownloadWastePrompt, setShowDownloadWastePrompt] = useState(false);
+  const [downloadAvailableWaste, setDownloadAvailableWaste] = useState<WastePiece[]>([]);
 
   // Load sheet data
   const loadSheetData = useCallback(async () => {
@@ -661,52 +663,19 @@ export default function SheetPage() {
     }
   }, [selectedDia, sheetId, handleDiaSelect]);
 
-  // Download all dias
-  const handleDownloadAllDias = useCallback(async () => {
+  // Actually perform the all-dias export (called after the user chooses on the prompt)
+  const performDownloadAllDias = useCallback(async (useReuse: boolean, waste: WastePiece[]) => {
     if (!displayData || !sheetInfo) return;
 
+    setShowDownloadWastePrompt(false);
     setIsDownloadingAll(true);
     try {
-      // Always reuse inventory: load all available waste for this project and
-      // map it into WastePiece[] (same shape the calculation flow uses).
-      let availableWaste: WastePiece[] = [];
-      try {
-        const wasteRes = await fetch(`/api/waste?projectId=${projectId}&status=available`);
-        const wasteData = await wasteRes.json();
-        if (wasteData.success && Array.isArray(wasteData.waste)) {
-          availableWaste = wasteData.waste.map((w: {
-            id: number;
-            dia: number;
-            length: number;
-            sourceSheetId?: number;
-            sourceBarNumber?: number;
-            sourceSheet?: { id: number; sheetNumber: number; fileName: string };
-            cutsOnSourceBar?: { barCode: string; length: number; element: string }[];
-          }) => ({
-            id: String(w.id),
-            projectId: parseInt(projectId),
-            sourceSheetId: w.sourceSheetId || w.sourceSheet?.id || 0,
-            sourceSheetNumber: w.sourceSheet?.sheetNumber || 0,
-            sourceSheetName: w.sourceSheet?.fileName || `Sheet #${w.sourceSheet?.sheetNumber}`,
-            sourceBarNumber: w.sourceBarNumber || 0,
-            sourcePatternId: "",
-            cutsOnSourceBar: w.cutsOnSourceBar || [],
-            dia: w.dia,
-            length: w.length,
-            status: "available" as const,
-            createdAt: new Date(),
-          }));
-        }
-      } catch (e) {
-        console.warn("[Sheet] Could not load waste inventory for export:", e);
-      }
-
       await exportAllDiasToExcel(
         displayData,
         sheetInfo.fileName,
         () => { },
         generatedWaste,
-        availableWaste
+        useReuse ? waste : []
       );
     } catch (error) {
       console.error("[Sheet] Error downloading all dias:", error);
@@ -714,7 +683,56 @@ export default function SheetPage() {
     } finally {
       setIsDownloadingAll(false);
     }
-  }, [displayData, sheetInfo, projectId, generatedWaste]);
+  }, [displayData, sheetInfo, generatedWaste]);
+
+  // Download all dias — prompts for waste reuse first (if any inventory exists)
+  const handleDownloadAllDias = useCallback(async () => {
+    if (!displayData || !sheetInfo) return;
+
+    setIsDownloadingAll(true);
+    let availableWaste: WastePiece[] = [];
+    try {
+      const wasteRes = await fetch(`/api/waste?projectId=${projectId}&status=available`);
+      const wasteData = await wasteRes.json();
+      if (wasteData.success && Array.isArray(wasteData.waste)) {
+        availableWaste = wasteData.waste.map((w: {
+          id: number;
+          dia: number;
+          length: number;
+          sourceSheetId?: number;
+          sourceBarNumber?: number;
+          sourceSheet?: { id: number; sheetNumber: number; fileName: string };
+          cutsOnSourceBar?: { barCode: string; length: number; element: string }[];
+        }) => ({
+          id: String(w.id),
+          projectId: parseInt(projectId),
+          sourceSheetId: w.sourceSheetId || w.sourceSheet?.id || 0,
+          sourceSheetNumber: w.sourceSheet?.sheetNumber || 0,
+          sourceSheetName: w.sourceSheet?.fileName || `Sheet #${w.sourceSheet?.sheetNumber}`,
+          sourceBarNumber: w.sourceBarNumber || 0,
+          sourcePatternId: "",
+          cutsOnSourceBar: w.cutsOnSourceBar || [],
+          dia: w.dia,
+          length: w.length,
+          status: "available" as const,
+          createdAt: new Date(),
+        }));
+      }
+    } catch (e) {
+      console.warn("[Sheet] Could not load waste inventory for export:", e);
+    }
+
+    // No inventory → just download with new bars only, no prompt
+    if (availableWaste.length === 0) {
+      await performDownloadAllDias(false, []);
+      return;
+    }
+
+    // Inventory available → open prompt, let user decide
+    setDownloadAvailableWaste(availableWaste);
+    setShowDownloadWastePrompt(true);
+    setIsDownloadingAll(false); // prompt is open; spinner resumes after the user picks
+  }, [displayData, sheetInfo, projectId, performDownloadAllDias]);
 
   // Clear data (reset view)
   const handleClearData = useCallback(() => {
@@ -824,6 +842,85 @@ export default function SheetPage() {
                 <button
                   onClick={() => runCalculation(selectedDia!, true, wasteForCurrentDia)}
                   className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:from-emerald-600 hover:to-green-700 transition-all font-medium shadow-lg shadow-emerald-500/20"
+                >
+                  Yes, Reuse Waste
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Download All Dias — Waste Prompt Modal */}
+        {showDownloadWastePrompt && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6 animate-in fade-in zoom-in duration-200">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20 flex-shrink-0">
+                  <IconRecycle className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-xl font-bold text-slate-900">Reuse Waste for Export?</h2>
+                  <p className="text-sm text-slate-500">Available inventory across all diameters</p>
+                </div>
+                <button
+                  onClick={() => setShowDownloadWastePrompt(false)}
+                  aria-label="Close"
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0"
+                >
+                  <IconX className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="bg-slate-50 rounded-xl p-4 mb-4 max-h-56 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-slate-500">
+                      <th className="pb-2 font-medium">Dia</th>
+                      <th className="pb-2 font-medium text-center">Pieces</th>
+                      <th className="pb-2 font-medium text-right">Total Length</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {(() => {
+                      const groups = new Map<number, { count: number; totalMm: number }>();
+                      downloadAvailableWaste.forEach((w) => {
+                        const g = groups.get(w.dia) || { count: 0, totalMm: 0 };
+                        g.count += 1;
+                        g.totalMm += w.length;
+                        groups.set(w.dia, g);
+                      });
+                      return Array.from(groups.entries())
+                        .sort((a, b) => a[0] - b[0])
+                        .map(([dia, g]) => (
+                          <tr key={dia}>
+                            <td className="py-2.5 font-semibold text-slate-900">Dia {dia}mm</td>
+                            <td className="py-2.5 text-slate-600 text-center">{g.count}</td>
+                            <td className="py-2.5 text-slate-600 text-right font-mono">{formatLength(g.totalMm)}</td>
+                          </tr>
+                        ));
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="bg-purple-50 rounded-xl p-4 mb-6 border border-purple-100">
+                <p className="text-sm text-purple-800">
+                  <span className="font-bold">{downloadAvailableWaste.length}</span> total pieces,{" "}
+                  <span className="font-bold">{formatLength(downloadAvailableWaste.reduce((sum, w) => sum + w.length, 0))}</span> total length.
+                  Reusing inventory recomputes each diameter with available waste pieces first.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => performDownloadAllDias(false, [])}
+                  className="flex-1 px-4 py-3 border-2 border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all font-medium"
+                >
+                  Use New Bars Only
+                </button>
+                <button
+                  onClick={() => performDownloadAllDias(true, downloadAvailableWaste)}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all font-medium shadow-lg shadow-purple-500/20"
                 >
                   Yes, Reuse Waste
                 </button>

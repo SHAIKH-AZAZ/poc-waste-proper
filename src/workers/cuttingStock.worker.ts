@@ -59,20 +59,32 @@ self.onmessage = async (event: MessageEvent<WorkerMessage>) => {
             case "dynamic":
                 try {
                     console.log(`[Worker dynamic] ========================================`);
-                    console.log(`[Worker dynamic] Starting SWAP optimization for dia ${dia}`);
-                    console.log(`[Worker dynamic] Requests: ${requests.length}`);
+                    console.log(`[Worker dynamic] Starting DYNAMIC for dia ${dia}, requests: ${requests.length}`);
                     console.log(`[Worker dynamic] ========================================`);
                     sendProgress(type, "Preprocessing data...", 10);
-                    // Use SwapOptimization for better results
-                    const swapForDynamic = new SwapOptimization();
-                    result = swapForDynamic.solve(requests, dia, wastePieces, (stage, percentage) => {
-                        sendProgress(type, stage, percentage);
-                    });
-                    // Override algorithm name to "dynamic" for display
+
+                    // Routing:
+                    //   • Waste inventory present → SwapOptimization (it supports wastePieces)
+                    //   • Otherwise → TrueDynamicCuttingStock (true DP / column generation)
+                    //     with a 90s soft deadline; falls back to greedy via Set Cover if hit.
+                    // This gives Dynamic a genuinely different algorithm from Greedy when
+                    // there's no inventory to honor.
+                    if (wastePieces && wastePieces.length > 0) {
+                        console.log(`[Worker dynamic] Inventory present (${wastePieces.length} pcs) → SwapOptimization`);
+                        const swapForDynamic = new SwapOptimization();
+                        result = swapForDynamic.solve(requests, dia, wastePieces, (stage, percentage) => {
+                            sendProgress(type, stage, percentage);
+                        });
+                    } else {
+                        console.log(`[Worker dynamic] No inventory → TrueDynamicCuttingStock (DP / column-gen)`);
+                        sendProgress(type, "Running dynamic programming...", 30);
+                        const trueDP = new TrueDynamicCuttingStock();
+                        result = trueDP.solve(requests, dia, 90_000 /* 90s budget */);
+                        sendProgress(type, "Finalizing results...", 90);
+                    }
+                    // Override algorithm name to "dynamic" for UI/Excel consistency
                     (result as CuttingStockResult).algorithm = "dynamic";
-                    console.log(`[Worker dynamic] ========================================`);
-                    console.log(`[Worker dynamic] SWAP Complete, bars used: ${(result as CuttingStockResult).totalBarsUsed}`);
-                    console.log(`[Worker dynamic] ========================================`);
+                    console.log(`[Worker dynamic] Complete, bars used: ${(result as CuttingStockResult).totalBarsUsed}`);
                 } catch (dynamicError) {
                     console.error(`[Worker dynamic] Error in dynamic algorithm:`, dynamicError);
                     throw dynamicError;

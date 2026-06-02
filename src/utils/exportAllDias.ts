@@ -4,7 +4,6 @@ import type { CuttingStockResult, WastePiece } from "@/types/CuttingStock";
 import { getUniqueDiaFromDisplay } from "./barCodeUtils";
 import { CuttingStockPreprocessor } from "./cuttingStockPreprocessor";
 import { getWorkerManager } from "./workerManager";
-import { getAlgorithmInfo } from "@/constants/algorithmInfo";
 
 /**
  * Export cutting stock results for all diameters to a single Excel file
@@ -23,24 +22,52 @@ export async function exportAllDiasToExcel(
   // Create workbook
   const workbook = XLSX.utils.book_new();
 
-  // Add summary sheet
+  // Build summary header (2-row, grouped).
+  //
+  // Layout (16 columns):
+  //   A          B─────────────H               I─────────────O               P
+  //   Dia        GREEDY (7 cols)               DYNAMIC (7 cols)              Best
+  //   Dia        Bars | Waste(m) | Waste% |    Bars | Waste(m) | Waste% |    Method
+  //              From Inv | New Pcs(≥1m) |     From Inv | New Pcs(≥1m) |
+  //              New (m) | Largest Offcut    New (m) | Largest Offcut
+  //
+  // Column labels avoid algorithm jargon ("FFD with waste reuse" was opaque to users).
+  // "From Inventory" = count of inventory pieces consumed (INPUT side).
+  // "New Reusable Pcs / (m)" = new offcuts ≥1m this run produced (OUTPUT side).
+  // These two are semantically different and used to sit side-by-side under the same
+  // ambiguous name; now they're plainly labelled.
+  const GREEDY_HDRS = [
+    "Bars Used",
+    "Total Waste (m)",
+    "Waste %",
+    "From Inventory",
+    "New Reusable Pcs (≥1m)",
+    "New Reusable (m)",
+    "Largest Offcut (m)",
+  ];
+  const DYNAMIC_HDRS = GREEDY_HDRS; // symmetric
+
+  const groupRow: (string | number)[] = [
+    "",
+    "GREEDY", "", "", "", "", "", "",          // merged B-H
+    "DYNAMIC", "", "", "", "", "", "",          // merged I-O
+    "",
+  ];
+  const columnRow: (string | number)[] = [
+    "Dia",
+    ...GREEDY_HDRS,
+    ...DYNAMIC_HDRS,
+    "Best Method",
+  ];
+
   const summaryData: (string | number)[][] = [
     ["CUTTING STOCK OPTIMIZATION - ALL DIAMETERS"],
     ["File:", fileName],
     ["Generated:", new Date().toLocaleString()],
     ["Total Diameters:", uniqueDias.length],
     [],
-    [
-      "Dia",
-      `${getAlgorithmInfo("greedy").shortName} Bars`,
-      `${getAlgorithmInfo("greedy").shortName} Waste (m)`,
-      `${getAlgorithmInfo("greedy").shortName} Waste (%)`,
-      `${getAlgorithmInfo("greedy").shortName} Waste Reused`,
-      `${getAlgorithmInfo("dynamic").shortName} Bars`,
-      `${getAlgorithmInfo("dynamic").shortName} Waste (m)`,
-      `${getAlgorithmInfo("dynamic").shortName} Waste (%)`,
-      "Best Method",
-    ],
+    groupRow,
+    columnRow,
   ];
 
   // Process each diameter
@@ -64,59 +91,94 @@ export async function exportAllDiasToExcel(
         dynamic = patchResultWithLiveWaste(dynamic, generatedWaste);
       }
 
-      // Add to summary
+      // Best-method label uses plain user-facing names (matches the UI buttons)
+      // instead of internal algorithm IDs like "FFD with waste reuse".
       const bestAlgorithm =
         greedy.totalBarsUsed < dynamic.totalBarsUsed
-          ? getAlgorithmInfo(greedy.algorithm).shortName
+          ? "Greedy"
           : dynamic.totalBarsUsed < greedy.totalBarsUsed
-          ? getAlgorithmInfo(dynamic.algorithm).shortName
+          ? "Dynamic"
           : "Equal";
 
-      // Count waste pieces reused in greedy result
-      const greedyWasteReused = greedy.detailedCuts.filter(
-        (d) => (d as { isFromWaste?: boolean }).isFromWaste || d.patternId?.startsWith("waste_")
-      ).length;
+      // Count waste pieces reused from inventory (input side) for each algorithm.
+      const countFromInv = (r: CuttingStockResult) =>
+        r.detailedCuts.filter(
+          (d) => (d as { isFromWaste?: boolean }).isFromWaste || d.patternId?.startsWith("waste_")
+        ).length;
+      const greedyFromInv = countFromInv(greedy);
+      const dynamicFromInv = countFromInv(dynamic);
 
       summaryData.push([
         dia,
+        // ── GREEDY (7 cols) ──────────────────────────────────────────────
         greedy.totalBarsUsed,
         parseFloat(greedy.totalWaste.toFixed(3)),
         parseFloat(greedy.summary.totalWastePercentage.toFixed(2)),
-        greedyWasteReused,
+        greedyFromInv,
+        greedy.summary.reusablePieces ?? 0,
+        parseFloat((greedy.summary.reusableWasteLength ?? 0).toFixed(3)),
+        parseFloat((greedy.summary.largestOffcut ?? 0).toFixed(3)),
+        // ── DYNAMIC (7 cols, symmetric) ──────────────────────────────────
         dynamic.totalBarsUsed,
         parseFloat(dynamic.totalWaste.toFixed(3)),
         parseFloat(dynamic.summary.totalWastePercentage.toFixed(2)),
+        dynamicFromInv,
+        dynamic.summary.reusablePieces ?? 0,
+        parseFloat((dynamic.summary.reusableWasteLength ?? 0).toFixed(3)),
+        parseFloat((dynamic.summary.largestOffcut ?? 0).toFixed(3)),
         bestAlgorithm,
       ]);
 
-      // Add detailed sheets for this diameter
-      addDiaSheet(workbook, greedy, `Dia ${dia} - ${getAlgorithmInfo(greedy.algorithm).excelSheetName}`);
-      addDiaSheet(workbook, dynamic, `Dia ${dia} - ${getAlgorithmInfo(dynamic.algorithm).excelSheetName}`);
+      // Add detailed sheets for this diameter. Tabs use plain "Greedy"/"Dynamic"
+      // to match the UI buttons rather than internal algorithm IDs.
+      addDiaSheet(workbook, greedy, `Dia ${dia} - Greedy`);
+      addDiaSheet(workbook, dynamic, `Dia ${dia} - Dynamic`);
     } catch (error) {
       console.error(`Error processing dia ${dia}:`, error);
+      const msg = error instanceof Error ? error.message : "Unknown error";
+      // Pad to match the 16-column header (Dia + 7 greedy + 7 dynamic + Best).
       summaryData.push([
         dia,
-        "ERROR",
-        "ERROR",
-        "ERROR",
-        "ERROR",
-        error instanceof Error ? error.message : "Unknown error",
+        "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR",
+        "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR", "ERROR",
+        msg,
       ]);
     }
   }
 
   // Create summary sheet
   const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+
+  // Merge the two algorithm group banners on the group-header row.
+  // groupRow is row index 5 (rows 0-4: title/meta/blank). 0-indexed.
+  // Greedy spans cols B–H (1–7); Dynamic spans cols I–O (8–14).
+  const GROUP_HEADER_ROW = 5;
+  summarySheet["!merges"] = [
+    { s: { r: GROUP_HEADER_ROW, c: 1 }, e: { r: GROUP_HEADER_ROW, c: 7 } },
+    { s: { r: GROUP_HEADER_ROW, c: 8 }, e: { r: GROUP_HEADER_ROW, c: 14 } },
+  ];
+
+  // Column widths — symmetric between Greedy and Dynamic, padded for readability.
   summarySheet["!cols"] = [
-    { wch: 8 },
+    { wch: 6 },   // Dia
+    // GREEDY
+    { wch: 10 },  // Bars Used
+    { wch: 15 },  // Total Waste (m)
+    { wch: 9 },   // Waste %
+    { wch: 14 },  // From Inventory
+    { wch: 22 },  // New Reusable Pcs (≥1m)
+    { wch: 17 },  // New Reusable (m)
+    { wch: 18 },  // Largest Offcut (m)
+    // DYNAMIC (same widths)
+    { wch: 10 },
     { wch: 15 },
+    { wch: 9 },
+    { wch: 14 },
+    { wch: 22 },
+    { wch: 17 },
     { wch: 18 },
-    { wch: 20 },
-    { wch: 15 },
-    { wch: 18 },
-    { wch: 18 },
-    { wch: 18 },
-    { wch: 20 },
+    // BEST
+    { wch: 12 },  // Best Method
   ];
   XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
 

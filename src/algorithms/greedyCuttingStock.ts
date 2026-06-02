@@ -306,6 +306,15 @@ export class GreedyCuttingStock {
     // Calculate total material length (accounting for different bar lengths)
     const totalMaterialLength = patterns.reduce((sum, p) => sum + p.standardBarLength, 0);
 
+    // Reusable-waste accounting (offcuts ≥ WASTE_MIN_LENGTH_M = 1m)
+    // Counts only waste from NEW bars; pieces from reused inventory don't go back in.
+    const WASTE_MIN_M = 1.0;
+    const reusableOffcuts = patterns
+      .filter((p) => !p.id.startsWith("waste_") && p.waste >= WASTE_MIN_M)
+      .map((p) => p.waste);
+    const reusableWasteLength = reusableOffcuts.reduce((s, w) => s + w, 0);
+    const largestOffcut = patterns.reduce((m, p) => Math.max(m, p.waste), 0);
+
     return {
       totalStandardBars: totalBars,
       newBarsUsed: newBarsUsed ?? totalBars,
@@ -317,6 +326,12 @@ export class GreedyCuttingStock {
       averageUtilization: Math.round(avgUtilization * 100) / 100,
       patternCount: patterns.length,
       totalCutsProduced: totalCuts,
+      reusablePieces: reusableOffcuts.length,
+      reusableWasteLength: Math.round(reusableWasteLength * 1000) / 1000,
+      reusablePercentage: totalWaste > 0
+        ? Math.round((reusableWasteLength / totalWaste) * 10000) / 100
+        : 0,
+      largestOffcut: Math.round(largestOffcut * 1000) / 1000,
     };
   }
 
