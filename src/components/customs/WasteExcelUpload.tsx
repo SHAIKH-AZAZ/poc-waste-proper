@@ -99,7 +99,7 @@ export default function WasteExcelUpload({ projectId, onSuccess }: WasteExcelUpl
               accept=".xlsx,.xls"
               onChange={handleFileSelect}
               disabled={uploading}
-              className="hidden"
+              className="absolute opacity-0 w-0 h-0 overflow-hidden"
             />
           </label>
 

@@ -89,7 +89,7 @@ export default function FileUpload({
         accept={acceptedFormats}
         onChange={handleFileChange}
         disabled={isLoading}
-        className="hidden"
+        className="absolute opacity-0 w-0 h-0 overflow-hidden"
       />
 
       {/* File Name Preview */}
