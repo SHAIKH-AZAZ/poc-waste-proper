@@ -5,6 +5,11 @@ import { ObjectId } from "mongodb";
 import type { CuttingStockResult } from "@/types/CuttingStock";
 import { WASTE_MIN_LENGTH_MM } from "@/constants/config";
 import { decompressData } from "@/utils/compression";
+import {
+  buildCalculationResultDetailMap,
+  collectValidObjectIds,
+  hydrateCalculationResults,
+} from "@/utils/calculationResultHydration";
 
 // POST - Save the BEST calculation result (compares greedy vs dynamic)
 export async function POST(req: NextRequest) {
@@ -309,28 +314,31 @@ export async function GET(req: NextRequest) {
     const db = await getMongoDb();
     const resultsCollection = db.collection("calculation_results");
 
-    const enrichedResults = await Promise.all(
-      pgResults.map(async (pgResult) => {
-        if (!pgResult.mongoResultId) {
-          return pgResult;
-        }
-
-        try {
-          const mongoData = await resultsCollection.findOne({
-            _id: new ObjectId(pgResult.mongoResultId),
-          });
-
-          return {
-            ...pgResult,
-            patterns: mongoData?.patterns || [],
-            detailedCuts: mongoData?.detailedCuts || [],
-            summary: mongoData?.summary || null,
-          };
-        } catch {
-          return pgResult;
-        }
-      })
+    const mongoResultIds = collectValidObjectIds(
+      pgResults.map((result) => result.mongoResultId)
     );
+
+    let enrichedResults = pgResults;
+
+    if (mongoResultIds.length > 0) {
+      const mongoDocs = await resultsCollection
+        .find(
+          { _id: { $in: mongoResultIds } },
+          {
+            projection: {
+              patterns: 1,
+              detailedCuts: 1,
+              summary: 1,
+            },
+          }
+        )
+        .toArray();
+
+      enrichedResults = hydrateCalculationResults(
+        pgResults,
+        buildCalculationResultDetailMap(mongoDocs)
+      );
+    }
 
     return NextResponse.json({
       success: true,

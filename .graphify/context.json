@@ -1,0 +1,695 @@
+{
+  "root": "/home/azaz/Desktop/code/Buniyadbyte/poc-waste-proper",
+  "generatedAt": "2026-05-13T08:08:53.133Z",
+  "packageName": "poc-waste",
+  "framework": "Next.js",
+  "counts": {
+    "filesScanned": 189,
+    "algorithms": 8,
+    "components": 20,
+    "apiRoutes": 8,
+    "tests": 11
+  },
+  "keyFiles": [
+    "package.json",
+    "next.config.ts",
+    "src/algorithms/adaptiveCuttingStock.ts",
+    "src/workers/cuttingStock.worker.ts"
+  ],
+  "notes": [
+    "Multiple cutting-stock algorithms available under src/algorithms.",
+    "API route handlers found under src/app/api.",
+    "Automated test files detected."
+  ],
+  "graph": {
+    "nodes": [
+      {
+        "id": "cli/algorithms/greedyCuttingStock.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "cli/generateDataset.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "cli/run.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "cli/types/BarCuttingRow.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "cli/types/CuttingStock.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "cli/utils/cuttingStockPreprocessor.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "cli/utils/multiBarCalculator.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "debug_swap.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "eslint.config.mjs",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "next-env.d.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "next.config.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "postcss.config.mjs",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "prisma.config.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "scripts/create-sample-excel.js",
+        "type": "file",
+        "category": "script"
+      },
+      {
+        "id": "scripts/graphify.ts",
+        "type": "file",
+        "category": "script"
+      },
+      {
+        "id": "scripts/start.js",
+        "type": "file",
+        "category": "script"
+      },
+      {
+        "id": "scripts/test-db-connection.js",
+        "type": "file",
+        "category": "script"
+      },
+      {
+        "id": "smart_greedy_test.js",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/algorithms/adaptiveCuttingStock.ts",
+        "type": "file",
+        "category": "algorithm"
+      },
+      {
+        "id": "src/algorithms/branchAndBoundCuttingStock.ts",
+        "type": "file",
+        "category": "algorithm"
+      },
+      {
+        "id": "src/algorithms/chunkedOptimization.ts",
+        "type": "file",
+        "category": "algorithm"
+      },
+      {
+        "id": "src/algorithms/greedyCuttingStock.ts",
+        "type": "file",
+        "category": "algorithm"
+      },
+      {
+        "id": "src/algorithms/improvedGreedyCuttingStock.ts",
+        "type": "file",
+        "category": "algorithm"
+      },
+      {
+        "id": "src/algorithms/swapOptimization.ts",
+        "type": "file",
+        "category": "algorithm"
+      },
+      {
+        "id": "src/algorithms/trueDynamicCuttingStock.ts",
+        "type": "file",
+        "category": "algorithm"
+      },
+      {
+        "id": "src/algorithms/wasteOptimizedCuttingStock.ts",
+        "type": "file",
+        "category": "algorithm"
+      },
+      {
+        "id": "src/app/api/excel-data/route.ts",
+        "type": "file",
+        "category": "api"
+      },
+      {
+        "id": "src/app/api/projects/route.ts",
+        "type": "file",
+        "category": "api"
+      },
+      {
+        "id": "src/app/api/results/route.ts",
+        "type": "file",
+        "category": "api"
+      },
+      {
+        "id": "src/app/api/sheets/route.ts",
+        "type": "file",
+        "category": "api"
+      },
+      {
+        "id": "src/app/api/upload/route.ts",
+        "type": "file",
+        "category": "api"
+      },
+      {
+        "id": "src/app/api/waste/excel-upload/route.ts",
+        "type": "file",
+        "category": "api"
+      },
+      {
+        "id": "src/app/api/waste/manual-upload/route.ts",
+        "type": "file",
+        "category": "api"
+      },
+      {
+        "id": "src/app/api/waste/route.ts",
+        "type": "file",
+        "category": "api"
+      },
+      {
+        "id": "src/app/demo/page.tsx",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/app/layout.tsx",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/app/page.tsx",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/app/project/[projectId]/components/DashboardAnalytics.tsx",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/app/project/[projectId]/page.tsx",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/app/project/[projectId]/sheet/[sheetId]/page.tsx",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/app/projects/page.tsx",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/components/ProcessingProgress.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/customs/AdvancedCuttingStockResults.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/customs/AnimatedNumber.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/customs/CuttingStockResults.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/customs/DiaFilter.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/customs/ExcelFormatGuide.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/customs/ExcelPreviewTable.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/customs/ExcelUploader.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/customs/FileInfoCard.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/customs/FileUpload.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/customs/Heading.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/customs/Navigation.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/customs/UploadedFileInfoCard.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/customs/WasteExcelUpload.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/customs/WasteUploadModal.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/types.ts",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/ui/ClientOnly.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/ui/file-upload.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/ui/flip-words.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/components/ui/layout-text-flip.tsx",
+        "type": "file",
+        "category": "component"
+      },
+      {
+        "id": "src/constants/algorithmInfo.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/constants/config.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/hooks/useFileDatabase.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/hooks/useProcessingProgress.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/lib/mongodb.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/lib/prisma.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/lib/utils.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/types/BarCuttingRow.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/types/CuttingStock.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/analytics.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/barCodeUtils.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/compression.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/cuttingStockExport.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/cuttingStockPreprocessor.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/dataFilters.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/dataUtils.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/dataValidation.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/excelExport.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/excelParser.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/excelTemplate.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/exportAllDias.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/fileHandlers.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/multiBarCalculator.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/progressEmitter.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/sanitizeData.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/utils/workerManager.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "src/workers/cuttingStock.worker.ts",
+        "type": "file",
+        "category": "other"
+      },
+      {
+        "id": "tests/algorithms/adaptiveCuttingStock.test.ts",
+        "type": "file",
+        "category": "test"
+      },
+      {
+        "id": "tests/algorithms/branchAndBoundCuttingStock.test.ts",
+        "type": "file",
+        "category": "test"
+      },
+      {
+        "id": "tests/algorithms/greedyCuttingStock.test.ts",
+        "type": "file",
+        "category": "test"
+      },
+      {
+        "id": "tests/algorithms/improvedGreedyCuttingStock.test.ts",
+        "type": "file",
+        "category": "test"
+      },
+      {
+        "id": "tests/algorithms/trueDynamicCuttingStock.test.ts",
+        "type": "file",
+        "category": "test"
+      },
+      {
+        "id": "tests/algorithms/wasteOptimizedCuttingStock.test.ts",
+        "type": "file",
+        "category": "test"
+      },
+      {
+        "id": "tests/integration/cuttingStockWorkflow.test.ts",
+        "type": "file",
+        "category": "test"
+      },
+      {
+        "id": "tests/utils/barCodeUtils.test.ts",
+        "type": "file",
+        "category": "test"
+      },
+      {
+        "id": "tests/utils/cuttingStockPreprocessor.test.ts",
+        "type": "file",
+        "category": "test"
+      },
+      {
+        "id": "tests/utils/dataValidation.test.ts",
+        "type": "file",
+        "category": "test"
+      },
+      {
+        "id": "tests/utils/multiBarCalculator.test.ts",
+        "type": "file",
+        "category": "test"
+      },
+      {
+        "id": "vitest.config.ts",
+        "type": "file",
+        "category": "other"
+      }
+    ],
+    "edges": [
+      {
+        "from": "cli/algorithms/greedyCuttingStock.ts",
+        "to": "cli/types/CuttingStock.ts",
+        "kind": "import"
+      },
+      {
+        "from": "cli/algorithms/greedyCuttingStock.ts",
+        "to": "cli/utils/cuttingStockPreprocessor.ts",
+        "kind": "import"
+      },
+      {
+        "from": "cli/run.ts",
+        "to": "cli/types/BarCuttingRow.ts",
+        "kind": "import"
+      },
+      {
+        "from": "cli/run.ts",
+        "to": "cli/types/CuttingStock.ts",
+        "kind": "import"
+      },
+      {
+        "from": "cli/run.ts",
+        "to": "cli/utils/cuttingStockPreprocessor.ts",
+        "kind": "import"
+      },
+      {
+        "from": "cli/run.ts",
+        "to": "cli/algorithms/greedyCuttingStock.ts",
+        "kind": "import"
+      },
+      {
+        "from": "cli/run.ts",
+        "to": "scripts/graphify.ts",
+        "kind": "import"
+      },
+      {
+        "from": "cli/utils/cuttingStockPreprocessor.ts",
+        "to": "cli/types/BarCuttingRow.ts",
+        "kind": "import"
+      },
+      {
+        "from": "cli/utils/cuttingStockPreprocessor.ts",
+        "to": "cli/types/CuttingStock.ts",
+        "kind": "import"
+      },
+      {
+        "from": "cli/utils/cuttingStockPreprocessor.ts",
+        "to": "cli/utils/multiBarCalculator.ts",
+        "kind": "import"
+      },
+      {
+        "from": "cli/utils/multiBarCalculator.ts",
+        "to": "cli/types/CuttingStock.ts",
+        "kind": "import"
+      },
+      {
+        "from": "debug_swap.ts",
+        "to": "src/algorithms/swapOptimization.ts",
+        "kind": "import"
+      },
+      {
+        "from": "debug_swap.ts",
+        "to": "src/utils/cuttingStockPreprocessor.ts",
+        "kind": "import"
+      },
+      {
+        "from": "debug_swap.ts",
+        "to": "src/types/BarCuttingRow.ts",
+        "kind": "import"
+      },
+      {
+        "from": "src/algorithms/adaptiveCuttingStock.ts",
+        "to": "src/algorithms/greedyCuttingStock.ts",
+        "kind": "import"
+      },
+      {
+        "from": "src/algorithms/adaptiveCuttingStock.ts",
+        "to": "src/algorithms/trueDynamicCuttingStock.ts",
+        "kind": "import"
+      },
+      {
+        "from": "src/algorithms/adaptiveCuttingStock.ts",
+        "to": "src/algorithms/branchAndBoundCuttingStock.ts",
+        "kind": "import"
+      },
+      {
+        "from": "src/app/layout.tsx",
+        "to": "src/app/globals.css",
+        "kind": "import"
+      },
+      {
+        "from": "src/app/project/[projectId]/page.tsx",
+        "to": "src/app/project/[projectId]/components/DashboardAnalytics.tsx",
+        "kind": "import"
+      },
+      {
+        "from": "src/components/customs/CuttingStockResults.tsx",
+        "to": "src/components/ui/ClientOnly.tsx",
+        "kind": "import"
+      },
+      {
+        "from": "src/components/customs/DiaFilter.tsx",
+        "to": "src/components/ui/ClientOnly.tsx",
+        "kind": "import"
+      },
+      {
+        "from": "src/components/customs/ExcelUploader.tsx",
+        "to": "src/components/customs/FileUpload.tsx",
+        "kind": "import"
+      },
+      {
+        "from": "src/components/customs/FileInfoCard.tsx",
+        "to": "src/components/customs/AnimatedNumber.tsx",
+        "kind": "import"
+      },
+      {
+        "from": "src/components/customs/FileInfoCard.tsx",
+        "to": "src/components/ui/ClientOnly.tsx",
+        "kind": "import"
+      },
+      {
+        "from": "src/components/customs/Heading.tsx",
+        "to": "src/components/ui/flip-words.tsx",
+        "kind": "import"
+      },
+      {
+        "from": "src/components/customs/UploadedFileInfoCard.tsx",
+        "to": "src/components/customs/AnimatedNumber.tsx",
+        "kind": "import"
+      },
+      {
+        "from": "src/components/customs/WasteUploadModal.tsx",
+        "to": "src/components/customs/WasteExcelUpload.tsx",
+        "kind": "import"
+      },
+      {
+        "from": "src/utils/cuttingStockPreprocessor.ts",
+        "to": "src/utils/multiBarCalculator.ts",
+        "kind": "import"
+      },
+      {
+        "from": "src/utils/dataValidation.ts",
+        "to": "src/utils/barCodeUtils.ts",
+        "kind": "import"
+      },
+      {
+        "from": "src/utils/exportAllDias.ts",
+        "to": "src/utils/barCodeUtils.ts",
+        "kind": "import"
+      },
+      {
+        "from": "src/utils/exportAllDias.ts",
+        "to": "src/utils/cuttingStockPreprocessor.ts",
+        "kind": "import"
+      },
+      {
+        "from": "src/utils/exportAllDias.ts",
+        "to": "src/utils/workerManager.ts",
+        "kind": "import"
+      },
+      {
+        "from": "src/utils/sanitizeData.ts",
+        "to": "src/utils/barCodeUtils.ts",
+        "kind": "import"
+      }
+    ]
+  }
+}

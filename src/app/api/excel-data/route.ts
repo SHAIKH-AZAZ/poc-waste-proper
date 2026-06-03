@@ -18,9 +18,17 @@ export async function GET(req: NextRequest) {
     const db = await getMongoDb();
     const excelDataCollection = db.collection("excel_data");
 
-    const data = await excelDataCollection.findOne({
-      _id: new ObjectId(mongoDataId)
-    });
+    const data = await excelDataCollection.findOne(
+      { _id: new ObjectId(mongoDataId) },
+      {
+        projection: {
+          data: 1,
+          uploadedAt: 1,
+          version: 1,
+          fileName: 1,
+        },
+      }
+    );
 
     if (!data) {
       console.log(`[ExcelData] Data not found for mongoDataId: ${mongoDataId}`);
