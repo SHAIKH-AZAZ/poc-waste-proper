@@ -1,7 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { prisma } from "@/lib/prisma";
 import { getMongoDb } from "@/lib/mongodb";
+
+function worksheetToJson(worksheet: ExcelJS.Worksheet): Record<string, unknown>[] {
+  const headers: string[] = [];
+  worksheet.getRow(1).eachCell({ includeEmpty: true }, (cell, col) => {
+    headers[col - 1] = String(cell.value ?? "");
+  });
+  const rows: Record<string, unknown>[] = [];
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const obj: Record<string, unknown> = {};
+    headers.forEach((header, i) => {
+      if (!header) return;
+      const cell = row.getCell(i + 1);
+      const v = cell.value;
+      if (v === null || v === undefined) obj[header] = "";
+      else if (typeof v === "object" && "richText" in v)
+        obj[header] = (v as ExcelJS.CellRichTextValue).richText.map((r) => r.text).join("");
+      else if (typeof v === "object" && "result" in v)
+        obj[header] = (v as ExcelJS.CellFormulaValue).result;
+      else if (v instanceof Date) obj[header] = v.toISOString();
+      else obj[header] = v;
+    });
+    rows.push(obj);
+  });
+  return rows;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,11 +43,9 @@ export async function POST(req: NextRequest) {
 
     // Parse Excel file
     const arrayBuffer = await file.arrayBuffer();
-    const data = Buffer.from(arrayBuffer);
-    const workbook = XLSX.read(data, { type: "buffer" });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const jsonData = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(arrayBuffer);
+    const jsonData = worksheetToJson(workbook.worksheets[0]);
 
     console.log(`[Upload] Parsed ${jsonData.length} rows from Excel`);
 

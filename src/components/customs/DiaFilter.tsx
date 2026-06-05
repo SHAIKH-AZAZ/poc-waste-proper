@@ -30,29 +30,6 @@ export default function DiaFilter({ data, selectedDia, onDiaSelect, onDownloadAl
             Filter by Diameter
           </h3>
 
-          {onDownloadAll && uniqueDias.length > 1 && (
-            <button
-              onClick={onDownloadAll}
-              disabled={isDownloadingAll}
-              className={`px-4 py-2 rounded-xl font-semibold transition-all duration-200 flex items-center gap-2 shadow-lg shadow-purple-500/20 text-sm
-                ${isDownloadingAll
-                  ? "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none border border-slate-200"
-                  : "bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 active:scale-95"
-                }`}
-            >
-              {isDownloadingAll ? (
-                <>
-                  <IconLoader size={18} className="animate-spin" />
-                  <span>Generating Report...</span>
-                </>
-              ) : (
-                <>
-                  <IconDownload size={18} />
-                  <span>Download All Dias</span>
-                </>
-              )}
-            </button>
-          )}
         </div>
 
         <div className="p-6">
