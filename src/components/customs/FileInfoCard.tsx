@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import AnimatedNumber from "./AnimatedNumber";
 import {
   IconFileSpreadsheet,
@@ -17,6 +17,7 @@ import {
   IconTrendingDown,
   IconRecycle,
   IconChevronDown,
+  IconX,
 } from "@tabler/icons-react";
 import ClientOnly from "../ui/ClientOnly";
 
@@ -73,6 +74,7 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
   isDownloading = false,
   wasteStats = null,
 }) => {
+  const [showReuseModal, setShowReuseModal] = useState(false);
 
 
   if (!fileName) return null;
@@ -253,28 +255,17 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
                     </div>
                   )}
 
-                  {/* Reuse Breakdown */}
+                  {/* Reuse Breakdown — opens in overlay */}
                   {wasteStats.reusedPiecesBreakdown.length > 0 && (
-                    <details className="mt-3 group">
-                      <summary className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-emerald-700 select-none list-none [&::-webkit-details-marker]:hidden">
-                        <IconRecycle size={14} className="text-emerald-600" />
-                        {wasteStats.reusedPiecesBreakdown.length} bar offcut{wasteStats.reusedPiecesBreakdown.length > 1 ? "s" : ""} reused from this sheet
-                        <IconChevronDown size={13} className="ml-auto text-slate-400 transition-transform duration-200 group-open:rotate-180" />
-                      </summary>
-                      <ul className="mt-2 space-y-1 pl-1">
-                        {wasteStats.reusedPiecesBreakdown.map((piece, i) => (
-                          <li key={i} className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 rounded-lg px-2.5 py-1.5 border border-slate-100">
-                            <span className="font-semibold text-slate-700">Dia {piece.dia}</span>
-                            <span className="text-slate-400">·</span>
-                            <span>Bar #{piece.sourceBarNumber}</span>
-                            <span className="text-slate-400">→</span>
-                            <span className="text-emerald-600 font-medium">{piece.recoveredLength.toFixed(3)}m</span>
-                            <span className="text-slate-400">used in</span>
-                            <span className="font-medium truncate max-w-[120px]" title={piece.usedInSheetName}>{piece.usedInSheetName}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </details>
+                    <button
+                      type="button"
+                      onClick={() => setShowReuseModal(true)}
+                      className="mt-3 w-full flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-emerald-700 hover:text-emerald-800 transition-colors"
+                    >
+                      <IconRecycle size={14} className="text-emerald-600" />
+                      {wasteStats.reusedPiecesBreakdown.length} bar offcut{wasteStats.reusedPiecesBreakdown.length > 1 ? "s" : ""} reused from this sheet
+                      <IconChevronDown size={13} className="ml-auto text-slate-400" />
+                    </button>
                   )}
                 </div>
               </div>
@@ -339,6 +330,59 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
           </div>
         )}
       </div>
+
+      {/* Reuse Breakdown Overlay */}
+      {showReuseModal && wasteStats && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4 animate-fade-in"
+          onClick={() => setShowReuseModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden ring-1 ring-slate-100"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-slate-100 bg-gradient-to-r from-emerald-50 to-green-50">
+              <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 flex-shrink-0">
+                <IconRecycle size={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-base font-bold text-slate-900">Waste Reused from This Sheet</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {wasteStats.reusedPiecesBreakdown.length} bar offcut{wasteStats.reusedPiecesBreakdown.length > 1 ? "s" : ""} consumed by later sheets
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowReuseModal(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors flex-shrink-0"
+              >
+                <IconX size={18} />
+              </button>
+            </div>
+
+            {/* List */}
+            <div className="overflow-y-auto p-4 space-y-1.5">
+              {wasteStats.reusedPiecesBreakdown.map((piece, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100"
+                >
+                  <span className="font-semibold text-slate-700">Dia {piece.dia}</span>
+                  <span className="text-slate-300">·</span>
+                  <span>Bar #{piece.sourceBarNumber}</span>
+                  <span className="text-slate-300">→</span>
+                  <span className="text-emerald-600 font-semibold">{piece.recoveredLength.toFixed(3)}m</span>
+                  <span className="text-slate-400 text-xs">used in</span>
+                  <span className="font-medium text-slate-700 truncate ml-auto max-w-[160px]" title={piece.usedInSheetName}>
+                    {piece.usedInSheetName}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

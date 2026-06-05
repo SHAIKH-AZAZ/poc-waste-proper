@@ -246,10 +246,91 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PATCH - Mark waste as used
+interface BulkUsageInput {
+  wasteId: number;
+  usedInSheetId: number;
+  usedForBarCode?: string;
+  cutLength: number;
+  remainingLength?: number;
+  remainingStatus?: "discarded" | "added_to_inventory";
+}
+
+// Bulk mark many waste pieces as used in ONE request (batched DB ops).
+// Avoids hundreds of sequential per-piece round-trips on export.
+async function markWasteUsedBulk(usages: BulkUsageInput[]) {
+  const valid = usages.filter((u) => u && Number.isFinite(u.wasteId));
+  if (valid.length === 0) return { marked: 0 };
+
+  const wasteIds = [...new Set(valid.map((u) => u.wasteId))];
+
+  // 1. Look up source sheet + dia for each piece (needed for the version/waste rollup).
+  const wasteItems = await prisma.wasteInventory.findMany({
+    where: { id: { in: wasteIds } },
+    select: { id: true, sourceSheetId: true, dia: true },
+  });
+  const wasteMap = new Map(wasteItems.map((w) => [w.id, w]));
+
+  // 2. Mark all as used + 3. create all usage records (batched).
+  await prisma.wasteInventory.updateMany({
+    where: { id: { in: wasteIds } },
+    data: { status: "used" },
+  });
+  await prisma.wasteUsage.createMany({
+    data: valid.map((u) => ({
+      wasteId: u.wasteId,
+      usedInSheetId: u.usedInSheetId,
+      usedForBarCode: u.usedForBarCode ?? "multiple",
+      cutLength: u.cutLength,
+      remainingLength: u.remainingLength ?? 0,
+      remainingStatus: u.remainingStatus ?? "discarded",
+    })),
+  });
+
+  // 4. Roll up recovered length per (sourceSheetId, dia) → ONE CalculationResult update each.
+  const groups = new Map<string, { sheetId: number; dia: number; recoveredM: number; count: number }>();
+  for (const u of valid) {
+    const w = wasteMap.get(u.wasteId);
+    if (!w) continue;
+    const key = `${w.sourceSheetId}:${w.dia}`;
+    const g = groups.get(key) ?? { sheetId: w.sourceSheetId, dia: w.dia, recoveredM: 0, count: 0 };
+    g.recoveredM += (u.cutLength || 0) / 1000;
+    g.count += 1;
+    groups.set(key, g);
+  }
+
+  for (const g of groups.values()) {
+    const sourceResult = await prisma.calculationResult.findUnique({
+      where: { sheetId_dia: { sheetId: g.sheetId, dia: g.dia } },
+      select: { id: true, totalWaste: true, totalStockLength: true, totalBarsUsed: true, version: true },
+    });
+    if (!sourceResult) continue;
+    const updatedWaste = Math.max(0, Number(sourceResult.totalWaste) - g.recoveredM);
+    const stockLen = Number(sourceResult.totalStockLength) || (Number(sourceResult.totalBarsUsed) * 12);
+    const util = stockLen > 0 ? ((stockLen - updatedWaste) / stockLen) * 100 : 0;
+    await prisma.calculationResult.update({
+      where: { id: sourceResult.id },
+      data: {
+        version: sourceResult.version + g.count,
+        totalWaste: updatedWaste,
+        averageUtilization: Math.min(100, util),
+      },
+    });
+  }
+
+  return { marked: wasteIds.length };
+}
+
+// PATCH - Mark waste as used (single piece, or bulk via { bulk: true, usages: [...] })
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
+
+    if (body.bulk && Array.isArray(body.usages)) {
+      console.log(`[Waste] Bulk marking ${body.usages.length} waste pieces as used`);
+      const result = await markWasteUsedBulk(body.usages);
+      return NextResponse.json({ success: true, ...result });
+    }
+
     const {
       wasteId,
       usedInSheetId,

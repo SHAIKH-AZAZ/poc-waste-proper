@@ -69,7 +69,7 @@ function buildWasteStatsFromDbResults(
 ): SheetWasteStats | null {
   if (!dbResults?.length) return null;
 
-  let v1TotalWaste = 0, currentTotalWaste = 0, totalStockLen = 0, maxVersion = 1;
+  let v1TotalWaste = 0, currentTotalWaste = 0, totalStockLen = 0;
 
   for (const r of dbResults) {
     const stockLen = Number(r.totalStockLength) || (Number(r.totalBarsUsed) * 12);
@@ -78,17 +78,20 @@ function buildWasteStatsFromDbResults(
     v1TotalWaste += baseline;
     currentTotalWaste += current;
     totalStockLen += stockLen;
-    if ((r.version ?? 1) > maxVersion) maxVersion = r.version;
   }
 
   if (totalStockLen === 0) return null;
 
   const reusedBreakdown: ReusedPieceInfo[] = [];
+  // Version = baseline (v1) + one per distinct downstream sheet that reused this
+  // sheet's offcuts (not per individual piece — that would inflate the number).
+  const consumingSheets = new Set<string>();
   generatedWaste?.forEach((w: any) => {
     if (w.status === "used" && Array.isArray(w.usages)) {
       w.usages.forEach((u: any) => {
         const isSelf = String(u.usedInSheetId) === String(w.sourceSheetId);
         if (!isSelf) {
+          consumingSheets.add(String(u.usedInSheetId));
           reusedBreakdown.push({
             dia: w.dia,
             usedInSheetName: u.usedInSheet?.fileName ?? "another sheet",
@@ -103,7 +106,7 @@ function buildWasteStatsFromDbResults(
   return {
     v1WastePercentage: (v1TotalWaste / totalStockLen) * 100,
     currentWastePercentage: (currentTotalWaste / totalStockLen) * 100,
-    currentVersion: maxVersion,
+    currentVersion: consumingSheets.size + 1,
     totalWasteLength: currentTotalWaste,
     diasProcessed: dbResults.length,
     reusedPiecesBreakdown: reusedBreakdown,
@@ -666,27 +669,31 @@ export default function SheetPage() {
 
       console.log(`[Sheet] Waste items >= 2m: ${wasteItems.length}`);
 
-      // Mark ONLY the actually used waste pieces as used (not all available ones)
+      // Mark ONLY the actually used waste pieces as used (not all available ones).
+      // One bulk request instead of a sequential PATCH per piece (big speedup on export).
       if (usedWastePieces && usedWastePieces.length > 0 && actuallyUsedWasteIds.size > 0) {
         const piecesToMark = usedWastePieces.filter(w => actuallyUsedWasteIds.has(w.id));
-        console.log(`[Sheet] Marking ${piecesToMark.length} of ${usedWastePieces.length} waste pieces as used`);
+        console.log(`[Sheet] Marking ${piecesToMark.length} of ${usedWastePieces.length} waste pieces as used (bulk)`);
 
-        for (const waste of piecesToMark) {
+        if (piecesToMark.length > 0) {
           try {
             await fetch("/api/waste", {
               method: "PATCH",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                wasteId: parseInt(waste.id),
-                usedInSheetId: parseInt(sheetId),
-                usedForBarCode: "multiple",
-                cutLength: waste.length,
-                remainingLength: 0,
-                remainingStatus: "discarded",
+                bulk: true,
+                usages: piecesToMark.map(waste => ({
+                  wasteId: parseInt(waste.id),
+                  usedInSheetId: parseInt(sheetId),
+                  usedForBarCode: "multiple",
+                  cutLength: waste.length,
+                  remainingLength: 0,
+                  remainingStatus: "discarded",
+                })),
               }),
             });
           } catch (err) {
-            console.error(`[Sheet] Failed to mark waste ${waste.id} as used:`, err);
+            console.error(`[Sheet] Failed to bulk-mark waste as used:`, err);
           }
         }
       }
@@ -862,7 +869,13 @@ export default function SheetPage() {
       const wasteRes = await fetch(`/api/waste?projectId=${projectId}&status=available`);
       const wasteData = await wasteRes.json();
       if (wasteData.success && Array.isArray(wasteData.waste)) {
-        availableWaste = wasteData.waste.map((w: {
+        availableWaste = wasteData.waste
+          // Exclude this sheet's OWN offcuts — only reuse other sheets' inventory.
+          .filter((w: { sourceSheetId?: number; sourceSheet?: { id: number } }) => {
+            const sourceId = w.sourceSheetId || w.sourceSheet?.id;
+            return String(sourceId) !== String(sheetId);
+          })
+          .map((w: {
           id: number;
           dia: number;
           length: number;
