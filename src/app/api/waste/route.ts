@@ -286,6 +286,40 @@ export async function PATCH(req: NextRequest) {
       },
     });
 
+    // Update source sheet's CalculationResult: version++ and reduce totalWaste
+    try {
+      const wasteItem = await prisma.wasteInventory.findUnique({
+        where: { id: wasteId },
+        select: { sourceSheetId: true, dia: true },
+      });
+      if (wasteItem) {
+        const sourceResult = await prisma.calculationResult.findUnique({
+          where: { sheetId_dia: { sheetId: wasteItem.sourceSheetId, dia: wasteItem.dia } },
+          select: { id: true, totalWaste: true, totalStockLength: true, totalBarsUsed: true, version: true },
+        });
+        if (sourceResult) {
+          const recoveredM = cutLength / 1000;
+          const updatedWaste = Math.max(0, Number(sourceResult.totalWaste) - recoveredM);
+          const stockLen = Number(sourceResult.totalStockLength) || (Number(sourceResult.totalBarsUsed) * 12);
+          const updatedUtilization = stockLen > 0
+            ? ((stockLen - updatedWaste) / stockLen) * 100
+            : 0;
+          await prisma.calculationResult.update({
+            where: { id: sourceResult.id },
+            data: {
+              version: sourceResult.version + 1,
+              totalWaste: updatedWaste,
+              averageUtilization: Math.min(100, updatedUtilization),
+            },
+          });
+          console.log(`[Waste] Updated source sheet ${wasteItem.sourceSheetId} dia ${wasteItem.dia}: version=${sourceResult.version + 1}, waste=${updatedWaste.toFixed(3)}m`);
+        }
+      }
+    } catch (versionErr) {
+      console.error("[Waste] Failed to update source sheet version:", versionErr);
+      // Non-fatal: continue even if version update fails
+    }
+
     // If remaining >= minimum threshold, add as new waste
     if (remainingStatus === "added_to_inventory" && remainingLength >= WASTE_MIN_LENGTH_MM) {
       const originalWaste = await prisma.wasteInventory.findUnique({

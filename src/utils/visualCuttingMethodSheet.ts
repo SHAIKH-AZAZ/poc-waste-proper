@@ -11,7 +11,7 @@ interface VisualCuttingMethodSheetOptions {
 }
 
 interface VisualSegment {
-  type: "cut" | "waste";
+  type: "cut" | "waste" | "recovered";
   label: string;
   length: number;
 }
@@ -42,6 +42,7 @@ const DIA_CUT_FILLS: Record<number, string> = {
   "40": "F4CCCC",
 };
 const WASTE_FILL = "FFFFFF";
+const RECOVERED_FILL = "B7E1CD";
 const BORDER_COLOR = "000000";
 
 const THIN_BLACK_BORDER = {
@@ -64,6 +65,13 @@ const TITLE_STYLE = {
 const WASTE_STYLE = {
   fill: { patternType: "solid", fgColor: { rgb: WASTE_FILL } },
   border: THIN_BLACK_BORDER,
+  alignment: { vertical: "top", wrapText: true },
+};
+
+const RECOVERED_STYLE = {
+  fill: { patternType: "solid", fgColor: { rgb: RECOVERED_FILL } },
+  border: THIN_BLACK_BORDER,
+  font: { color: { rgb: "1A5C38" }, bold: true },
   alignment: { vertical: "top", wrapText: true },
 };
 
@@ -92,6 +100,7 @@ export function createVisualCuttingMethodSheet(
   );
 
   let row = 5;
+  const segmentRows: { r: number; hasRecovered: boolean }[] = [];
 
   if (groups.length === 0) {
     setCell(
@@ -122,16 +131,38 @@ export function createVisualCuttingMethodSheet(
     row += 1;
 
     let col = BAR_CELL_START_COLUMN;
+    let rowHasRecovered = false;
 
     group.segments.forEach((segment) => {
-      const style = segment.type === "waste" ? WASTE_STYLE : cutStyle;
-      const text = `${segment.label}\n${formatMeters(segment.length)} m`;
-
+      let style: Record<string, any>;
+      if (segment.type === "recovered") {
+        style = RECOVERED_STYLE;
+        rowHasRecovered = true;
+      } else if (segment.type === "waste") {
+        style = WASTE_STYLE;
+      } else {
+        style = cutStyle;
+      }
+      // Barcode on line 1, length on line 2. The line break only renders with
+      // wrapText on; columns are wide enough that nothing wraps except this break.
+      const text = `${segment.label}\n(${formatMeters(segment.length)} m)`;
       setCell(worksheet, row, col, text, style);
       col += 1;
     });
 
+    segmentRows.push({ r: row, hasRecovered: rowHasRecovered });
+
     row += 3;
+  }
+
+  // Bar rows need enough height to show the 2-line (barcode / length) cells;
+  // recovered cells add a 3rd line for the source sheet name.
+  if (segmentRows.length > 0) {
+    const rowList: XLSX.RowInfo[] = [];
+    for (const { r, hasRecovered } of segmentRows) {
+      rowList[r] = { hpt: hasRecovered ? 48 : 30 };
+    }
+    worksheet["!rows"] = rowList;
   }
 
   const dataColumnCount = Math.max(
@@ -173,17 +204,43 @@ function buildPatternGroups(result: CuttingStockResult): PatternGroup[] {
     const wasteLength = Math.max(0, roundValue(barLength - usedLength));
     const isFromWaste =
       detail.isFromWaste || detail.patternId?.startsWith("waste_") || false;
+    const isWasteRecovered = (detail as any).isWasteRecovered === true;
+    const usedInSheetName: string = (detail as any).usedInSheetName ?? "";
+    const recoveredAmount: number = (detail as any).recoveredAmount ?? 0;
+
+    const wasteSegments: VisualSegment[] = [];
+    if (isWasteRecovered && recoveredAmount > 0) {
+      const sheetLabel = usedInSheetName
+        ? `RECOVERED\n→ ${usedInSheetName}`
+        : "RECOVERED";
+      wasteSegments.push({
+        type: "recovered",
+        label: sheetLabel,
+        length: roundValue(recoveredAmount),
+      });
+      const remaining = Math.max(0, roundValue(wasteLength - recoveredAmount));
+      if (remaining > 0.001) {
+        wasteSegments.push({
+          type: "waste",
+          label: "Waste",
+          length: remaining,
+        });
+      }
+    } else {
+      wasteSegments.push({
+        type: "waste",
+        label: "Waste",
+        length: wasteLength,
+      });
+    }
+
     const segments: VisualSegment[] = [
       ...expandedCuts.map((cut) => ({
         type: "cut" as const,
         label: normalizeBarCode(cut.barCode),
         length: roundValue(cut.length),
       })),
-      {
-        type: "waste",
-        label: "Waste",
-        length: wasteLength,
-      },
+      ...wasteSegments,
     ];
     const key = createGroupKey(isFromWaste, barLength, segments);
     const existing = groupsByKey.get(key);

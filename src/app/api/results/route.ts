@@ -171,6 +171,14 @@ export async function POST(req: NextRequest) {
     
     console.log(`[Results] Waste pieces reused: ${wastePiecesReused}`);
 
+    // Total stock length in meters: sum of all bar lengths (new bars * 12m + waste piece lengths)
+    const patternStockLength = bestResult.patterns?.reduce(
+      (sum, p) => sum + (Number.isFinite(p.standardBarLength) ? p.standardBarLength : 0), 0
+    ) ?? 0;
+    const totalStockLengthM = patternStockLength > 0
+      ? patternStockLength
+      : bestResult.totalBarsUsed * 12;
+
     const pgResult = await prisma.calculationResult.create({
       data: {
         sheetId,
@@ -182,6 +190,9 @@ export async function POST(req: NextRequest) {
         averageUtilization: bestResult.averageUtilization,
         executionTime: bestResult.executionTime,
         mongoResultId: mongoResult.insertedId.toString(),
+        version: 1,
+        baselineWaste: bestResult.totalWaste,
+        totalStockLength: totalStockLengthM,
       },
     });
 

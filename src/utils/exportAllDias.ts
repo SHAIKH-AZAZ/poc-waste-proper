@@ -15,7 +15,7 @@ type AlgorithmKey = "greedy" | "dynamic";
 const STANDARD_BAR_LENGTH_M = 12.0;
 const STANDARD_REPORT_DIAS = [8, 10, 12, 16, 20, 25, 32, 40];
 
-interface DiaSummaryResult {
+export interface DiaSummaryResult {
   dia: number;
   demandLength: number;
   greedy?: CuttingStockResult;
@@ -35,7 +35,7 @@ export async function exportAllDiasToExcel(
   onProgress?: (dia: number, current: number, total: number) => void,
   generatedWaste: any[] = [], // Optional generated waste for live tracking
   availableWaste: WastePiece[] = [] // Inventory to reuse (always-reuse on export)
-): Promise<void> {
+): Promise<Map<number, DiaSummaryResult>> {
   const uniqueDias = getUniqueDiaFromDisplay(displayData);
   const preprocessor = new CuttingStockPreprocessor();
   const workerManager = getWorkerManager();
@@ -134,6 +134,212 @@ export async function exportAllDiasToExcel(
   // Generate Excel file
   const excelFileName = `cutting_stock_all_dias_${fileName.replace(/\.[^/.]+$/, "")}.xlsx`;
   XLSX.writeFile(workbook, excelFileName, { cellStyles: true });
+
+  return diaResults;
+}
+
+export interface SavedDiaResult {
+  dia: number;
+  algorithm: string;
+  result: CuttingStockResult;
+}
+
+function methodLabel(algorithm: string): string {
+  const a = (algorithm || "").toLowerCase();
+  if (a === "greedy") return "Greedy";
+  if (a === "dynamic" || a === "true-dynamic") return "Dynamic";
+  return algorithm ? algorithm.charAt(0).toUpperCase() + algorithm.slice(1) : "Result";
+}
+
+/**
+ * Re-export an already-calculated sheet to Excel WITHOUT recomputing.
+ * Uses the saved (best) result per diameter and only refreshes the live
+ * "RECOVERED → used in Sheet X" annotations via patchResultWithLiveWaste.
+ * Read-only: no DB writes, no version changes.
+ */
+export async function exportSavedResultsToExcel(
+  saved: SavedDiaResult[],
+  fileName: string,
+  generatedWaste: any[] = [],
+): Promise<void> {
+  const generatedAt = new Date();
+  const projectName = getProjectNameFromFileName(fileName);
+  const workbook = XLSX.utils.book_new();
+
+  // dia -> { algorithm, patched result }
+  const patchedByDia = new Map<number, { algorithm: string; result: CuttingStockResult }>();
+
+  const sortedSaved = [...saved].sort((a, b) => a.dia - b.dia);
+
+  for (const entry of sortedSaved) {
+    const patched =
+      generatedWaste.length > 0
+        ? patchResultWithLiveWaste(entry.result, generatedWaste)
+        : entry.result;
+
+    patchedByDia.set(entry.dia, { algorithm: entry.algorithm, result: patched });
+    addDiaSheet(
+      workbook,
+      patched,
+      `Dia ${entry.dia} - ${methodLabel(entry.algorithm)}`,
+      projectName,
+      generatedAt,
+    );
+  }
+
+  const summaryData = createBestOnlySummaryData(fileName, patchedByDia);
+  const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+  summarySheet["!cols"] = [
+    { wch: 8 },   // Dia
+    { wch: 12 },  // Method
+    { wch: 14 },  // New 12m Bars
+    { wch: 20 },  // Total Stock Length
+    { wch: 12 },  // Waste
+    { wch: 10 },  // Waste %
+    { wch: 14 },  // Utilization %
+    { wch: 14 },  // From Inventory
+    { wch: 23 },  // Reusable Pcs
+    { wch: 16 },  // Reusable
+    { wch: 16 },  // Largest Offcut
+  ];
+  applyBestOnlySummaryFormatting(summarySheet, patchedByDia.size);
+  XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
+
+  const excelFileName = `cutting_stock_all_dias_${fileName.replace(/\.[^/.]+$/, "")}.xlsx`;
+  XLSX.writeFile(workbook, excelFileName, { cellStyles: true });
+}
+
+function applyBestOnlySummaryFormatting(
+  worksheet: XLSX.WorkSheet,
+  diaCount: number,
+): void {
+  // Row layout (see createBestOnlySummaryData):
+  // 0 main title | 1 File | 2 Generated | 3 blank | 4 section title | 5 header | 6.. data | total
+  const mainTitleRow = 0;
+  const sectionTitleRow = 4;
+  const headerRow = 5;
+  const firstDataRow = 6;
+  const totalRow = firstDataRow + diaCount;
+
+  worksheet["!merges"] = [
+    { s: { r: mainTitleRow, c: 0 }, e: { r: mainTitleRow, c: SUMMARY_COL_END } },
+    { s: { r: sectionTitleRow, c: 0 }, e: { r: sectionTitleRow, c: SUMMARY_COL_END } },
+  ];
+
+  worksheet["!rows"] = worksheet["!rows"] ?? [];
+  worksheet["!rows"][mainTitleRow] = { hpt: 24 };
+  worksheet["!rows"][sectionTitleRow] = { hpt: 22 };
+  worksheet["!rows"][headerRow] = { hpt: 38 };
+
+  applyStyleToRange(worksheet, mainTitleRow, 0, mainTitleRow, SUMMARY_COL_END, MAIN_TITLE_STYLE);
+  applyStyleToRange(worksheet, 1, 0, 2, 1, {
+    alignment: { vertical: "center", wrapText: true },
+  });
+
+  applyStyleToRange(worksheet, sectionTitleRow, 0, sectionTitleRow, SUMMARY_COL_END, SECTION_TITLE_STYLE);
+  applyStyleToRange(worksheet, headerRow, 0, headerRow, SUMMARY_COL_END, HEADER_STYLE);
+  applyStyleToRange(worksheet, firstDataRow, 0, totalRow, SUMMARY_COL_END, BASE_SUMMARY_STYLE);
+  applyStyleToRange(worksheet, totalRow, 0, totalRow, SUMMARY_COL_END, TOTAL_ROW_STYLE);
+
+  // Center the Dia + Method columns for data + total rows.
+  applyStyleToRange(worksheet, firstDataRow, 0, totalRow, 1, {
+    alignment: { horizontal: "center", vertical: "center", wrapText: true },
+  });
+}
+
+function createBestOnlySummaryData(
+  fileName: string,
+  patchedByDia: Map<number, { algorithm: string; result: CuttingStockResult }>,
+): SummaryCell[][] {
+  const rows: SummaryCell[][] = [
+    ["CUTTING STOCK OPTIMIZATION - SAVED RESULTS"],
+    ["File:", fileName],
+    ["Generated:", new Date().toLocaleString()],
+    [],
+    ["RESULTS SUMMARY"],
+    [
+      "Dia",
+      "Method",
+      "New 12m Bars",
+      "Total Stock Length (m)",
+      "Waste (m)",
+      "Waste %",
+      "Utilization %",
+      "From Inventory",
+      "Reusable Pcs (>=1m)",
+      "Reusable (m)",
+      "Largest Offcut (m)",
+    ],
+  ];
+
+  const totals = {
+    newBars: 0,
+    stockLength: 0,
+    wasteLength: 0,
+    fromInventory: 0,
+    reusablePieces: 0,
+    reusableWasteLength: 0,
+    largestOffcut: 0,
+  };
+
+  const dias = [...patchedByDia.keys()].sort((a, b) => a - b);
+
+  for (const dia of dias) {
+    const entry = patchedByDia.get(dia)!;
+    const result = entry.result;
+
+    const fromInventory = countFromInventory(result);
+    const newBars = getNewBarCount(result, fromInventory);
+    const stockLength = getTotalStockLength(result);
+    const wasteLength = result.totalWaste;
+    const wastePercentage = stockLength > 0 ? (wasteLength / stockLength) * 100 : 0;
+    const utilizationPercentage = stockLength > 0 ? 100 - wastePercentage : 0;
+    const reusablePieces = result.summary.reusablePieces ?? 0;
+    const reusableWasteLength = result.summary.reusableWasteLength ?? 0;
+    const largestOffcut = result.summary.largestOffcut ?? 0;
+
+    totals.newBars += newBars;
+    totals.stockLength += stockLength;
+    totals.wasteLength += wasteLength;
+    totals.fromInventory += fromInventory;
+    totals.reusablePieces += reusablePieces;
+    totals.reusableWasteLength += reusableWasteLength;
+    totals.largestOffcut = Math.max(totals.largestOffcut, largestOffcut);
+
+    rows.push([
+      dia,
+      methodLabel(entry.algorithm),
+      newBars,
+      roundValue(stockLength),
+      roundValue(wasteLength),
+      roundValue(wastePercentage, 2),
+      roundValue(utilizationPercentage, 2),
+      fromInventory,
+      reusablePieces,
+      roundValue(reusableWasteLength),
+      roundValue(largestOffcut),
+    ]);
+  }
+
+  const totalWastePercentage =
+    totals.stockLength > 0 ? (totals.wasteLength / totals.stockLength) * 100 : 0;
+  const totalUtilization = totals.stockLength > 0 ? 100 - totalWastePercentage : 0;
+
+  rows.push([
+    "TOTAL",
+    "",
+    totals.newBars,
+    roundValue(totals.stockLength),
+    roundValue(totals.wasteLength),
+    roundValue(totalWastePercentage, 2),
+    roundValue(totalUtilization, 2),
+    totals.fromInventory,
+    totals.reusablePieces,
+    roundValue(totals.reusableWasteLength),
+    roundValue(totals.largestOffcut),
+  ]);
+
+  return rows;
 }
 
 function getReportDias(uniqueDias: number[]): number[] {
@@ -751,6 +957,10 @@ function patchResultWithLiveWaste(result: CuttingStockResult, generatedWaste: an
         // Update cut properties
         cut.isWasteRecovered = true;
         cut.recoveredAmount = recoveredAmount; // m
+        cut.usedInSheetName = recoveredWaste.usages
+          .map((u: any) => u.usedInSheet?.fileName ?? "another sheet")
+          .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)
+          .join(", ");
         
         // Subtract from WASTE
         const originalWaste = cut.waste;

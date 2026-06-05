@@ -12,7 +12,11 @@ import {
   IconBolt,
   IconTrash,
   IconDownload,
-  IconLoader
+  IconLoader,
+  IconChartBar,
+  IconTrendingDown,
+  IconRecycle,
+  IconChevronDown,
 } from "@tabler/icons-react";
 import ClientOnly from "../ui/ClientOnly";
 
@@ -20,6 +24,22 @@ import type { BarCuttingDisplay } from "@/types/BarCuttingRow";
 
 // Type for a single Excel row
 export type ExcelRow = BarCuttingDisplay;
+
+interface ReusedPieceInfo {
+  dia: number;
+  usedInSheetName: string;
+  sourceBarNumber: number;
+  recoveredLength: number;
+}
+
+interface SheetWasteStats {
+  v1WastePercentage: number;
+  currentWastePercentage: number;
+  currentVersion: number;
+  totalWasteLength: number;
+  diasProcessed: number;
+  reusedPiecesBreakdown: ReusedPieceInfo[];
+}
 
 interface FileInfoCardProps {
   fileName: string;
@@ -37,6 +57,7 @@ interface FileInfoCardProps {
     isVeryLargeDataset: boolean;
   };
   isDownloading?: boolean;
+  wasteStats?: SheetWasteStats | null;
 }
 
 const FileInfoCard: React.FC<FileInfoCardProps> = ({
@@ -50,6 +71,7 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
   totalRows,
   datasetSizeInfo,
   isDownloading = false,
+  wasteStats = null,
 }) => {
 
 
@@ -150,6 +172,113 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Waste Stats (versioned) */}
+            {wasteStats && (
+              <div className="mb-6 border border-slate-100 rounded-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-2.5 flex items-center gap-2 border-b border-slate-100">
+                  <IconChartBar size={16} className="text-emerald-600" />
+                  <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider">
+                    Waste Analysis
+                  </span>
+                  {wasteStats.currentVersion > 1 && (
+                    <span className="ml-auto text-xs bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full">
+                      v{wasteStats.currentVersion}
+                    </span>
+                  )}
+                </div>
+
+                <div className="p-3">
+                  {wasteStats.currentVersion <= 1 ? (
+                    /* Single version: no reuse yet */
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-green-50 p-3 rounded-xl border border-green-100">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <IconChartBar size={13} className="text-green-500" />
+                          <p className="text-xs text-green-600 font-medium uppercase tracking-wider">Waste %</p>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xl font-bold text-green-700">
+                            <ClientOnly fallback={<span>{wasteStats.currentWastePercentage.toFixed(1)}</span>}>
+                              <AnimatedNumber value={parseFloat(wasteStats.currentWastePercentage.toFixed(1))} />
+                            </ClientOnly>
+                          </span>
+                          <span className="text-xs text-green-500">%</span>
+                        </div>
+                        <p className="text-xs text-green-400 mt-0.5">v1 · baseline</p>
+                      </div>
+                      <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100">
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <IconChartBar size={13} className="text-indigo-500" />
+                          <p className="text-xs text-indigo-600 font-medium uppercase tracking-wider">Utilization</p>
+                        </div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-xl font-bold text-indigo-700">
+                            <ClientOnly fallback={<span>{(100 - wasteStats.currentWastePercentage).toFixed(1)}</span>}>
+                              <AnimatedNumber value={parseFloat((100 - wasteStats.currentWastePercentage).toFixed(1))} />
+                            </ClientOnly>
+                          </span>
+                          <span className="text-xs text-indigo-500">%</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Multi-version: show improvement */
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-3 gap-2 items-center">
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center">
+                          <p className="text-xs text-slate-500 font-medium mb-1">v1 Baseline</p>
+                          <p className="text-lg font-bold text-slate-600">
+                            {wasteStats.v1WastePercentage.toFixed(1)}
+                            <span className="text-xs font-normal">%</span>
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-center gap-1">
+                          <IconTrendingDown size={18} className="text-emerald-500" />
+                          <span className="text-xs text-emerald-600 font-bold">
+                            ▼{(wasteStats.v1WastePercentage - wasteStats.currentWastePercentage).toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 text-center">
+                          <p className="text-xs text-emerald-600 font-medium mb-1">v{wasteStats.currentVersion} Current</p>
+                          <p className="text-lg font-bold text-emerald-700">
+                            {wasteStats.currentWastePercentage.toFixed(1)}
+                            <span className="text-xs font-normal">%</span>
+                          </p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-400 text-center">
+                        Waste reduced by reusing this sheet's offcuts in later sheets
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Reuse Breakdown */}
+                  {wasteStats.reusedPiecesBreakdown.length > 0 && (
+                    <details className="mt-3 group">
+                      <summary className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-emerald-700 select-none list-none [&::-webkit-details-marker]:hidden">
+                        <IconRecycle size={14} className="text-emerald-600" />
+                        {wasteStats.reusedPiecesBreakdown.length} bar offcut{wasteStats.reusedPiecesBreakdown.length > 1 ? "s" : ""} reused from this sheet
+                        <IconChevronDown size={13} className="ml-auto text-slate-400 transition-transform duration-200 group-open:rotate-180" />
+                      </summary>
+                      <ul className="mt-2 space-y-1 pl-1">
+                        {wasteStats.reusedPiecesBreakdown.map((piece, i) => (
+                          <li key={i} className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 rounded-lg px-2.5 py-1.5 border border-slate-100">
+                            <span className="font-semibold text-slate-700">Dia {piece.dia}</span>
+                            <span className="text-slate-400">·</span>
+                            <span>Bar #{piece.sourceBarNumber}</span>
+                            <span className="text-slate-400">→</span>
+                            <span className="text-emerald-600 font-medium">{piece.recoveredLength.toFixed(3)}m</span>
+                            <span className="text-slate-400">used in</span>
+                            <span className="font-medium truncate max-w-[120px]" title={piece.usedInSheetName}>{piece.usedInSheetName}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Warnings */}
             {datasetSizeInfo?.isLargeDataset && (

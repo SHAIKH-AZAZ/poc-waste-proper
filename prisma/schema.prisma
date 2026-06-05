@@ -59,6 +59,9 @@ model CalculationResult {
   averageUtilization  Decimal   @db.Decimal(5, 2)
   executionTime       Decimal   @db.Decimal(10, 2)
   mongoResultId       String?   // Reference to MongoDB calculation_results collection
+  version             Int       @default(1)
+  baselineWaste       Decimal?  @db.Decimal(10,3)
+  totalStockLength    Decimal?  @db.Decimal(10,3)
   createdAt           DateTime  @default(now())
 
   @@unique([sheetId, dia])  // One result per dia per sheet
