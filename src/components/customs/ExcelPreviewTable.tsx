@@ -92,71 +92,63 @@ export default function ExcelPreviewTable({ data, selectedDia }: ExcelPreviewTab
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden ring-1 ring-slate-100 flex flex-col h-[700px] animate-fade-in text-black">
+    <div className="card-surface flex h-[700px] w-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="bg-white border-b border-slate-100 px-6 py-4 flex items-center justify-between flex-shrink-0">
-        <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 border border-blue-100">
-            <IconTable size={20} />
-          </div>
+      <div className="flex flex-shrink-0 items-center justify-between border-b border-[var(--color-line)] px-6 py-4">
+        <h2 className="flex items-center gap-2.5 font-display text-[17px] font-bold tracking-[-0.02em]">
+          <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-accent/10 text-accent">
+            <IconTable size={18} />
+          </span>
           Excel Data Preview
           {selectedDia && (
-            <span className="bg-green-50 text-green-700 px-2.5 py-1 rounded-full text-xs font-medium border border-green-100">
-              Filtered: Dia {selectedDia}
+            <span className="rounded-full bg-grass/[0.14] px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-grass">
+              Ø{selectedDia}
             </span>
           )}
         </h2>
-        <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-          <span className="font-semibold text-slate-700">{data.length}</span> total rows
-          <span className="w-px h-3 bg-slate-300 mx-1"></span>
-          <span className="font-semibold text-slate-700">{headers.length}</span> columns
+        <div className="flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-canvas px-3 py-1.5 font-body text-xs text-ink-3">
+          <span className="font-display font-bold text-ink">{data.length}</span> rows
+          <span className="mx-1 h-3 w-px bg-[var(--color-line-2)]" />
+          <span className="font-display font-bold text-ink">{headers.length}</span> cols
         </div>
       </div>
 
       {/* Table Container - Flex grow to fill remaining height */}
       <div className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-50 relative">
-        <table className="border-collapse bg-white w-full">
-          <thead className="bg-white/70 backdrop-blur-md sticky top-0 z-20">
+        <table className="w-full border-collapse bg-white">
+          <thead className="sticky top-0 z-20 bg-white/80 backdrop-blur-md">
             <tr>
               {/* Row Number Column Header */}
-              <th className="sticky left-0 z-30 bg-white/70 backdrop-blur-md border-r border-b border-slate-200 w-12 px-2 py-3 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">
+              <th className="sticky left-0 z-30 w-12 border-b border-r border-[var(--color-line)] bg-white/80 px-2 py-3 text-center font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink-3 backdrop-blur-md">
                 #
               </th>
               {headers.map((header, i) => (
                 <th
                   key={i}
-                  className="border-r border-b border-slate-200 px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider whitespace-nowrap bg-white/70 backdrop-blur-md"
-                  style={{
-                    minWidth: `${columnWidths[i]}px`,
-                  }}
+                  className="whitespace-nowrap border-b border-r border-[var(--color-line)] bg-white/80 px-4 py-3 text-left font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink-3 backdrop-blur-md"
+                  style={{ minWidth: `${columnWidths[i]}px` }}
                 >
-                  <div className="flex items-center gap-1 group cursor-default">
-                    {header}
-                  </div>
+                  {header}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {paginatedData.map((row, i) => {
-              // Calculate global index
               const globalIndex = (currentPage - 1) * itemsPerPage + i + 1;
               return (
-                <tr
-                  key={i}
-                  className="group hover:bg-blue-50/50 transition-colors duration-150"
-                >
+                <tr key={i} className="group border-b border-[var(--color-line)] transition-colors duration-150 hover:bg-accent/[0.04]">
                   {/* Row Number */}
-                  <td className="sticky left-0 bg-slate-50 group-hover:bg-blue-50/50 border-r border-slate-100 font-mono text-xs text-slate-400 text-center py-2 px-2 select-none z-10">
+                  <td className="sticky left-0 z-10 select-none border-r border-[var(--color-line)] bg-canvas px-2 py-2 text-center font-mono text-xs text-ink-3 group-hover:bg-accent/[0.04]">
                     {globalIndex}
                   </td>
 
                   {Object.values(row).map((val, j) => (
                     <td
                       key={j}
-                      className={`border-r border-slate-100 px-4 py-2.5 text-sm whitespace-nowrap ${getColumnType(j) === "number"
-                        ? "text-right font-mono text-slate-600"
-                        : "text-left text-slate-700 font-medium"
+                      className={`whitespace-nowrap border-r border-[var(--color-line)] px-4 py-2.5 text-sm ${getColumnType(j) === "number"
+                        ? "text-right font-mono text-ink-2"
+                        : "text-left font-body font-medium text-ink"
                         }`}
                     >
                       {renderCell(val, headers[j]) as React.ReactNode}
@@ -170,18 +162,18 @@ export default function ExcelPreviewTable({ data, selectedDia }: ExcelPreviewTab
       </div>
 
       {/* Pagination Footer */}
-      <div className="bg-slate-50 border-t border-slate-100 px-4 py-3 flex items-center justify-between flex-shrink-0 text-sm">
+      <div className="flex flex-shrink-0 items-center justify-between border-t border-[var(--color-line)] px-4 py-3 text-sm">
 
         {/* Left: Items per page */}
         <div className="flex items-center gap-2">
-          <span className="text-slate-500">Rows per page:</span>
+          <span className="font-body text-xs text-ink-3">Rows per page</span>
           <select
             value={itemsPerPage}
             onChange={(e) => {
               setItemsPerPage(Number(e.target.value));
               setCurrentPage(1);
             }}
-            className="bg-white border border-slate-300 text-slate-700 text-sm rounded-md focus:ring-blue-500 focus:border-blue-500 block p-1"
+            className="rounded-lg border border-[var(--color-line-2)] bg-white px-2 py-1 font-body text-xs text-ink-2 outline-none focus:border-accent"
           >
             <option value={20}>20</option>
             <option value={50}>50</option>
@@ -191,51 +183,31 @@ export default function ExcelPreviewTable({ data, selectedDia }: ExcelPreviewTab
         </div>
 
         {/* Center: Page Info */}
-        <div className="flex items-center gap-4 text-slate-600">
-          <span className="text-slate-400 hidden sm:inline">
-            Showing {Math.min((currentPage - 1) * itemsPerPage + 1, data.length)} - {Math.min(currentPage * itemsPerPage, data.length)} of {data.length}
-          </span>
-        </div>
+        <span className="hidden font-body text-xs text-ink-3 sm:inline">
+          Showing {Math.min((currentPage - 1) * itemsPerPage + 1, data.length)} – {Math.min(currentPage * itemsPerPage, data.length)} of {data.length}
+        </span>
 
         {/* Right: Navigation */}
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => goToPage(1)}
-            disabled={currentPage === 1}
-            className="p-1 rounded-md hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent text-slate-600 transition-colors"
-            title="First Page"
-          >
-            <IconChevronsLeft size={18} />
-          </button>
-          <button
-            onClick={() => goToPage(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="p-1 rounded-md hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent text-slate-600 transition-colors"
-            title="Previous Page"
-          >
-            <IconChevronLeft size={18} />
-          </button>
-
-          <div className="px-3 py-1 bg-white rounded-md border border-slate-200 text-slate-700 font-medium min-w-[3rem] text-center">
-            {currentPage} <span className="text-slate-400 font-normal">/ {totalPages}</span>
+          {[
+            { fn: () => goToPage(1), dis: currentPage === 1, Ic: IconChevronsLeft, t: "First Page" },
+            { fn: () => goToPage(currentPage - 1), dis: currentPage === 1, Ic: IconChevronLeft, t: "Previous Page" },
+          ].map((b, i) => (
+            <button key={i} onClick={b.fn} disabled={b.dis} title={b.t} className="rounded-full p-1.5 text-ink-2 transition-colors hover:bg-canvas disabled:opacity-30 disabled:hover:bg-transparent">
+              <b.Ic size={17} />
+            </button>
+          ))}
+          <div className="min-w-[3rem] px-2 text-center font-mono text-xs font-bold text-ink">
+            {currentPage} <span className="font-normal text-ink-3">/ {totalPages}</span>
           </div>
-
-          <button
-            onClick={() => goToPage(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="p-1 rounded-md hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent text-slate-600 transition-colors"
-            title="Next Page"
-          >
-            <IconChevronRight size={18} />
-          </button>
-          <button
-            onClick={() => goToPage(totalPages)}
-            disabled={currentPage === totalPages}
-            className="p-1 rounded-md hover:bg-white disabled:opacity-30 disabled:hover:bg-transparent text-slate-600 transition-colors"
-            title="Last Page"
-          >
-            <IconChevronsRight size={18} />
-          </button>
+          {[
+            { fn: () => goToPage(currentPage + 1), dis: currentPage === totalPages, Ic: IconChevronRight, t: "Next Page" },
+            { fn: () => goToPage(totalPages), dis: currentPage === totalPages, Ic: IconChevronsRight, t: "Last Page" },
+          ].map((b, i) => (
+            <button key={i} onClick={b.fn} disabled={b.dis} title={b.t} className="rounded-full p-1.5 text-ink-2 transition-colors hover:bg-canvas disabled:opacity-30 disabled:hover:bg-transparent">
+              <b.Ic size={17} />
+            </button>
+          ))}
         </div>
       </div>
     </div>

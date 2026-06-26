@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { IconArrowLeft, IconRecycle, IconX } from "@tabler/icons-react";
+import { IconArrowLeft, IconRecycle, IconX, IconRefresh, IconBolt, IconDeviceFloppy, IconAlertTriangle } from "@tabler/icons-react";
 import ExcelPreviewTable from "@/components/customs/ExcelPreviewTable";
 import DiaFilter from "@/components/customs/DiaFilter";
 import FileInfoCard from "@/components/customs/FileInfoCard";
@@ -958,54 +958,54 @@ export default function SheetPage() {
 
         {/* Error */}
         {calculationError && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
-            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-red-600 text-lg">!</span>
+          <div className="mb-[18px] flex items-center gap-3 rounded-[14px] border border-rose-200 bg-rose-50 p-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+              <IconAlertTriangle size={18} />
             </div>
-            <p className="text-red-700">{calculationError}</p>
+            <p className="font-body text-[13.5px] text-rose-700">{calculationError}</p>
           </div>
         )}
 
         {/* Waste Prompt Modal */}
         {showWastePrompt && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6 animate-in fade-in zoom-in duration-200">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-emerald-400 to-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                  <IconRecycle className="w-6 h-6 text-white" />
+          <div className="anim-fade-up fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(15,17,23,0.45)] p-5 backdrop-blur-[6px]">
+            <div className="w-full max-w-lg rounded-[24px] border border-[var(--color-line)] bg-white p-7 shadow-[0_30px_80px_rgba(0,0,0,0.3)]">
+              <div className="mb-4 flex items-center gap-3.5">
+                <div className="flex h-[46px] w-[46px] items-center justify-center rounded-[13px] bg-gradient-to-br from-grass to-[#059669] shadow-[0_8px_20px_rgba(16,185,129,0.3)]">
+                  <IconRecycle className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-slate-900">Reuse Waste?</h2>
-                  <p className="text-sm text-slate-500">Available waste for Dia {selectedDia}mm</p>
+                  <h2 className="font-display text-[19px] font-extrabold tracking-[-0.03em]">Reuse offcuts?</h2>
+                  <p className="font-body text-[12.5px] text-ink-2">Available offcut for Ø{selectedDia}mm</p>
                 </div>
               </div>
 
-              <div className="bg-slate-50 rounded-xl p-4 mb-4 max-h-48 overflow-y-auto">
+              <div className="mb-4 max-h-48 overflow-y-auto rounded-[13px] border border-[var(--color-line)] bg-canvas p-4">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-slate-500">
-                      <th className="pb-2 font-medium">Length</th>
-                      <th className="pb-2 font-medium">Source Sheet</th>
-                      <th className="pb-2 font-medium">From Bar #</th>
+                    <tr className="text-left font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink-3">
+                      <th className="pb-2">Length</th>
+                      <th className="pb-2">Source Sheet</th>
+                      <th className="pb-2">From Bar #</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200">
+                  <tbody className="divide-y divide-[var(--color-line)]">
                     {wasteForCurrentDia.map((w, i) => (
                       <tr key={i}>
-                        <td className="py-2.5 font-semibold text-slate-900">{formatLength(w.length)}</td>
-                        <td className="py-2.5 text-slate-600">
+                        <td className="py-2.5 font-display font-bold text-ink">{formatLength(w.length)}</td>
+                        <td className="py-2.5 font-body text-ink-2">
                           <div>Sheet #{w.sourceSheetNumber || w.sourceSheetId}</div>
-                          {w.sourceSheetName && <div className="text-xs text-slate-400 truncate max-w-[120px]">{w.sourceSheetName}</div>}
+                          {w.sourceSheetName && <div className="max-w-[120px] truncate text-[11px] text-ink-3">{w.sourceSheetName}</div>}
                         </td>
-                        <td className="py-2.5 text-slate-600">Bar #{w.sourceBarNumber || "?"}</td>
+                        <td className="py-2.5 font-body text-ink-2">Bar #{w.sourceBarNumber || "?"}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              <div className="bg-blue-50 rounded-xl p-4 mb-6 border border-blue-100">
-                <p className="text-sm text-blue-800">
+              <div className="mb-6 rounded-[13px] border border-accent/15 bg-accent/[0.06] p-4">
+                <p className="font-body text-[13px] text-accent-deep">
                   <span className="font-bold">{wasteForCurrentDia.length}</span> pieces available,{" "}
                   <span className="font-bold">{formatLength(wasteForCurrentDia.reduce((sum, w) => sum + w.length, 0))}</span> total length
                 </p>
@@ -1014,15 +1014,15 @@ export default function SheetPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => runCalculation(selectedDia!, false, [])}
-                  className="flex-1 px-4 py-3 border-2 border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all font-medium"
+                  className="flex-1 rounded-full border-[1.5px] border-[var(--color-line-2)] px-4 py-3 font-body text-[14px] font-bold text-ink-2 transition-all hover:bg-canvas hover:text-ink"
                 >
                   Use New Bars Only
                 </button>
                 <button
                   onClick={() => runCalculation(selectedDia!, true, wasteForCurrentDia)}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:from-emerald-600 hover:to-green-700 transition-all font-medium shadow-lg shadow-emerald-500/20"
+                  className="flex-1 rounded-full bg-grass px-4 py-3 font-body text-[14px] font-bold text-white shadow-[0_8px_24px_rgba(16,185,129,0.34)] transition-all hover:-translate-y-0.5 hover:bg-[#059669]"
                 >
-                  Yes, Reuse Waste
+                  Yes, Reuse Offcuts
                 </button>
               </div>
             </div>
@@ -1031,35 +1031,35 @@ export default function SheetPage() {
 
         {/* Download All Dias — Waste Prompt Modal */}
         {showDownloadWastePrompt && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 p-6 animate-in fade-in zoom-in duration-200">
-              <div className="flex items-start gap-3 mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20 flex-shrink-0">
-                  <IconRecycle className="w-6 h-6 text-white" />
+          <div className="anim-fade-up fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(15,17,23,0.45)] p-5 backdrop-blur-[6px]">
+            <div className="w-full max-w-lg rounded-[24px] border border-[var(--color-line)] bg-white p-7 shadow-[0_30px_80px_rgba(0,0,0,0.3)]">
+              <div className="mb-4 flex items-start gap-3.5">
+                <div className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-[13px] bg-gradient-to-br from-violet-x to-accent shadow-[0_8px_20px_rgba(168,85,247,0.3)]">
+                  <IconRecycle className="h-6 w-6 text-white" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-xl font-bold text-slate-900">Reuse Waste for Export?</h2>
-                  <p className="text-sm text-slate-500">Available inventory across all diameters</p>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-display text-[19px] font-extrabold tracking-[-0.03em]">Reuse offcuts for export?</h2>
+                  <p className="font-body text-[12.5px] text-ink-2">Available inventory across all diameters</p>
                 </div>
                 <button
                   onClick={() => setShowDownloadWastePrompt(false)}
                   aria-label="Close"
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors flex-shrink-0"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-ink-3 transition-colors hover:bg-canvas hover:text-ink"
                 >
-                  <IconX className="w-5 h-5" />
+                  <IconX className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="bg-slate-50 rounded-xl p-4 mb-4 max-h-56 overflow-y-auto">
+              <div className="mb-4 max-h-56 overflow-y-auto rounded-[13px] border border-[var(--color-line)] bg-canvas p-4">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-left text-slate-500">
-                      <th className="pb-2 font-medium">Dia</th>
-                      <th className="pb-2 font-medium text-center">Pieces</th>
-                      <th className="pb-2 font-medium text-right">Total Length</th>
+                    <tr className="text-left font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink-3">
+                      <th className="pb-2">Dia</th>
+                      <th className="pb-2 text-center">Pieces</th>
+                      <th className="pb-2 text-right">Total Length</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200">
+                  <tbody className="divide-y divide-[var(--color-line)]">
                     {(() => {
                       const groups = new Map<number, { count: number; totalMm: number }>();
                       downloadAvailableWaste.forEach((w) => {
@@ -1072,9 +1072,9 @@ export default function SheetPage() {
                         .sort((a, b) => a[0] - b[0])
                         .map(([dia, g]) => (
                           <tr key={dia}>
-                            <td className="py-2.5 font-semibold text-slate-900">Dia {dia}mm</td>
-                            <td className="py-2.5 text-slate-600 text-center">{g.count}</td>
-                            <td className="py-2.5 text-slate-600 text-right font-mono">{formatLength(g.totalMm)}</td>
+                            <td className="py-2.5 font-display font-bold text-ink">Ø{dia}mm</td>
+                            <td className="py-2.5 text-center font-body text-ink-2">{g.count}</td>
+                            <td className="py-2.5 text-right font-mono text-ink-2">{formatLength(g.totalMm)}</td>
                           </tr>
                         ));
                     })()}
@@ -1082,26 +1082,26 @@ export default function SheetPage() {
                 </table>
               </div>
 
-              <div className="bg-purple-50 rounded-xl p-4 mb-6 border border-purple-100">
-                <p className="text-sm text-purple-800">
+              <div className="mb-6 rounded-[13px] border border-violet-x/15 bg-violet-x/[0.07] p-4">
+                <p className="font-body text-[13px] text-[#7e22ce]">
                   <span className="font-bold">{downloadAvailableWaste.length}</span> total pieces,{" "}
                   <span className="font-bold">{formatLength(downloadAvailableWaste.reduce((sum, w) => sum + w.length, 0))}</span> total length.
-                  Reusing inventory recomputes each diameter with available waste pieces first.
+                  Reusing inventory recomputes each diameter with available offcuts first.
                 </p>
               </div>
 
               <div className="flex gap-3">
                 <button
                   onClick={() => performDownloadAllDias(false, [])}
-                  className="flex-1 px-4 py-3 border-2 border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all font-medium"
+                  className="flex-1 rounded-full border-[1.5px] border-[var(--color-line-2)] px-4 py-3 font-body text-[14px] font-bold text-ink-2 transition-all hover:bg-canvas hover:text-ink"
                 >
                   Use New Bars Only
                 </button>
                 <button
                   onClick={() => performDownloadAllDias(true, downloadAvailableWaste)}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl hover:from-purple-700 hover:to-indigo-700 transition-all font-medium shadow-lg shadow-purple-500/20"
+                  className="flex-1 rounded-full bg-accent px-4 py-3 font-body text-[14px] font-bold text-white shadow-[0_8px_24px_rgba(99,102,241,0.34)] transition-all hover:-translate-y-0.5 hover:bg-accent-deep"
                 >
-                  Yes, Reuse Waste
+                  Yes, Reuse Offcuts
                 </button>
               </div>
             </div>
@@ -1141,12 +1141,12 @@ export default function SheetPage() {
 
         {/* Waste Usage Indicator */}
         {useWaste && selectedDia && (
-          <div className="w-full max-w-7xl mx-auto p-4 bg-gradient-to-r from-emerald-50 to-green-50 border border-emerald-200 rounded-xl shadow-sm mb-6">
+          <div className="mb-[18px] rounded-[14px] border border-grass/20 bg-grass/[0.07] p-4">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <IconRecycle className="w-4 h-4 text-emerald-600" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-grass/15">
+                <IconRecycle className="h-4 w-4 text-grass" />
               </div>
-              <span className="text-emerald-700 font-medium">
+              <span className="font-body text-[13.5px] font-semibold text-[#059669]">
                 {resultsFromCache ? (
                   <span>
                     Reused <span className="font-bold">{
@@ -1174,21 +1174,21 @@ export default function SheetPage() {
 
         {/* Cached Results Indicator */}
         {selectedDia && resultsFromCache && (greedyResult || dynamicResult) && (
-          <div className="w-full max-w-7xl mx-auto p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl shadow-sm mb-6">
+          <div className="mb-[18px] rounded-[14px] border border-accent/20 bg-accent/[0.06] p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <span className="text-blue-600">💾</span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent/15 text-accent">
+                  <IconDeviceFloppy size={16} />
                 </div>
-                <span className="text-blue-700 font-medium">
-                  Loaded saved results for Dia {selectedDia}
+                <span className="font-body text-[13.5px] font-semibold text-accent">
+                  Loaded saved results for Ø{selectedDia}
                 </span>
               </div>
               <button
                 onClick={handleRecalculate}
-                className="px-4 py-2 text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition-colors font-medium"
+                className="flex items-center gap-1.5 rounded-full px-4 py-2 font-body text-[13px] font-bold text-accent transition-colors hover:bg-accent/10"
               >
-                🔄 Recalculate
+                <IconRefresh size={14} /> Recalculate
               </button>
             </div>
           </div>
@@ -1208,13 +1208,13 @@ export default function SheetPage() {
 
         {/* Manual Advanced Trigger */}
         {selectedDia && !isCalculating && (greedyResult || dynamicResult) && (
-          <div className="flex justify-end mb-8 -mt-4">
+          <div className="-mt-1 mb-6 flex justify-end">
             <button
               onClick={runTrueDynamic}
-              className="text-xs text-slate-400 hover:text-blue-600 underline flex items-center gap-1 transition-colors"
+              className="flex items-center gap-1.5 font-body text-[12px] font-semibold text-ink-3 transition-colors hover:text-accent"
               title="Run exact cutting-stock pattern search (slow)"
             >
-              ⚡ Run Exact Cutting-Stock Search
+              <IconBolt size={13} /> Run exact cutting-stock search
             </button>
           </div>
         )}

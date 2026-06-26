@@ -291,7 +291,7 @@ function PatternsCard({ result, title, defaultOpen }: { result: CuttingStockResu
               const reused = !!detail.isFromWaste;
               const recovered = (detail as any).isWasteRecovered;
               return (
-                <div key={`bar-${detail.barNumber}-${idx}`} className="flex items-center gap-[14px] border-b border-[var(--color-line)] py-[14px] last:border-b-0">
+                <div key={`bar-${detail.barNumber}-${idx}`} className="flex items-center gap-[14px] border-b border-[var(--color-line)] py-[11px] last:border-b-0">
                   {/* number + tag */}
                   <div className="flex w-[52px] shrink-0 flex-col items-center gap-1">
                     <div
@@ -320,7 +320,7 @@ function PatternsCard({ result, title, defaultOpen }: { result: CuttingStockResu
                   </div>
                   {/* to-scale bar */}
                   <div className="min-w-0 flex-1">
-                    <div className="flex h-10 overflow-hidden rounded-[10px] border border-[var(--color-line)] bg-[#f1f3f8] shadow-[inset_0_1px_3px_rgba(0,0,0,0.05)]">
+                    <div className="flex h-12 overflow-hidden rounded-[10px] border border-[var(--color-line)] bg-[#f1f3f8]">
                       {detail.cuts.map((c: CutInstruction, ci) => {
                         const code = cleanCode(c.barCode);
                         const colorIdx = colorMap.get(code) ?? 0;
@@ -328,12 +328,15 @@ function PatternsCard({ result, title, defaultOpen }: { result: CuttingStockResu
                         return (
                           <div
                             key={ci}
-                            title={`${code} · ${c.length.toFixed(2)}m`}
-                            className="flex items-center justify-center overflow-hidden border-r-2 border-white/55"
+                            title={`${code} · ${c.length.toFixed(3)}m`}
+                            className="flex flex-col items-center justify-center gap-px overflow-hidden border-r border-white/40 px-1 last:border-r-0"
                             style={{ width: `${w}%`, background: `linear-gradient(180deg, ${PAL[colorIdx]}, ${PAL2[colorIdx]})` }}
                           >
-                            <span className="whitespace-nowrap font-mono text-[9.5px] font-bold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.18)]">
-                              {c.length >= 0.6 ? c.length.toFixed(2) : ""}
+                            {w >= 7 && (
+                              <span className="max-w-full truncate font-mono text-[7.5px] font-semibold leading-none text-white/85">{code}</span>
+                            )}
+                            <span className="font-mono text-[10px] font-bold leading-none text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.22)]">
+                              {c.length >= 0.4 ? c.length.toFixed(2) : ""}
                             </span>
                           </div>
                         );

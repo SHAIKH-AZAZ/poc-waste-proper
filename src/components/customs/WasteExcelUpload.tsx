@@ -77,49 +77,49 @@ export default function WasteExcelUpload({ projectId, onSuccess }: WasteExcelUpl
   return (
     <div className="space-y-4">
       {/* Upload Button */}
-      <div className="bg-white rounded-xl border-2 border-dashed border-slate-300 hover:border-blue-400 transition-all p-6">
+      <div className="rounded-[16px] border-2 border-dashed border-[var(--color-line-2)] bg-white p-6 transition-all hover:border-accent/40">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center">
-            <IconFileSpreadsheet className="w-8 h-8 text-blue-600" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-accent/10 to-sky/[0.08]">
+            <IconFileSpreadsheet className="h-8 w-8 text-accent" />
           </div>
 
           <div className="text-center">
-            <h3 className="font-semibold text-slate-900 mb-1">Upload OFFCUT Excel File</h3>
-            <p className="text-sm text-slate-500">
-              Excel file with waste materials (Dia and Length columns)
+            <h3 className="mb-1 font-display text-[16px] font-bold tracking-[-0.02em]">Upload Offcut Excel File</h3>
+            <p className="font-body text-sm text-ink-2">
+              Excel file with offcut materials (Dia and Length columns)
             </p>
           </div>
 
-          <label className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all cursor-pointer shadow-lg shadow-blue-500/20 font-medium disabled:opacity-50">
+          <label className="flex cursor-pointer items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-body font-bold text-white shadow-[0_8px_24px_rgba(99,102,241,0.34)] transition-all hover:-translate-y-0.5 hover:bg-accent-deep">
             <IconUpload className="w-5 h-5" />
-            {uploading ? "Uploading..." : "Choose Excel File"}
+            {uploading ? "Uploading…" : "Choose Excel File"}
             <input
               ref={fileInputRef}
               type="file"
               accept=".xlsx,.xls"
               onChange={handleFileSelect}
               disabled={uploading}
-              className="absolute opacity-0 w-0 h-0 overflow-hidden"
+              className="absolute h-0 w-0 overflow-hidden opacity-0"
             />
           </label>
 
-          <p className="text-xs text-slate-400">
-            Supported formats: .xlsx, .xls
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-ink-3">
+            .xlsx · .xls
           </p>
         </div>
       </div>
 
       {/* Success Message */}
       {success && (
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+        <div className="rounded-[14px] border border-grass/20 bg-grass/[0.07] p-4">
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <IconCheck className="w-5 h-5 text-emerald-600" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-grass/15">
+              <IconCheck className="h-5 w-5 text-grass" />
             </div>
             <div className="flex-1">
-              <p className="text-emerald-800 font-medium">{success}</p>
+              <p className="font-body font-semibold text-[#059669]">{success}</p>
               {details && (
-                <div className="mt-2 text-sm text-emerald-700">
+                <div className="mt-2 font-body text-sm text-[#059669]">
                   <p>✓ Created: {details.created} pieces{details.rows ? ` from ${details.rows} rows` : ''}</p>
                   {details.skipped > 0 && (
                     <p className="text-amber-700">⚠ Skipped: {details.skipped} rows (validation errors)</p>
@@ -133,17 +133,17 @@ export default function WasteExcelUpload({ projectId, onSuccess }: WasteExcelUpl
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+        <div className="rounded-[14px] border border-rose-200 bg-rose-50 p-4">
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center flex-shrink-0">
-              <IconAlertCircle className="w-5 h-5 text-red-600" />
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100">
+              <IconAlertCircle className="h-5 w-5 text-rose-600" />
             </div>
             <div className="flex-1">
-              <p className="text-red-800 font-medium">{error}</p>
+              <p className="font-body font-semibold text-rose-800">{error}</p>
               {details?.errors && details.errors.length > 0 && (
-                <div className="mt-2 text-sm text-red-700">
-                  <p className="font-medium mb-1">Validation errors:</p>
-                  <ul className="list-disc list-inside space-y-0.5">
+                <div className="mt-2 font-body text-sm text-rose-700">
+                  <p className="mb-1 font-medium">Validation errors:</p>
+                  <ul className="list-inside list-disc space-y-0.5">
                     {details.errors.map((err, i) => (
                       <li key={i}>{err}</li>
                     ))}
@@ -156,9 +156,9 @@ export default function WasteExcelUpload({ projectId, onSuccess }: WasteExcelUpl
       )}
 
       {/* Format Guide */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-        <h4 className="text-sm font-semibold text-blue-900 mb-2">Excel Format Requirements:</h4>
-        <div className="text-sm text-blue-800 space-y-1">
+      <div className="rounded-[14px] border border-accent/15 bg-accent/[0.05] p-4">
+        <h4 className="mb-2 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-accent">Excel Format Requirements</h4>
+        <div className="space-y-1 font-body text-sm text-ink-2">
           <p>• Column 1: <span className="font-mono bg-white px-1 rounded">Dia</span> or <span className="font-mono bg-white px-1 rounded">Diameter</span> (in mm)</p>
           <p>• Column 2: <span className="font-mono bg-white px-1 rounded">Length</span> or <span className="font-mono bg-white px-1 rounded">Cutting Length</span> (in mm, minimum 2000mm)</p>
           <p>• Column 3 (Optional): <span className="font-mono bg-white px-1 rounded">Repetition</span>, <span className="font-mono bg-white px-1 rounded">Quantity</span>, or <span className="font-mono bg-white px-1 rounded">Qty</span> (defaults to 1)</p>

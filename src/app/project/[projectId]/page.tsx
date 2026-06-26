@@ -322,8 +322,8 @@ export default function ProjectPage() {
 
         {/* Error */}
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-700">{error}</p>
+          <div className="mb-[18px] rounded-[14px] border border-rose-200 bg-rose-50 p-4">
+            <p className="font-body text-[13.5px] text-rose-700">{error}</p>
           </div>
         )}
 
@@ -359,158 +359,129 @@ export default function ProjectPage() {
         {loading && (
           <div className="flex items-center justify-center py-16">
             <div className="flex flex-col items-center gap-4">
-              <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-slate-500">Loading project data...</p>
+              <div className="h-12 w-12 animate-spin rounded-full border-4 border-accent border-t-transparent" />
+              <p className="font-body text-ink-2">Loading project data…</p>
             </div>
           </div>
         )}
 
         {/* Sheets Tab */}
         {!loading && activeTab === "sheets" && (
-          <div className="space-y-4">
+          <div className="flex flex-col gap-3.5">
             {sheets.length === 0 ? (
-              <div className="text-center py-16 bg-white rounded-2xl border-2 border-dashed border-slate-200">
-                <IconFile className="w-16 h-16 mx-auto text-slate-300 mb-4" />
-                <h3 className="text-lg font-semibold text-slate-900 mb-2">No sheets yet</h3>
-                <p className="text-slate-500 mb-6 max-w-sm mx-auto">Upload your first Excel sheet to start optimizing</p>
-                <label className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors cursor-pointer font-medium">
-                  <IconUpload className="w-5 h-5" />
+              <div className="rounded-[20px] border-2 border-dashed border-[var(--color-line-2)] bg-white py-16 text-center">
+                <IconFile className="mx-auto mb-4 h-16 w-16 text-ink-3/50" stroke={1.3} />
+                <h3 className="font-display text-lg font-bold">No sheets yet</h3>
+                <p className="mx-auto mb-6 mt-1 max-w-sm font-body text-ink-2">Upload your first Excel sheet to start optimizing</p>
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-accent px-5 py-2.5 font-body font-bold text-white transition-colors hover:bg-accent-deep">
+                  <IconUpload className="h-5 w-5" />
                   Upload Sheet
                   <input type="file" accept=".xlsx,.xls" onChange={handleFileUpload} disabled={uploading} className="hidden" />
                 </label>
               </div>
             ) : (
-              sheets.map((sheet) => (
-                <div key={sheet.id} className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-blue-200 transition-all duration-300">
-                  <div className="p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div className="flex items-start gap-4">
-                      {/* Sheet Icon/Number Badge */}
-                      {(sheet.fileName.toLowerCase().includes('offcut') || 
-                        sheet.fileName.toLowerCase().includes('waste') ||
-                        sheet.fileName.toLowerCase().includes('manual waste upload')) ? (
-                        <div className="w-12 h-12 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl flex items-center justify-center border border-amber-200 shadow-sm flex-shrink-0">
-                          <IconRecycle className="w-6 h-6 text-amber-600" />
-                        </div>
-                      ) : (
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm flex-shrink-0">
-                          <span className="text-lg font-bold text-indigo-600">#{sheet.sheetNumber}</span>
-                        </div>
-                      )}
-                      <div className="min-w-0">
-                        <Link href={`/project/${projectId}/sheet/${sheet.id}`} className="block">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-bold text-slate-900 text-lg hover:text-blue-600 transition-colors truncate">
+              sheets.map((sheet) => {
+                const n = sheet.fileName.toLowerCase();
+                const isW = n.includes("offcut") || n.includes("waste");
+                const calc = sheet.status === "calculated" || sheet.status === "completed";
+                return (
+                  <div key={sheet.id} className="card-surface overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/[0.22] hover:shadow-[var(--shadow-card-h)]">
+                    <div className="flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center">
+                      <div className="flex items-center gap-[15px]">
+                        {isW ? (
+                          <div className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-[13px] border border-amber-x/25 bg-gradient-to-br from-amber-x/15 to-orange-400/10 text-amber-600">
+                            <IconRecycle className="h-6 w-6" />
+                          </div>
+                        ) : (
+                          <div className="flex h-[46px] w-[46px] shrink-0 items-center justify-center rounded-[13px] border border-accent/[0.18] bg-gradient-to-br from-accent/10 to-sky/[0.08] font-display text-[16px] font-extrabold text-accent-deep">
+                            #{sheet.sheetNumber}
+                          </div>
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2.5">
+                            <Link href={`/project/${projectId}/sheet/${sheet.id}`} className="truncate font-display text-[17px] font-bold tracking-[-0.02em] transition-colors hover:text-accent">
                               {sheet.fileName}
-                            </h3>
-                            {/* Waste Only Marker */}
-                            {(sheet.fileName.toLowerCase().includes('offcut') || 
-                              sheet.fileName.toLowerCase().includes('waste') ||
-                              sheet.fileName.toLowerCase().includes('manual waste upload')) && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 text-xs font-bold rounded-full border border-amber-200 shadow-sm flex-shrink-0">
-                                <IconRecycle className="w-3 h-3" />
-                                WASTE ONLY
+                            </Link>
+                            {isW && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-x/[0.14] px-2 py-[3px] font-mono text-[9px] font-bold uppercase tracking-[0.08em] text-amber-700">
+                                <IconRecycle className="h-3 w-3" />
+                                Waste Only
                               </span>
                             )}
                           </div>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-3.5 font-body text-[12.5px] text-ink-2">
+                            <span>{formatDate(sheet.uploadedAt)}</span>
+                            <span className="text-[var(--color-line-2)]">|</span>
+                            {isW ? (
+                              <span><span className="font-semibold text-amber-700">{sheet._count.wasteProduced}</span> offcuts</span>
+                            ) : (
+                              <>
+                                <span><span className="font-semibold text-ink">{sheet.results?.length || sheet._count.results}</span> calculations</span>
+                                <span className="text-[var(--color-line-2)]">|</span>
+                                <span><span className="font-semibold text-ink">{sheet._count.wasteProduced}</span> offcuts</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex w-full items-center gap-2 sm:w-auto">
+                        <span className="rounded-full px-2.5 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.08em]" style={calc ? { background: "rgba(16,185,129,0.14)", color: "#059669" } : { background: "rgba(245,158,11,0.16)", color: "#b45309" }}>
+                          {sheet.status}
+                        </span>
+                        <div className="mx-1 hidden h-6 w-px bg-[var(--color-line)] sm:block" />
+                        <Link
+                          href={`/project/${projectId}/sheet/${sheet.id}`}
+                          className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] text-ink-3 transition-colors hover:bg-accent/[0.08] hover:text-accent"
+                          title="View sheet"
+                        >
+                          <IconEye className="h-[18px] w-[18px]" />
                         </Link>
-                        <div className="flex flex-wrap items-center gap-3 mt-1.5 text-sm text-slate-500">
-                          <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
-                            <IconFile size={14} className="text-slate-400" />
-                            {formatDate(sheet.uploadedAt)}
-                          </span>
-                          {/* Show different stats for waste-only sheets */}
-                          {(sheet.fileName.toLowerCase().includes('offcut') || 
-                            sheet.fileName.toLowerCase().includes('waste') ||
-                            sheet.fileName.toLowerCase().includes('manual waste upload')) ? (
-                            <>
-                              <span className="hidden sm:inline text-slate-300">|</span>
-                              <span className="flex items-center gap-1.5 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-100">
-                                <IconRecycle size={14} className="text-amber-600" />
-                                <span className="font-semibold text-amber-700">{sheet._count.wasteProduced}</span> waste pieces
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="hidden sm:inline text-slate-300">|</span>
-                              <span className="flex items-center gap-1">
-                                <span className="font-semibold text-slate-700">{sheet._count.results}</span> calculations
-                              </span>
-                              <span className="hidden sm:inline text-slate-300">|</span>
-                              <span className="flex items-center gap-1">
-                                <span className="font-semibold text-slate-700">{sheet._count.wasteProduced}</span> waste pieces
-                              </span>
-                            </>
-                          )}
-                        </div>
+                        <button
+                          onClick={() => deleteSheet(sheet.id)}
+                          className="flex h-[34px] w-[34px] items-center justify-center rounded-[10px] text-ink-3 transition-colors hover:bg-rose-500/[0.08] hover:text-rose-500"
+                          title="Delete sheet"
+                        >
+                          <IconTrash className="h-[18px] w-[18px]" />
+                        </button>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-50">
-                      <span className={`px-2.5 py-1 text-xs font-semibold rounded-full border ${sheet.status === 'calculated' || sheet.status === 'completed'
-                        ? "bg-emerald-50 text-emerald-700 border-emerald-100"
-                        : "bg-slate-50 text-slate-600 border-slate-100"
-                        }`}>
-                        {sheet.status}
-                      </span>
-
-                      <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
-
-                      <Link
-                        href={`/project/${projectId}/sheet/${sheet.id}`}
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                        title="View Sheet"
-                      >
-                        <IconEye className="w-5 h-5" />
-                      </Link>
-                      <button
-                        onClick={() => deleteSheet(sheet.id)}
-                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                        title="Delete Sheet"
-                      >
-                        <IconTrash className="w-5 h-5" />
-                      </button>
-                    </div>
+                    {/* Results grid */}
+                    {sheet.results && sheet.results.length > 0 && (
+                      <div className="px-5 pb-5">
+                        <div className="rounded-[13px] border border-[var(--color-line)] bg-canvas p-4">
+                          <p className="mb-3 flex items-center gap-2 font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-3">
+                            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                            Calculation Results
+                          </p>
+                          <div className="flex flex-wrap gap-2.5">
+                            {sheet.results.map((result) => {
+                              const dyn = result.algorithm.toLowerCase().includes("dynamic");
+                              return (
+                                <Link
+                                  key={result.id}
+                                  href={`/project/${projectId}/sheet/${sheet.id}`}
+                                  className="flex min-w-[124px] flex-1 flex-col items-center rounded-[12px] border border-[var(--color-line)] bg-white px-3 py-3.5 transition-all hover:-translate-y-0.5 hover:border-accent/40 hover:shadow-[0_6px_18px_rgba(0,0,0,0.07)]"
+                                >
+                                  <div className="font-mono text-[10px] font-bold tracking-[0.12em] text-ink-3">Ø{result.dia}</div>
+                                  <div className="my-1 font-display text-[26px] font-extrabold leading-none tracking-[-0.04em] text-accent">{result.totalBarsUsed}</div>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="font-mono text-[8px] font-bold uppercase tracking-[0.1em] text-ink-3">bars</span>
+                                    <span className="rounded-[5px] px-1.5 py-0.5 font-mono text-[7.5px] font-bold uppercase" style={dyn ? { background: "rgba(99,102,241,0.12)", color: "#4f46e5" } : { background: "rgba(14,165,233,0.12)", color: "#0284c7" }}>
+                                      {result.algorithm.substring(0, 3)}
+                                    </span>
+                                  </div>
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-
-                  {/* Results Summary Grid */}
-                  {sheet.results && sheet.results.length > 0 && (
-                    <div className="px-6 pb-6 mt-[-4px]">
-                      <div className="bg-slate-50/50 rounded-xl p-4 border border-slate-100">
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-                          Calculation Results
-                        </p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-3">
-                          {sheet.results.map((result) => (
-                            <Link
-                              key={result.id}
-                              href={`/project/${projectId}/sheet/${sheet.id}`}
-                              className="group/card flex flex-col bg-white p-3 rounded-lg border border-slate-200 shadow-[0_2px_4px_rgba(0,0,0,0.02)] hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
-                            >
-                              <div className="flex justify-between items-start mb-2">
-                                <span className="font-bold text-slate-800 text-sm group-hover/card:text-blue-700 transition-colors">
-                                  Dia {result.dia}
-                                </span>
-                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-tight ${result.algorithm.toLowerCase().includes('dynamic')
-                                  ? 'bg-purple-100 text-purple-700'
-                                  : 'bg-blue-100 text-blue-700'
-                                  }`}>
-                                  {result.algorithm.substring(0, 3)}
-                                </span>
-                              </div>
-                              <div className="mt-auto">
-                                <div className="text-xs text-slate-500 font-medium">
-                                  <span className="text-slate-900 font-bold">{result.totalBarsUsed}</span> bars
-                                </div>
-                              </div>
-                            </Link>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}
@@ -645,80 +616,76 @@ export default function ProjectPage() {
 
             {/* Waste List */}
             {selectedWasteDia ? (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="p-5 border-b border-slate-100 flex justify-between items-center">
-                  <h3 className="font-semibold text-slate-900">
-                    Waste Inventory Details
-                    <span className="ml-2 text-blue-600">(Dia {selectedWasteDia}mm)</span>
-                    {selectedWasteStatus && <span className="ml-2 text-emerald-600">({selectedWasteStatus === 'available' ? 'Available Only' : 'Used Only'})</span>}
+              <div className="card-surface overflow-hidden">
+                <div className="flex items-center justify-between border-b border-[var(--color-line)] p-5">
+                  <h3 className="font-display text-[17px] font-bold tracking-[-0.02em]">
+                    Offcut inventory · Ø{selectedWasteDia}mm
+                    {selectedWasteStatus && <span className="ml-2 font-body text-[13px] font-semibold text-grass">({selectedWasteStatus === 'available' ? 'Available only' : 'Used only'})</span>}
                   </h3>
-                  <span className="text-xs text-slate-500 font-medium">Showing {filteredWaste.length} pieces</span>
+                  <span className="font-body text-[12px] text-ink-3">Showing {filteredWaste.length} pieces</span>
                 </div>
                 {filteredWaste.length === 0 ? (
-                  <div className="p-12 text-center text-slate-500">
-                    <IconRecycle className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                    {`No waste pieces found for Dia ${selectedWasteDia}mm ${selectedWasteStatus ? `with status ${selectedWasteStatus}` : ''}.`}
+                  <div className="p-12 text-center font-body text-ink-2">
+                    <IconRecycle className="mx-auto mb-3 h-12 w-12 text-ink-3/50" />
+                    {`No offcuts found for Ø${selectedWasteDia}mm ${selectedWasteStatus ? `with status ${selectedWasteStatus}` : ''}.`}
                   </div>
                 ) : (
                   <>
-                    <div className="overflow-x-auto max-h-[650px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
-                      <table className="w-full text-sm border-separate border-spacing-0">
+                    <div className="max-h-[650px] overflow-x-auto overflow-y-auto">
+                      <table className="w-full border-separate border-spacing-0 text-sm">
                         <thead className="sticky top-0 z-20">
-                          <tr className="bg-white/70 backdrop-blur-md sticky top-0 z-20">
-                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 first:pl-8">ID</th>
-                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Dia</th>
-                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Length</th>
-                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Source Sheet</th>
-                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Origin (Bars)</th>
-                            <th className="px-6 py-3.5 text-left text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100">Used In</th>
-                            <th className="px-6 py-3.5 text-right text-[11px] font-bold text-slate-500 uppercase tracking-widest border-b border-slate-100 last:pr-8">Status</th>
+                          <tr className="sticky top-0 z-20 bg-white/80 backdrop-blur-md">
+                            {["ID", "Dia", "Length", "Source Sheet", "Origin (Bars)", "Used In"].map((h, i) => (
+                              <th key={h} className={`border-b border-[var(--color-line)] px-6 py-3.5 text-left font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-3 ${i === 0 ? "first:pl-8" : ""}`}>{h}</th>
+                            ))}
+                            <th className="border-b border-[var(--color-line)] px-6 py-3.5 text-right font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-3 last:pr-8">Status</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody>
                           {paginatedWaste.map((item, idx) => (
                             <tr
                               key={item.id}
-                              className={`group transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'} hover:bg-blue-50/40`}
+                              className={`group border-b border-[var(--color-line)] transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-canvas/40'} hover:bg-accent/[0.04]`}
                             >
                               <td className="px-6 py-4 first:pl-8">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-mono text-[10px] font-bold border border-slate-200 group-hover:bg-white transition-colors">
+                                <span className="inline-flex items-center rounded-md border border-[var(--color-line)] bg-canvas px-2 py-0.5 font-mono text-[10px] font-bold text-ink-2 transition-colors group-hover:bg-white">
                                   W-{item.id}
                                 </span>
                               </td>
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-2">
-                                  <span className="w-2 h-2 rounded-full bg-slate-400"></span>
-                                  <span className="font-semibold text-slate-700">{item.dia}mm</span>
+                                  <span className="h-2 w-2 rounded-full bg-ink-3" />
+                                  <span className="font-mono font-bold text-ink">{item.dia}mm</span>
                                 </div>
                               </td>
                               <td className="px-6 py-4">
-                                <span className="font-bold text-indigo-600 tabular-nums">
+                                <span className="font-display font-extrabold tabular-nums text-accent">
                                   {formatLength(item.length)}
                                 </span>
                               </td>
                               <td className="px-6 py-4">
                                 <div className="flex flex-col gap-0.5">
-                                  <div className="text-slate-900 font-semibold text-xs flex items-center gap-1.5">
-                                    <IconFile size={12} className="text-slate-400" />
+                                  <div className="flex items-center gap-1.5 font-body text-xs font-semibold text-ink">
+                                    <IconFile size={12} className="text-ink-3" />
                                     Sheet #{item.sourceSheet.sheetNumber}
                                   </div>
-                                  <div className="text-[10px] text-slate-400 font-medium truncate max-w-[150px]" title={item.sourceSheet.fileName}>
+                                  <div className="max-w-[150px] truncate font-body text-[10px] text-ink-3" title={item.sourceSheet.fileName}>
                                     {item.sourceSheet.fileName}
                                   </div>
                                 </div>
                               </td>
                               <td className="px-6 py-4">
                                 <div className="flex flex-col gap-1">
-                                  <div className="text-slate-700 font-medium text-xs">Bar #{item.sourceBarNumber}</div>
+                                  <div className="font-body text-xs font-medium text-ink-2">Bar #{item.sourceBarNumber}</div>
                                   {item.cutsOnSourceBar && item.cutsOnSourceBar.length > 0 && (
                                     <div className="flex flex-wrap gap-1">
                                       {item.cutsOnSourceBar.slice(0, 2).map((cut, i) => (
-                                        <span key={i} className="text-[9px] px-1.5 bg-white border border-slate-200 rounded text-slate-500 font-medium">
+                                        <span key={i} className="rounded border border-[var(--color-line)] bg-white px-1.5 font-mono text-[9px] font-medium text-ink-3">
                                           {formatLength(cut.length)}
                                         </span>
                                       ))}
                                       {item.cutsOnSourceBar.length > 2 && (
-                                        <span className="text-[9px] text-slate-400 font-medium">
+                                        <span className="font-body text-[9px] font-medium text-ink-3">
                                           +{item.cutsOnSourceBar.length - 2} more
                                         </span>
                                       )}
@@ -729,27 +696,24 @@ export default function ProjectPage() {
                               <td className="px-6 py-4">
                                 {item.status === 'used' && item.usages && item.usages.length > 0 ? (
                                   <div className="flex flex-col gap-0.5">
-                                    <div className="text-slate-900 font-semibold text-xs flex items-center gap-1.5">
-                                      <IconRecycle size={12} className="text-emerald-500" />
+                                    <div className="flex items-center gap-1.5 font-body text-xs font-semibold text-ink">
+                                      <IconRecycle size={12} className="text-grass" />
                                       Sheet #{item.usages[0].usedInSheet.sheetNumber}
                                     </div>
                                     <Link
                                       href={`/project/${projectId}/sheet/${item.usages[0].usedInSheet.id}`}
-                                      className="text-[10px] text-blue-500 hover:text-blue-700 hover:underline font-medium truncate max-w-[150px]"
+                                      className="max-w-[150px] truncate font-body text-[10px] font-medium text-accent hover:underline"
                                       title={item.usages[0].usedInSheet.fileName}
                                     >
                                       {item.usages[0].usedInSheet.fileName}
                                     </Link>
                                   </div>
                                 ) : (
-                                  <span className="text-slate-300 text-xs">-</span>
+                                  <span className="text-xs text-ink-3/60">-</span>
                                 )}
                               </td>
                               <td className="px-6 py-4 text-right last:pr-8">
-                                <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${item.status === 'available'
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                  : 'bg-slate-100 text-slate-500 border-slate-200'
-                                  }`}>
+                                <span className="inline-flex items-center rounded-full px-2.5 py-1 font-mono text-[9.5px] font-bold uppercase tracking-[0.08em]" style={item.status === 'available' ? { background: "rgba(16,185,129,0.14)", color: "#059669" } : { background: "rgba(0,0,0,0.06)", color: "#6b7280" }}>
                                   {item.status}
                                 </span>
                               </td>
@@ -760,17 +724,17 @@ export default function ProjectPage() {
                     </div>
 
                     {/* Waste Pagination Footer */}
-                    <div className="bg-slate-50 border-t border-slate-100 px-6 py-3 flex items-center justify-between">
+                    <div className="flex items-center justify-between border-t border-[var(--color-line)] px-6 py-3">
                       <div className="flex items-center gap-4">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-slate-500 font-medium">Rows:</span>
+                          <span className="font-body text-xs text-ink-3">Rows</span>
                           <select
                             value={wasteItemsPerPage}
                             onChange={(e) => {
                               setWasteItemsPerPage(Number(e.target.value));
                               setCurrentWastePage(1);
                             }}
-                            className="bg-white border border-slate-200 text-slate-700 text-xs rounded shadow-sm focus:ring-blue-500 focus:border-blue-500 py-1 pl-2 pr-6"
+                            className="rounded-lg border border-[var(--color-line-2)] bg-white px-2 py-1 font-body text-xs text-ink-2 outline-none"
                           >
                             <option value={10}>10</option>
                             <option value={20}>20</option>
@@ -778,56 +742,42 @@ export default function ProjectPage() {
                             <option value={100}>100</option>
                           </select>
                         </div>
-                        <span className="text-xs text-slate-400 hidden sm:inline">
+                        <span className="hidden font-body text-xs text-ink-3 sm:inline">
                           {Math.min((currentWastePage - 1) * wasteItemsPerPage + 1, filteredWaste.length)}–
                           {Math.min(currentWastePage * wasteItemsPerPage, filteredWaste.length)} of {filteredWaste.length}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => goToWastePage(1)}
-                          disabled={currentWastePage === 1}
-                          className="p-1 rounded hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed text-slate-500 transition-all active:scale-95"
-                        >
-                          <IconChevronsLeft size={16} />
-                        </button>
-                        <button
-                          onClick={() => goToWastePage(currentWastePage - 1)}
-                          disabled={currentWastePage === 1}
-                          className="p-1 rounded hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed text-slate-500 transition-all active:scale-95"
-                        >
-                          <IconChevronLeft size={16} />
-                        </button>
-
-                        <span className="px-3 text-xs font-semibold text-slate-700">
-                          {currentWastePage} <span className="text-slate-400 font-normal">/ {totalWastePages}</span>
+                        {[
+                          { fn: () => goToWastePage(1), dis: currentWastePage === 1, Ic: IconChevronsLeft },
+                          { fn: () => goToWastePage(currentWastePage - 1), dis: currentWastePage === 1, Ic: IconChevronLeft },
+                        ].map((b, i) => (
+                          <button key={i} onClick={b.fn} disabled={b.dis} className="rounded-full p-1.5 text-ink-2 transition-all hover:bg-canvas active:scale-95 disabled:cursor-not-allowed disabled:opacity-30">
+                            <b.Ic size={16} />
+                          </button>
+                        ))}
+                        <span className="px-3 font-mono text-xs font-bold text-ink">
+                          {currentWastePage} <span className="font-normal text-ink-3">/ {totalWastePages}</span>
                         </span>
-
-                        <button
-                          onClick={() => goToWastePage(currentWastePage + 1)}
-                          disabled={currentWastePage === totalWastePages}
-                          className="p-1 rounded hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed text-slate-500 transition-all active:scale-95"
-                        >
-                          <IconChevronRight size={16} />
-                        </button>
-                        <button
-                          onClick={() => goToWastePage(totalWastePages)}
-                          disabled={currentWastePage === totalWastePages}
-                          className="p-1 rounded hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed text-slate-500 transition-all active:scale-95"
-                        >
-                          <IconChevronsRight size={16} />
-                        </button>
+                        {[
+                          { fn: () => goToWastePage(currentWastePage + 1), dis: currentWastePage === totalWastePages, Ic: IconChevronRight },
+                          { fn: () => goToWastePage(totalWastePages), dis: currentWastePage === totalWastePages, Ic: IconChevronsRight },
+                        ].map((b, i) => (
+                          <button key={i} onClick={b.fn} disabled={b.dis} className="rounded-full p-1.5 text-ink-2 transition-all hover:bg-canvas active:scale-95 disabled:cursor-not-allowed disabled:opacity-30">
+                            <b.Ic size={16} />
+                          </button>
+                        ))}
                       </div>
                     </div>
                   </>
                 )}
               </div>
             ) : (
-              <div className="bg-white rounded-2xl border border-slate-200 border-dashed p-12 text-center">
-                <IconInfoCircle className="w-12 h-12 mx-auto text-slate-300 mb-3" />
-                <h3 className="text-lg font-medium text-slate-900">Select a Diameter</h3>
-                <p className="text-slate-500 mt-1">Click on a diameter card above to view its detailed waste inventory.</p>
+              <div className="rounded-[20px] border border-dashed border-[var(--color-line-2)] bg-white p-12 text-center">
+                <IconInfoCircle className="mx-auto mb-3 h-12 w-12 text-ink-3/50" stroke={1.4} />
+                <h3 className="font-display text-lg font-bold">Select a diameter</h3>
+                <p className="mt-1 font-body text-ink-2">Click a diameter bar above to view its detailed offcut inventory.</p>
               </div>
             )}
           </div>
