@@ -1,137 +1,92 @@
 "use client";
-import React from "react";
 import { getUniqueDiaFromDisplay, getDisplayDiaSummary } from "@/utils/barCodeUtils";
 import ClientOnly from "../ui/ClientOnly";
 import type { BarCuttingDisplay } from "@/types/BarCuttingRow";
-import { IconFilter, IconDownload, IconLoader, IconSum, IconRuler2, IconLayoutList } from "@tabler/icons-react";
+import { IconLayoutList, IconRuler2 } from "@tabler/icons-react";
 
 interface DiaFilterProps {
   data: BarCuttingDisplay[];
   selectedDia: number | null;
   onDiaSelect: (dia: number | null) => void;
-  onDownloadAll?: () => void;
-  isDownloadingAll?: boolean;
 }
 
-export default function DiaFilter({ data, selectedDia, onDiaSelect, onDownloadAll, isDownloadingAll = false }: DiaFilterProps) {
+export default function DiaFilter({ data, selectedDia, onDiaSelect }: DiaFilterProps) {
   const uniqueDias = getUniqueDiaFromDisplay(data);
 
   if (uniqueDias.length === 0) return null;
 
   return (
     <ClientOnly>
-      <div className="w-full max-w-7xl mx-auto bg-white rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden ring-1 ring-slate-100 mb-8 animate-fade-in">
+      <div className="card-surface mb-[18px] overflow-hidden">
         {/* Header */}
-        <div className="bg-white border-b border-slate-100 px-6 py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 border border-blue-100">
-              <IconFilter size={20} />
-            </div>
-            Filter by Diameter
-          </h3>
-
+        <div className="flex items-center gap-[9px] border-b border-[var(--color-line)] px-5 pb-3 pt-[13px]">
+          <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-ink-3">Select Diameter</span>
         </div>
 
-        <div className="p-6">
-          {/* Filter Buttons Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 mb-6">
-            {/* Show All Button */}
-            <button
-              onClick={() => onDiaSelect(null)}
-              className={`col-span-2 px-4 py-3 rounded-xl font-medium transition-all duration-200 border flex flex-col items-center justify-center relative overflow-hidden group
-                ${selectedDia === null
-                  ? "bg-blue-50 border-blue-200 text-blue-700 shadow-sm"
-                  : "bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+        {/* Chips */}
+        <div className="flex flex-wrap gap-2 p-4">
+          <button
+            onClick={() => onDiaSelect(null)}
+            className={`flex min-w-[92px] flex-col items-center gap-[3px] rounded-[13px] border-[1.5px] px-[18px] py-3 transition-all ${
+              selectedDia === null
+                ? "border-accent/60 bg-accent/[0.08]"
+                : "border-[var(--color-line)] bg-white hover:border-accent hover:bg-accent/[0.06]"
+            }`}
+          >
+            <span className={`font-display text-[20px] font-extrabold tracking-[-0.03em] ${selectedDia === null ? "text-accent-deep" : "text-ink"}`}>All</span>
+            <span className={`font-mono text-[9px] font-bold tracking-[0.08em] ${selectedDia === null ? "text-accent" : "text-ink-3"}`}>{data.length} rows</span>
+          </button>
+
+          {uniqueDias.map((dia) => {
+            const summary = getDisplayDiaSummary(data, dia);
+            const isSelected = selectedDia === dia;
+            return (
+              <button
+                key={dia}
+                onClick={() => onDiaSelect(dia)}
+                className={`flex min-w-[82px] flex-col items-center gap-[3px] rounded-[13px] border-[1.5px] px-[18px] py-3 transition-all ${
+                  isSelected
+                    ? "border-accent/60 bg-accent/[0.08]"
+                    : "border-[var(--color-line)] bg-white hover:border-accent hover:bg-accent/[0.06]"
                 }`}
-            >
-              <span className="text-sm font-bold relative z-10">Show All</span>
-              <span className={`text-xs mt-0.5 relative z-10 ${selectedDia === null ? "text-blue-600" : "text-slate-400"}`}>
-                {data.length} total rows
-              </span>
-              {selectedDia === null && (
-                <div className="absolute inset-0 bg-blue-100/50 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              )}
-            </button>
+              >
+                <span className={`font-display text-[20px] font-extrabold tracking-[-0.03em] ${isSelected ? "text-accent-deep" : "text-ink"}`}>Ø{dia}</span>
+                <span className={`font-mono text-[9px] font-bold tracking-[0.08em] ${isSelected ? "text-accent" : "text-ink-3"}`}>{summary.rowCount} rows</span>
+              </button>
+            );
+          })}
+        </div>
 
-            {/* Individual Dia Buttons */}
-            {uniqueDias.map((dia) => {
-              const summary = getDisplayDiaSummary(data, dia);
-              const isSelected = selectedDia === dia;
-
-              return (
-                <button
-                  key={dia}
-                  onClick={() => onDiaSelect(dia)}
-                  className={`px-3 py-2.5 rounded-xl font-medium transition-all duration-200 border flex flex-col items-center justify-center relative overflow-hidden group
-                    ${isSelected
-                      ? "bg-green-50 border-green-200 text-green-700 shadow-sm ring-1 ring-green-200"
-                      : "bg-white border-slate-200 text-slate-600 hover:border-green-200 hover:bg-green-50/30"
-                    }`}
-                >
-                  <span className="text-sm font-bold relative z-10">Dia {dia}mm</span>
-                  <span className={`text-xs mt-0.5 relative z-10 ${isSelected ? "text-green-600" : "text-slate-400"}`}>
-                    {summary.rowCount} rows
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Summary for selected Dia */}
-          {selectedDia && (
-            <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="bg-slate-50 border border-slate-100 rounded-xl p-5 relative overflow-hidden">
-                {/* Decorative background element */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-
-                <h4 className="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                  <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center text-green-700">
-                    <IconSum size={14} stroke={3} />
-                  </div>
-                  Summary for Dia {selectedDia}mm
-                </h4>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  {(() => {
-                    const summary = getDisplayDiaSummary(data, selectedDia);
-                    return (
-                      <>
-                        <div className="text-center md:text-left">
-                          <div className="flex items-center justify-center md:justify-start gap-1 mb-1 text-slate-500">
-                            <IconLayoutList size={14} />
-                            <p className="text-xs uppercase tracking-wider font-medium">Rows</p>
-                          </div>
-                          <p className="text-xl font-bold text-slate-800">{summary.rowCount}</p>
-                        </div>
-                        <div className="text-center md:text-left">
-                          <div className="flex items-center justify-center md:justify-start gap-1 mb-1 text-slate-500">
-                            <IconLayoutList size={14} />
-                            <p className="text-xs uppercase tracking-wider font-medium">Total Bars</p>
-                          </div>
-                          <p className="text-xl font-bold text-slate-800">{summary.totalBars}</p>
-                        </div>
-                        <div className="text-center md:text-left">
-                          <div className="flex items-center justify-center md:justify-start gap-1 mb-1 text-slate-500">
-                            <IconRuler2 size={14} />
-                            <p className="text-xs uppercase tracking-wider font-medium">Total Cut Length</p>
-                          </div>
-                          <p className="text-xl font-bold text-slate-800 font-mono tracking-tight">{summary.totalCuttingLength}m</p>
-                        </div>
-                        <div className="text-center md:text-left">
-                          <div className="flex items-center justify-center md:justify-start gap-1 mb-1 text-slate-500">
-                            <IconRuler2 size={14} />
-                            <p className="text-xs uppercase tracking-wider font-medium">Total Lap Length</p>
-                          </div>
-                          <p className="text-xl font-bold text-slate-800 font-mono tracking-tight">{summary.totalLapLength}m</p>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
+        {/* Summary for selected Dia */}
+        {selectedDia && (
+          <div className="px-4 pb-4">
+            <div className="relative overflow-hidden rounded-[13px] border border-[var(--color-line)] bg-canvas p-5">
+              <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-grass/[0.06] blur-2xl" />
+              <h4 className="mb-4 font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-ink-3">Summary · Ø{selectedDia}mm</h4>
+              <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+                {(() => {
+                  const summary = getDisplayDiaSummary(data, selectedDia);
+                  const cells = [
+                    { Icon: IconLayoutList, label: "Rows", value: summary.rowCount },
+                    { Icon: IconLayoutList, label: "Total Bars", value: summary.totalBars },
+                    { Icon: IconRuler2, label: "Total Cut Length", value: `${summary.totalCuttingLength}m`, mono: true },
+                    { Icon: IconRuler2, label: "Total Lap Length", value: `${summary.totalLapLength}m`, mono: true },
+                  ];
+                  return cells.map((c) => (
+                    <div key={c.label}>
+                      <div className="mb-1 flex items-center gap-1 text-ink-3">
+                        <c.Icon size={13} />
+                        <p className="font-mono text-[9px] font-bold uppercase tracking-[0.1em]">{c.label}</p>
+                      </div>
+                      <p className={`font-display text-[21px] font-extrabold tracking-[-0.03em] text-ink ${c.mono ? "font-mono" : ""}`}>{c.value}</p>
+                    </div>
+                  ));
+                })()}
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </ClientOnly>
   );

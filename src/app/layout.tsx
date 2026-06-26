@@ -1,22 +1,30 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Manrope, Space_Mono } from "next/font/google";
 import { Toaster } from "sonner";
 import "./globals.css";
 import Navigation from "@/components/customs/Navigation";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
   subsets: ["latin"],
+  weight: ["500", "600", "700", "800"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
+  subsets: ["latin"],
+  weight: ["400", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "POC Waste - Bar Cutting Optimization",
-  description: "Optimize steel rebar cutting to minimize waste",
+  title: "Optikerf — Cutting Stock Optimizer",
+  description: "Optimal rebar cutting patterns, cross-sheet offcut reuse, and site-ready Excel exports",
 };
 
 export default function RootLayout({
@@ -27,10 +35,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${bricolage.variable} ${manrope.variable} ${spaceMono.variable} antialiased`}
       >
+        <div className="orb-2" />
         <Navigation />
-        {children}
+        <main className="relative z-[1] pb-20">{children}</main>
         <Toaster richColors position="top-right" />
       </body>
     </html>

@@ -1,1 +1,142 @@
 @import "tailwindcss";
+
+/* ── Design tokens (mockup: Optikerf cutting-stock) ───────────────── */
+@theme {
+  --font-display: var(--font-bricolage), system-ui, sans-serif;
+  --font-body: var(--font-manrope), system-ui, sans-serif;
+  --font-mono: var(--font-space-mono), ui-monospace, monospace;
+
+  --color-canvas: #f8f9fc;
+  --color-ink: #0f1117;
+  --color-ink-2: #6b7280;
+  --color-ink-3: #9aa1ac;
+  --color-line: rgba(0, 0, 0, 0.08);
+  --color-line-2: rgba(0, 0, 0, 0.14);
+
+  --color-accent: #6366f1;
+  --color-accent-deep: #4f46e5;
+  --color-sky: #0ea5e9;
+  --color-grass: #10b981;
+  --color-amber-x: #f59e0b;
+  --color-violet-x: #a855f7;
+  --color-rose-x: #f43f5e;
+}
+
+:root {
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.07), 0 1px 4px rgba(0, 0, 0, 0.04);
+  --shadow-card-h: 0 16px 48px rgba(0, 0, 0, 0.13), 0 3px 10px rgba(0, 0, 0, 0.06);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+/* fixed grid backdrop */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: linear-gradient(rgba(99, 102, 241, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
+  background-size: 72px 72px;
+  -webkit-mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 10%, transparent 75%);
+  mask-image: radial-gradient(ellipse 90% 70% at 50% 0%, #000 10%, transparent 75%);
+}
+
+/* two floating gradient orbs */
+body::after {
+  content: "";
+  position: fixed;
+  top: -160px;
+  left: -120px;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.28), transparent 65%);
+  filter: blur(70px);
+  z-index: 0;
+  pointer-events: none;
+  animation: orbFloat 13s ease-in-out infinite;
+}
+
+.orb-2 {
+  position: fixed;
+  bottom: -200px;
+  right: -140px;
+  width: 560px;
+  height: 560px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(14, 165, 233, 0.22), transparent 65%);
+  filter: blur(80px);
+  z-index: 0;
+  pointer-events: none;
+  animation: orbFloat2 17s ease-in-out infinite;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.22); background-clip: content-box; }
+
+@keyframes orbFloat { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(40px, -30px) scale(1.08); } }
+@keyframes orbFloat2 { 0%, 100% { transform: translate(0, 0) scale(1); } 50% { transform: translate(-50px, 30px) scale(1.1); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes growW { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes growH { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+
+.anim-fade-up { animation: fadeUp 0.4s ease both; }
+.anim-grow-w { transform-origin: left; animation: growW 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.anim-grow-h { transform-origin: bottom; animation: growH 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* reusable surfaces */
+.card-surface {
+  background: #fff;
+  border: 1px solid var(--color-line);
+  border-radius: 18px;
+  box-shadow: var(--shadow-card);
+}
+
+/* tooltip-on-hover */
+.tipw { position: relative; }
+.tipw .tip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f1117;
+  color: #fff;
+  border-radius: 9px;
+  padding: 7px 13px;
+  font-size: 11.5px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+  z-index: 50;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.24);
+}
+.tipw:hover .tip { opacity: 1; }
+.tipw .tip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #0f1117;
+}

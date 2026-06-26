@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Manrope:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: 'Manrope', system-ui, sans-serif; background: #f8f9fc; color: #0f1117; -webkit-font-smoothing: antialiased; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,.12); border-radius: 999px; border: 3px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,.22); background-clip: content-box; }
+  @keyframes orbFloat { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(40px,-30px) scale(1.08); } }
+  @keyframes orbFloat2 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(-50px,30px) scale(1.1); } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-up { transition: opacity 0.45s ease, transform 0.45s ease; }
+  @keyframes growW { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  @keyframes growH { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+  .tipw { position:relative; }
+  .tipw .tip { position:absolute; bottom:calc(100% + 10px); left:50%; transform:translateX(-50%); background:#0f1117; color:#fff; border-radius:9px; padding:7px 13px; font-size:11.5px; font-family:'Manrope',system-ui,sans-serif; font-weight:600; white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .18s ease; z-index:50; box-shadow:0 4px 16px rgba(0,0,0,0.24); line-height:1.5; }
+  .tipw:hover .tip { opacity:1; }
+  .tipw .tip::after { content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%); border:5px solid transparent; border-top-color:#0f1117; }
+</style>
+</helmet>
+
+<div style="--bg:#f8f9fc; --card:#ffffff; --fg1:#0f1117; --fg2:#6b7280; --fg3:#9aa1ac; --line:rgba(0,0,0,0.08); --line2:rgba(0,0,0,0.14); --accent:#6366f1; --accent2:#0ea5e9; --accent3:#10b981; --disp:'Bricolage Grotesque',system-ui,sans-serif; --body:'Manrope',system-ui,sans-serif; --mono:'Space Mono',ui-monospace,monospace; --shadow:0 4px 24px rgba(0,0,0,0.07), 0 1px 4px rgba(0,0,0,0.04); --shadowH:0 16px 48px rgba(0,0,0,0.13), 0 3px 10px rgba(0,0,0,0.06); position:relative; min-height:100vh; font-family:var(--body); color:var(--fg1); background:var(--bg); padding-bottom:80px;">
+
+  <!-- background layers -->
+  <div style="position:fixed; inset:0; z-index:0; pointer-events:none; background-image:linear-gradient(rgba(99,102,241,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.05) 1px, transparent 1px); background-size:72px 72px; -webkit-mask-image:radial-gradient(ellipse 90% 70% at 50% 0%, #000 10%, transparent 75%); mask-image:radial-gradient(ellipse 90% 70% at 50% 0%, #000 10%, transparent 75%);"></div>
+  <div style="position:fixed; top:-160px; left:-120px; width:520px; height:520px; border-radius:50%; background:radial-gradient(circle, rgba(99,102,241,0.30), transparent 65%); filter:blur(70px); z-index:0; pointer-events:none; animation:orbFloat 13s ease-in-out infinite;"></div>
+  <div style="position:fixed; bottom:-200px; right:-140px; width:560px; height:560px; border-radius:50%; background:radial-gradient(circle, rgba(14,165,233,0.24), transparent 65%); filter:blur(80px); z-index:0; pointer-events:none; animation:orbFloat2 17s ease-in-out infinite;"></div>
+
+  <!-- header -->
+  <div style="position:sticky; top:14px; z-index:40; padding:0 16px; margin-top:14px;">
+    <header style="max-width:1120px; margin:0 auto; height:60px; display:flex; align-items:center; justify-content:space-between; padding:0 12px 0 18px; background:rgba(255,255,255,0.78); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1px solid var(--line); border-radius:999px; box-shadow:var(--shadow);">
+      <div onClick="{{ goHome }}" style="display:flex; align-items:center; gap:11px; cursor:pointer;">
+        <div style="width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg, #6366f1, #0ea5e9); display:flex; align-items:center; justify-content:center; box-shadow:0 6px 16px rgba(99,102,241,0.35);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="2" y="9" width="20" height="6" rx="1.5" fill="#fff" opacity="0.95"/><line x1="7" y1="9" x2="7" y2="15" stroke="#6366f1" stroke-width="1.6"/><line x1="12" y1="9" x2="12" y2="15" stroke="#6366f1" stroke-width="1.6"/><line x1="16.5" y1="9" x2="16.5" y2="15" stroke="#6366f1" stroke-width="1.6"/></svg>
+        </div>
+        <div style="display:flex; flex-direction:column; line-height:1;">
+          <span style="font-family:var(--disp); font-weight:800; font-size:15px; letter-spacing:-0.03em;">Optikerf</span>
+          <span style="font-family:var(--mono); font-size:8.5px; font-weight:700; letter-spacing:0.22em; color:var(--accent); margin-top:2px;">CUTTING&nbsp;STOCK</span>
+        </div>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:6px;">
+        <div onClick="{{ goProjects }}" style="font-family:var(--body); font-size:13.5px; font-weight:600; color:var(--fg2); padding:8px 14px; border-radius:999px; cursor:pointer;" style-hover="background:rgba(99,102,241,0.07); color:#0f1117;">Projects</div>
+        <div style="font-family:var(--body); font-size:13.5px; font-weight:600; color:var(--fg2); padding:8px 14px; border-radius:999px; cursor:pointer;" style-hover="background:rgba(99,102,241,0.07); color:#0f1117;">Inventory</div>
+        <div style="font-family:var(--body); font-size:13.5px; font-weight:600; color:var(--fg2); padding:8px 14px; border-radius:999px; cursor:pointer;" style-hover="background:rgba(99,102,241,0.07); color:#0f1117;">Docs</div>
+        <div onClick="{{ openCreate }}" style="display:flex; align-items:center; gap:7px; font-family:var(--body); font-size:13.5px; font-weight:700; color:#fff; background:var(--accent); padding:9px 16px 9px 14px; border-radius:999px; cursor:pointer; box-shadow:0 6px 18px rgba(99,102,241,0.32); margin-left:6px;" style-hover="background:#4f46e5; transform:translateY(-1px);">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+          New Project
+        </div>
+      </div>
+    </header>
+  </div>
+
+  <!-- main -->
+  <main style="position:relative; z-index:1; max-width:1120px; margin:0 auto; padding:0 16px;">
+
+    <!-- ============ HOME ============ -->
+    <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+    <div>
+
+      <!-- ── HERO ── -->
+      <div style="display:grid; grid-template-columns:1.1fr 0.9fr; gap:56px; align-items:center; padding:70px 0 56px;">
+
+        <!-- left copy -->
+        <div>
+          <div style="display:inline-flex; align-items:center; gap:10px; font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:0.22em; color:var(--accent); text-transform:uppercase; margin-bottom:26px;">
+            <span style="display:inline-block; width:22px; height:1.5px; background:var(--accent); border-radius:2px; flex-shrink:0;"></span>
+            REBAR · CUTTING STOCK · WASTE REUSE
+          </div>
+          <h1 style="font-family:var(--disp); font-weight:800; font-size:clamp(2.8rem,4.5vw,3.9rem); line-height:0.95; letter-spacing:-0.05em; margin:0 0 24px;">Cut more bars<br>from every<br>length of steel.</h1>
+          <p style="font-family:var(--body); font-size:17px; line-height:1.72; color:var(--fg2); max-width:44ch; margin:0 0 32px;">Optimal cutting patterns, cross-sheet offcut reuse, and site-ready Excel exports — so every meter of rebar earns its place on site.</p>
+          <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:38px;">
+            <div onClick="{{ goProjects }}" style="display:flex; align-items:center; gap:9px; font-family:var(--body); font-weight:700; font-size:15px; color:#fff; background:var(--accent); padding:14px 26px; border-radius:999px; cursor:pointer; box-shadow:0 8px 24px rgba(99,102,241,0.34); transition:all .18s;" style-hover="background:#4f46e5; transform:translateY(-2px); box-shadow:0 12px 28px rgba(99,102,241,0.42);">
+              View Projects
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div onClick="{{ openCreate }}" style="display:flex; align-items:center; gap:9px; font-family:var(--body); font-weight:700; font-size:15px; color:var(--fg1); background:#fff; padding:14px 24px; border-radius:999px; cursor:pointer; border:1.5px solid var(--line2); transition:all .18s;" style-hover="border-color:var(--accent); color:var(--accent); transform:translateY(-2px);">New Project</div>
+          </div>
+          <!-- inline metrics pill -->
+          <div style="display:inline-flex; align-items:center; background:rgba(255,255,255,0.8); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid var(--line); border-radius:16px; padding:14px 20px; gap:0;">
+            <div style="text-align:center; padding-right:18px;">
+              <div style="font-family:var(--disp); font-weight:800; font-size:21px; letter-spacing:-0.03em; color:var(--accent);">214.6m</div>
+              <div style="font-family:var(--mono); font-size:9px; font-weight:700; color:var(--fg3); text-transform:uppercase; letter-spacing:0.1em; margin-top:2px;">recovered</div>
+            </div>
+            <div style="width:1px; height:34px; background:var(--line); margin-right:18px; flex-shrink:0;"></div>
+            <div style="text-align:center; padding-right:18px;">
+              <div style="font-family:var(--disp); font-weight:800; font-size:21px; letter-spacing:-0.03em; color:var(--accent3);">92.4%</div>
+              <div style="font-family:var(--mono); font-size:9px; font-weight:700; color:var(--fg3); text-transform:uppercase; letter-spacing:0.1em; margin-top:2px;">utilization</div>
+            </div>
+            <div style="width:1px; height:34px; background:var(--line); margin-right:18px; flex-shrink:0;"></div>
+            <div style="text-align:center;">
+              <div style="font-family:var(--disp); font-weight:800; font-size:21px; letter-spacing:-0.03em; color:var(--accent2);">56</div>
+              <div style="font-family:var(--mono); font-size:9px; font-weight:700; color:var(--fg3); text-transform:uppercase; letter-spacing:0.1em; margin-top:2px;">offcuts</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- right: device preview -->
+        <div style="position:relative;">
+          <!-- floating "complete" badge -->
+          <div style="position:absolute; top:-16px; right:14px; z-index:2; display:flex; align-items:center; gap:7px; background:#fff; border:1px solid var(--line); border-radius:999px; padding:7px 13px; box-shadow:var(--shadow);">
+            <span style="width:7px; height:7px; border-radius:50%; background:var(--accent3); flex-shrink:0; box-shadow:0 0 0 3px rgba(16,185,129,0.18);"></span>
+            <span style="font-family:var(--mono); font-size:9.5px; font-weight:700; color:#059669; letter-spacing:0.08em;">OPTIMIZATION COMPLETE</span>
+          </div>
+          <!-- floating waste-saved card -->
+          <div style="position:absolute; bottom:-20px; left:-16px; z-index:2; background:var(--accent); border-radius:16px; padding:12px 18px; box-shadow:0 12px 32px rgba(99,102,241,0.38);">
+            <div style="font-family:var(--mono); font-size:8.5px; font-weight:700; letter-spacing:0.12em; color:rgba(255,255,255,0.6); text-transform:uppercase; margin-bottom:3px;">Waste saved</div>
+            <div style="font-family:var(--disp); font-weight:800; font-size:24px; letter-spacing:-0.04em; color:#fff;">−18.4m</div>
+          </div>
+          <!-- device window -->
+          <div style="background:#fff; border:1px solid rgba(0,0,0,0.09); border-radius:22px; box-shadow:0 28px 80px rgba(0,0,0,0.11), 0 4px 16px rgba(0,0,0,0.06); overflow:hidden;">
+            <!-- chrome bar -->
+            <div style="height:44px; background:#f8f9fc; border-bottom:1px solid rgba(0,0,0,0.07); display:flex; align-items:center; padding:0 16px; gap:12px;">
+              <div style="display:flex; gap:5px; flex-shrink:0;">
+                <div style="width:11px; height:11px; border-radius:50%; background:#f43f5e;"></div>
+                <div style="width:11px; height:11px; border-radius:50%; background:#f59e0b;"></div>
+                <div style="width:11px; height:11px; border-radius:50%; background:#10b981;"></div>
+              </div>
+              <div style="flex:1; display:flex; justify-content:center;">
+                <div style="font-family:var(--mono); font-size:10px; font-weight:700; color:var(--fg3); background:#fff; border:1px solid var(--line); border-radius:7px; padding:4px 13px;">GF-Columns.xlsx · Ø16mm</div>
+              </div>
+              <div style="font-family:var(--mono); font-size:8px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#059669; background:rgba(16,185,129,0.12); padding:3px 9px; border-radius:999px; flex-shrink:0;">DONE</div>
+            </div>
+            <!-- device body -->
+            <div style="padding:16px 18px 18px;">
+              <!-- dia chips -->
+              <div style="display:flex; gap:6px; margin-bottom:14px;">
+                <div style="font-family:var(--disp); font-weight:800; font-size:13px; padding:5px 12px; border-radius:8px; background:rgba(99,102,241,0.08); border:1.5px solid rgba(99,102,241,0.5); color:#4f46e5;">Ø16</div>
+                <div style="font-family:var(--disp); font-weight:800; font-size:13px; padding:5px 12px; border-radius:8px; background:#fff; border:1.5px solid var(--line); color:var(--fg3);">Ø12</div>
+                <div style="font-family:var(--disp); font-weight:800; font-size:13px; padding:5px 12px; border-radius:8px; background:#fff; border:1.5px solid var(--line); color:var(--fg3);">Ø20</div>
+                <div style="font-family:var(--disp); font-weight:800; font-size:13px; padding:5px 12px; border-radius:8px; background:#fff; border:1.5px solid var(--line); color:var(--fg3);">Ø8</div>
+              </div>
+              <!-- rebar bar rows (decorative, hardcoded) -->
+              <div style="display:flex; flex-direction:column; gap:7px; margin-bottom:14px;">
+                <!-- bar 1 -->
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <div style="width:26px; height:26px; border-radius:7px; background:rgba(99,102,241,0.09); border:1px solid rgba(99,102,241,0.18); display:flex; align-items:center; justify-content:center; font-family:var(--disp); font-weight:800; font-size:12px; color:#4f46e5; flex-shrink:0;">1</div>
+                  <div style="flex:1; height:26px; border-radius:7px; overflow:hidden; border:1px solid var(--line); display:flex; background:#f1f3f8;">
+                    <div style="width:40%; background:linear-gradient(180deg,#6366f1,#818cf8); display:flex; align-items:center; justify-content:center; border-right:1.5px solid rgba(255,255,255,0.5);"><span style="font-family:var(--mono); font-size:8px; font-weight:700; color:#fff;">3.84</span></div>
+                    <div style="width:28%; background:linear-gradient(180deg,#0ea5e9,#38bdf8); display:flex; align-items:center; justify-content:center; border-right:1.5px solid rgba(255,255,255,0.5);"><span style="font-family:var(--mono); font-size:8px; font-weight:700; color:#fff;">2.71</span></div>
+                    <div style="width:22%; background:linear-gradient(180deg,#10b981,#34d399); display:flex; align-items:center; justify-content:center; border-right:1.5px solid rgba(255,255,255,0.5);"><span style="font-family:var(--mono); font-size:8px; font-weight:700; color:#fff;">2.16</span></div>
+                    <div style="flex:1; background:repeating-linear-gradient(45deg,rgba(244,63,94,0.26) 0 5px,rgba(244,63,94,0.08) 5px 10px);"></div>
+                  </div>
+                  <div style="width:36px; text-align:right; font-family:var(--disp); font-weight:800; font-size:12px; color:#10b981; flex-shrink:0;">95%</div>
+                </div>
+                <!-- bar 2 -->
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <div style="width:26px; height:26px; border-radius:7px; background:rgba(99,102,241,0.09); border:1px solid rgba(99,102,241,0.18); display:flex; align-items:center; justify-content:center; font-family:var(--disp); font-weight:800; font-size:12px; color:#4f46e5; flex-shrink:0;">2</div>
+                  <div style="flex:1; height:26px; border-radius:7px; overflow:hidden; border:1px solid var(--line); display:flex; background:#f1f3f8;">
+                    <div style="width:50%; background:linear-gradient(180deg,#f59e0b,#fbbf24); display:flex; align-items:center; justify-content:center; border-right:1.5px solid rgba(255,255,255,0.5);"><span style="font-family:var(--mono); font-size:8px; font-weight:700; color:#fff;">4.81</span></div>
+                    <div style="width:36%; background:linear-gradient(180deg,#6366f1,#818cf8); display:flex; align-items:center; justify-content:center; border-right:1.5px solid rgba(255,255,255,0.5);"><span style="font-family:var(--mono); font-size:8px; font-weight:700; color:#fff;">3.51</span></div>
+                    <div style="flex:1; background:repeating-linear-gradient(45deg,rgba(244,63,94,0.26) 0 5px,rgba(244,63,94,0.08) 5px 10px);"></div>
+                  </div>
+                  <div style="width:36px; text-align:right; font-family:var(--disp); font-weight:800; font-size:12px; color:#f59e0b; flex-shrink:0;">88%</div>
+                </div>
+                <!-- bar 3 reuse -->
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <div style="width:26px; height:26px; border-radius:7px; background:rgba(168,85,247,0.1); border:1px solid rgba(168,85,247,0.22); display:flex; align-items:center; justify-content:center; font-family:var(--disp); font-weight:800; font-size:12px; color:#9333ea; flex-shrink:0;">3</div>
+                  <div style="flex:1; height:26px; border-radius:7px; overflow:hidden; border:1px solid var(--line); display:flex; background:#f1f3f8;">
+                    <div style="width:62%; background:linear-gradient(180deg,#a855f7,#c084fc); display:flex; align-items:center; justify-content:center; border-right:1.5px solid rgba(255,255,255,0.5);"><span style="font-family:var(--mono); font-size:8px; font-weight:700; color:#fff;">3.20</span></div>
+                    <div style="width:28%; background:linear-gradient(180deg,#0ea5e9,#38bdf8); display:flex; align-items:center; justify-content:center; border-right:1.5px solid rgba(255,255,255,0.5);"><span style="font-family:var(--mono); font-size:8px; font-weight:700; color:#fff;">1.44</span></div>
+                    <div style="flex:1; background:repeating-linear-gradient(45deg,rgba(244,63,94,0.26) 0 5px,rgba(244,63,94,0.08) 5px 10px);"></div>
+                  </div>
+                  <div style="width:36px; text-align:right; font-family:var(--disp); font-weight:800; font-size:12px; color:#10b981; flex-shrink:0;">91%</div>
+                </div>
+                <!-- bar 4 -->
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <div style="width:26px; height:26px; border-radius:7px; background:rgba(99,102,241,0.09); border:1px solid rgba(99,102,241,0.18); display:flex; align-items:center; justify-content:center; font-family:var(--disp); font-weight:800; font-size:12px; color:#4f46e5; flex-shrink:0;">4</div>
+                  <div style="flex:1; height:26px; border-radius:7px; overflow:hidden; border:1px solid var(--line); display:flex; background:#f1f3f8;">
+                    <div style="width:44%; background:linear-gradient(180deg,#10b981,#34d399); display:flex; align-items:center; justify-content:center; border-right:1.5px solid rgba(255,255,255,0.5);"><span style="font-family:var(--mono); font-size:8px; font-weight:700; color:#fff;">4.24</span></div>
+                    <div style="width:31%; background:linear-gradient(180deg,#f59e0b,#fbbf24); display:flex; align-items:center; justify-content:center; border-right:1.5px solid rgba(255,255,255,0.5);"><span style="font-family:var(--mono); font-size:8px; font-weight:700; color:#fff;">2.95</span></div>
+                    <div style="width:18%; background:linear-gradient(180deg,#6366f1,#818cf8); display:flex; align-items:center; justify-content:center; border-right:1.5px solid rgba(255,255,255,0.5);"><span style="font-family:var(--mono); font-size:8px; font-weight:700; color:#fff;">1.77</span></div>
+                    <div style="flex:1; background:repeating-linear-gradient(45deg,rgba(244,63,94,0.26) 0 5px,rgba(244,63,94,0.08) 5px 10px);"></div>
+                  </div>
+                  <div style="width:36px; text-align:right; font-family:var(--disp); font-weight:800; font-size:12px; color:#10b981; flex-shrink:0;">97%</div>
+                </div>
+                <!-- bar 5 -->
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <div style="width:26px; height:26px; border-radius:7px; background:rgba(99,102,241,0.09); border:1px solid rgba(99,102,241,0.18); display:flex; align-items:center; justify-content:center; font-family:var(--disp); font-weight:800; font-size:12px; color:#4f46e5; flex-shrink:0;">5</div>
+                  <div style="flex:1; height:26px; border-radius:7px; overflow:hidden; border:1px solid var(--line); display:flex; background:#f1f3f8;">
+                    <div style="width:55%; background:linear-gradient(180deg,#0ea5e9,#38bdf8); display:flex; align-items:center; justify-content:center; border-right:1.5px solid rgba(255,255,255,0.5);"><span style="font-family:var(--mono); font-size:8px; font-weight:700; color:#fff;">5.38</span></div>
+                    <div style="width:25%; background:linear-gradient(180deg,#10b981,#34d399); display:flex; align-items:center; justify-content:center; border-right:1.5px solid rgba(255,255,255,0.5);"><span style="font-family:var(--mono); font-size:8px; font-weight:700; color:#fff;">2.30</span></div>
+                    <div style="flex:1; background:repeating-linear-gradient(45deg,rgba(244,63,94,0.26) 0 5px,rgba(244,63,94,0.08) 5px 10px);"></div>
+                  </div>
+                  <div style="width:36px; text-align:right; font-family:var(--disp); font-weight:800; font-size:12px; color:#f59e0b; flex-shrink:0;">84%</div>
+                </div>
+              </div>
+              <!-- mini stat footer -->
+              <div style="display:flex; padding-top:12px; border-top:1px solid var(--line);">
+                <div style="flex:1; text-align:center;">
+                  <div style="font-family:var(--disp); font-weight:800; font-size:17px; letter-spacing:-0.03em; color:var(--accent);">31</div>
+                  <div style="font-family:var(--mono); font-size:8px; font-weight:700; color:var(--fg3); text-transform:uppercase; letter-spacing:0.1em; margin-top:1px;">bars</div>
+                </div>
+                <div style="width:1px; background:var(--line);"></div>
+                <div style="flex:1; text-align:center;">
+                  <div style="font-family:var(--disp); font-weight:800; font-size:17px; letter-spacing:-0.03em; color:var(--accent3);">92.1%</div>
+                  <div style="font-family:var(--mono); font-size:8px; font-weight:700; color:var(--fg3); text-transform:uppercase; letter-spacing:0.1em; margin-top:1px;">utilization</div>
+                </div>
+                <div style="width:1px; background:var(--line);"></div>
+                <div style="flex:1; text-align:center;">
+                  <div style="font-family:var(--disp); font-weight:800; font-size:17px; letter-spacing:-0.03em; color:#f43f5e;">2.4m</div>
+                  <div style="font-family:var(--mono); font-size:8px; font-weight:700; color:var(--fg3); text-transform:uppercase; letter-spacing:0.1em; margin-top:1px;">offcut</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── HOW IT WORKS ── -->
+      <div style="padding:56px 0 0;">
+        <div style="display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:32px;">
+          <div>
+            <div style="font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:0.22em; color:var(--accent); text-transform:uppercase; margin-bottom:14px;">HOW IT WORKS</div>
+            <h2 style="font-family:var(--disp); font-weight:800; font-size:clamp(1.7rem,3vw,2.5rem); line-height:1.05; letter-spacing:-0.04em; margin:0; max-width:28ch;">From bar-bending schedule to site-ready cutting plan.</h2>
+          </div>
+          <div onClick="{{ goProjects }}" style="display:flex; align-items:center; gap:6px; font-family:var(--body); font-weight:600; font-size:13.5px; color:var(--accent); cursor:pointer; flex-shrink:0;" style-hover="color:#4f46e5;">
+            Get started
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px;">
+          <sc-for list="{{ steps }}" as="s" hint-placeholder-count="3">
+            <div style="background:var(--card); border:1px solid var(--line); border-radius:20px; padding:28px; box-shadow:var(--shadow); transition:transform .2s, box-shadow .2s; position:relative; overflow:hidden;" style-hover="transform:translateY(-4px); box-shadow:var(--shadowH);">
+              <div style="position:absolute; top:-4px; left:24px; font-family:var(--mono); font-size:56px; font-weight:700; color:rgba(0,0,0,0.05); line-height:1; pointer-events:none; user-select:none;">{{ s.no }}</div>
+              <div style="position:relative;">
+                <div style="width:46px; height:46px; border-radius:14px; display:flex; align-items:center; justify-content:center; background:{{ s.tint }}; margin-bottom:22px;">{{ s.icon }}</div>
+                <div style="font-family:var(--disp); font-weight:700; font-size:19px; letter-spacing:-0.025em; margin-bottom:9px;">{{ s.title }}</div>
+                <div style="font-family:var(--body); font-size:14px; line-height:1.65; color:var(--fg2);">{{ s.desc }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- ── FEATURES ── -->
+      <div style="margin-top:16px; margin-bottom:24px;">
+        <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:12px;">
+          <sc-for list="{{ features }}" as="f" hint-placeholder-count="4">
+            <div style="background:rgba(255,255,255,0.82); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid var(--line); border-radius:16px; padding:20px 22px; display:flex; align-items:flex-start; gap:16px; transition:transform .18s, box-shadow .18s;" style-hover="transform:translateY(-2px); box-shadow:var(--shadowH);">
+              <div style="width:42px; height:42px; border-radius:12px; display:flex; align-items:center; justify-content:center; background:{{ f.tint }}; flex-shrink:0;">{{ f.icon }}</div>
+              <div>
+                <div style="font-family:var(--disp); font-weight:700; font-size:16px; letter-spacing:-0.02em; margin-bottom:5px;">{{ f.title }}</div>
+                <div style="font-family:var(--body); font-size:13.5px; line-height:1.6; color:var(--fg2);">{{ f.desc }}</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+    </div>
+    </sc-if>
+
+    <!-- ============ PROJECTS ============ -->
+    <sc-if value="{{ isProjects }}" hint-placeholder-val="{{ true }}">
+    <div style="padding-top:40px;">
+      <div style="display:flex; align-items:flex-end; justify-content:space-between; margin-bottom:26px;">
+        <div>
+          <div style="display:flex; align-items:center; gap:10px; font-family:var(--mono); font-size:11px; font-weight:700; letter-spacing:0.22em; color:var(--accent); text-transform:uppercase; margin-bottom:10px;"><span style="display:inline-block; width:20px; height:1.5px; background:var(--accent); border-radius:2px;"></span>WORKSPACE</div>
+          <h1 style="font-family:var(--disp); font-weight:800; font-size:clamp(2rem,3.4vw,2.7rem); line-height:1; letter-spacing:-0.04em;">Projects</h1>
+          <p style="font-family:var(--body); font-size:14.5px; color:var(--fg2); margin-top:10px;">Group related sheets, share offcut inventory across them, export site-ready plans.</p>
+        </div>
+        <div onClick="{{ openCreate }}" style="display:flex; align-items:center; gap:8px; font-family:var(--body); font-weight:700; font-size:14px; color:#fff; background:var(--accent); padding:11px 18px 11px 15px; border-radius:999px; cursor:pointer; box-shadow:0 6px 18px rgba(99,102,241,0.3); flex-shrink:0;" style-hover="background:#4f46e5; transform:translateY(-2px);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+          New Project
+        </div>
+      </div>
+
+      <!-- summary -->
+      <div style="background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow); margin-bottom:24px; display:flex; overflow:hidden;">
+        <sc-for list="{{ summary }}" as="m" hint-placeholder-count="4">
+          <div style="flex:1; padding:22px 26px; border-right:1px solid var(--line); position:relative; overflow:hidden;">
+            <div style="position:absolute; bottom:-10px; right:-10px; width:72px; height:72px; border-radius:50%; background:{{ m.color }}; opacity:0.07;"></div>
+            <div style="font-family:var(--mono); font-size:9.5px; font-weight:700; letter-spacing:0.16em; color:var(--fg3); text-transform:uppercase; margin-bottom:10px;">{{ m.label }}</div>
+            <div style="font-family:var(--disp); font-weight:800; font-size:34px; letter-spacing:-0.04em; color:{{ m.color }};">{{ m.value }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- project cards -->
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <sc-for list="{{ projects }}" as="p" hint-placeholder-count="3">
+          <div style="background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow); overflow:hidden; transition:transform .2s, box-shadow .2s, border-color .2s;" style-hover="transform:translateY(-3px); box-shadow:var(--shadowH); border-color:rgba(99,102,241,0.25);">
+            <div style="padding:22px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px;">
+              <div style="display:flex; align-items:center; gap:16px; min-width:0;">
+                <div style="width:50px; height:50px; border-radius:14px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:{{ p.tint }}; border:1px solid {{ p.border }};">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 7.5 12 3l9 4.5M3 7.5 12 12m-9-4.5V16.5L12 21m0-9 9-4.5M12 12v9m9-13.5V16.5L12 21" stroke="{{ p.accent }}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div style="min-width:0;">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <h3 style="font-family:var(--disp); font-weight:700; font-size:20px; letter-spacing:-0.025em; white-space:nowrap;">{{ p.name }}</h3>
+                    <span style="font-family:var(--mono); font-size:9.5px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; padding:3px 9px; border-radius:999px; background:{{ p.statusBg }}; color:{{ p.statusFg }};">{{ p.status }}</span>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:16px; margin-top:7px; font-family:var(--body); font-size:13px; color:var(--fg2);">
+                    <span style="display:flex; align-items:center; gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="16" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 3v4M16 3v4M4 10h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>{{ p.created }}</span>
+                    <span style="display:flex; align-items:center; gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M7 3h7l5 5v13H7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 3v5h5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>{{ p.sheetCount }} sheets</span>
+                    <span style="display:flex; align-items:center; gap:5px; color:var(--accent3);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M7 19a4 4 0 0 1-3.5-6L6 8m5-3 2.5 4M17 5a4 4 0 0 1 3.5 6L18 16m-1 3-5 .01M9 19l3 2 0-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>{{ p.wasteCount }} offcuts</span>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                <div onClick="{{ p.open }}" style="display:flex; align-items:center; gap:6px; font-family:var(--body); font-weight:700; font-size:13px; color:var(--accent); background:rgba(99,102,241,0.08); padding:9px 14px; border-radius:999px; cursor:pointer;" style-hover="background:var(--accent); color:#fff;">
+                  Open
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+                <div style="width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:var(--fg3); cursor:pointer;" style-hover="background:rgba(244,63,94,0.08); color:#f43f5e;">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M5 7h14M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+              </div>
+            </div>
+            <div style="padding:0 24px 18px;">
+              <div style="background:#f8f9fc; border:1px solid var(--line); border-radius:13px; padding:14px 16px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:11px;">
+                  <span style="font-family:var(--mono); font-size:9.5px; font-weight:700; letter-spacing:0.16em; color:var(--fg3); text-transform:uppercase; display:flex; align-items:center; gap:6px;"><span style="width:6px; height:6px; border-radius:50%; background:{{ p.accent }};"></span>SHEETS</span>
+                  <span onClick="{{ p.open }}" style="font-family:var(--body); font-size:12px; font-weight:600; color:var(--accent); cursor:pointer;">View all →</span>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:7px;">
+                  <sc-for list="{{ p.sheets }}" as="sh" hint-placeholder-count="3">
+                    <div onClick="{{ sh.open }}" style="display:flex; align-items:center; justify-content:space-between; background:#fff; border:1px solid var(--line); border-radius:10px; padding:9px 12px; cursor:pointer; transition:border-color .15s, transform .15s;" style-hover="border-color:rgba(99,102,241,0.4); transform:translateX(2px);">
+                      <div style="display:flex; align-items:center; gap:11px;">
+                        <div style="width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:var(--mono); font-size:11px; font-weight:700; background:{{ sh.badgeBg }}; color:{{ sh.badgeFg }};">{{ sh.tag }}</div>
+                        <div>
+                          <div style="font-family:var(--body); font-weight:600; font-size:13.5px;">{{ sh.file }}</div>
+                          <div style="font-family:var(--body); font-size:11.5px; color:var(--fg3);">{{ sh.meta }}</div>
+                        </div>
+                      </div>
+                      <span style="font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:3px 8px; border-radius:999px; background:{{ sh.statusBg }}; color:{{ sh.statusFg }};">{{ sh.status }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+    <!-- ============ PROJECT DETAIL ============ -->
+    <sc-if value="{{ isProject }}" hint-placeholder-val="{{ true }}">
+    <div style="padding-top:34px;">
+      <!-- project header card -->
+      <div style="background:linear-gradient(135deg,rgba(99,102,241,0.05),rgba(14,165,233,0.02)); border:1px solid rgba(99,102,241,0.14); border-radius:20px; padding:22px 26px; margin-bottom:18px; position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,#6366f1,#0ea5e9);"></div>
+        <div style="position:absolute; top:-30px; right:-30px; width:130px; height:130px; border-radius:50%; background:radial-gradient(circle,rgba(14,165,233,0.1),transparent 70%); pointer-events:none;"></div>
+        <div onClick="{{ goProjects }}" style="display:inline-flex; align-items:center; gap:7px; font-family:var(--body); font-size:12.5px; font-weight:600; color:var(--accent); cursor:pointer; margin-bottom:16px;" style-hover="color:#4f46e5;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Back to Projects
+        </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
+          <div style="display:flex; align-items:center; gap:18px; min-width:0;">
+            <div style="width:62px; height:62px; border-radius:18px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#6366f1,#0ea5e9); box-shadow:0 12px 28px rgba(99,102,241,0.32);">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M3 7.5 12 3l9 4.5M3 7.5 12 12m-9-4.5V16.5L12 21m0-9 9-4.5M12 12v9m9-13.5V16.5L12 21" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </div>
+            <div style="min-width:0;">
+              <h1 style="font-family:var(--disp); font-weight:800; font-size:clamp(1.6rem,2.8vw,2.2rem); letter-spacing:-0.04em;">{{ proj.name }}</h1>
+              <p style="font-family:var(--body); font-size:13.5px; color:var(--fg2); margin-top:6px;">{{ proj.sub }}</p>
+            </div>
+          </div>
+          <div onClick="{{ openCreate }}" style="display:flex; align-items:center; gap:8px; font-family:var(--body); font-weight:700; font-size:14px; color:#fff; background:var(--accent); padding:11px 18px 11px 15px; border-radius:999px; cursor:pointer; box-shadow:0 6px 18px rgba(99,102,241,0.3); flex-shrink:0;" style-hover="background:#4f46e5; transform:translateY(-2px);">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M12 16V4M6 10l6-6 6 6M4 20h16" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Upload Sheet
+          </div>
+        </div>
+      </div>
+
+      <!-- tabs -->
+      <div style="display:inline-flex; gap:3px; background:rgba(241,243,248,0.9); padding:4px; border-radius:14px; margin-bottom:24px; border:1px solid var(--line);">
+        <div onClick="{{ setTabSheets }}" style="display:flex; align-items:center; gap:8px; font-family:var(--body); font-weight:700; font-size:13.5px; padding:9px 20px; border-radius:10px; cursor:pointer; background:{{ tabSheetsBg }}; color:{{ tabSheetsFg }}; box-shadow:{{ tabSheetsSh }}; transition:all .15s;">Sheets<span style="font-family:var(--mono); font-size:9.5px; font-weight:700; padding:2px 8px; border-radius:999px; background:rgba(99,102,241,0.12); color:var(--accent);">{{ proj.sheetCount }}</span></div>
+        <div onClick="{{ setTabWaste }}" style="display:flex; align-items:center; gap:8px; font-family:var(--body); font-weight:700; font-size:13.5px; padding:9px 20px; border-radius:10px; cursor:pointer; background:{{ tabWasteBg }}; color:{{ tabWasteFg }}; box-shadow:{{ tabWasteSh }}; transition:all .15s;">Offcut Inventory<span style="font-family:var(--mono); font-size:9.5px; font-weight:700; padding:2px 8px; border-radius:999px; background:rgba(16,185,129,0.14); color:var(--accent3);">{{ proj.wasteAvail }}</span></div>
+        <div onClick="{{ setTabDash }}" style="font-family:var(--body); font-weight:700; font-size:13.5px; padding:9px 20px; border-radius:10px; cursor:pointer; background:{{ tabDashBg }}; color:{{ tabDashFg }}; box-shadow:{{ tabDashSh }}; transition:all .15s;">Dashboard</div>
+      </div>
+
+      <!-- SHEETS TAB -->
+      <sc-if value="{{ isTabSheets }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <sc-for list="{{ projSheets }}" as="sh" hint-placeholder-count="4">
+          <div style="background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow); transition:transform .2s, box-shadow .2s, border-color .2s;" style-hover="transform:translateY(-2px); box-shadow:var(--shadowH); border-color:rgba(99,102,241,0.22);">
+            <div style="padding:20px 22px; display:flex; align-items:center; justify-content:space-between; gap:14px;">
+              <div style="display:flex; align-items:center; gap:15px; min-width:0;">
+                <div style="width:46px; height:46px; border-radius:13px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:{{ sh.iconBg }}; border:1px solid {{ sh.iconBorder }};">{{ sh.iconEl }}</div>
+                <div style="min-width:0;">
+                  <div style="display:flex; align-items:center; gap:9px;">
+                    <h3 onClick="{{ sh.open }}" style="font-family:var(--disp); font-weight:700; font-size:17px; letter-spacing:-0.02em; cursor:pointer;" style-hover="color:var(--accent);">{{ sh.file }}</h3>
+                    <sc-if value="{{ sh.isWaste }}" hint-placeholder-val="{{ false }}"><span style="font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:0.08em; padding:3px 8px; border-radius:999px; background:rgba(245,158,11,0.14); color:#b45309;">WASTE ONLY</span></sc-if>
+                  </div>
+                  <div style="display:flex; align-items:center; gap:14px; margin-top:6px; font-family:var(--body); font-size:12.5px; color:var(--fg2);">
+                    <span>{{ sh.date }}</span>
+                    <span style="color:var(--line2);">|</span>
+                    <span>{{ sh.metaA }}</span>
+                    <span style="color:var(--line2);">|</span>
+                    <span>{{ sh.metaB }}</span>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                <span style="font-family:var(--mono); font-size:9.5px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:4px 10px; border-radius:999px; background:{{ sh.statusBg }}; color:{{ sh.statusFg }};">{{ sh.status }}</span>
+                <div onClick="{{ sh.open }}" style="width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; color:var(--fg3); cursor:pointer;" style-hover="background:rgba(99,102,241,0.08); color:var(--accent);">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/></svg>
+                </div>
+              </div>
+            </div>
+            <sc-if value="{{ sh.noResults }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 22px 20px;">
+              <div style="background:rgba(99,102,241,0.025); border:1.5px dashed rgba(99,102,241,0.25); border-radius:13px; padding:14px 18px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                <div style="display:flex; align-items:center; gap:12px;">
+                  <div style="width:36px; height:36px; border-radius:10px; background:rgba(99,102,241,0.1); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#6366f1" stroke-width="1.8"/><path d="M12 8v4l3 3" stroke="#6366f1" stroke-width="1.8" stroke-linecap="round"/></svg>
+                  </div>
+                  <div>
+                    <div style="font-family:var(--body); font-weight:700; font-size:13.5px; color:var(--fg1);">Ready to optimize</div>
+                    <div style="font-family:var(--body); font-size:12px; color:var(--fg2); margin-top:2px;">{{ sh.rows }} bar marks parsed · select diameters to run</div>
+                  </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px; font-family:var(--body); font-weight:700; font-size:13px; color:var(--accent); background:rgba(99,102,241,0.08); padding:8px 14px; border-radius:999px; cursor:pointer; flex-shrink:0; white-space:nowrap;" style-hover="background:var(--accent); color:#fff;">
+                  Run Optimization
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </div>
+              </div>
+            </div>
+            </sc-if>
+            <sc-if value="{{ sh.hasResults }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:0 22px 20px;">
+              <div style="background:#f8f9fc; border:1px solid var(--line); border-radius:12px; padding:14px 16px;">
+                <div style="font-family:var(--mono); font-size:9.5px; font-weight:700; letter-spacing:0.16em; color:var(--fg3); text-transform:uppercase; margin-bottom:11px; display:flex; align-items:center; gap:6px;"><span style="width:6px; height:6px; border-radius:50%; background:var(--accent);"></span>CALCULATION RESULTS</div>
+                <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:8px;">
+                  <sc-for list="{{ sh.results }}" as="r" hint-placeholder-count="5">
+                    <div onClick="{{ sh.open }}" style="background:#fff; border:1px solid var(--line); border-radius:11px; padding:12px 10px; cursor:pointer; transition:all .15s; text-align:center;" style-hover="border-color:rgba(99,102,241,0.4); transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,0.07);">
+                      <div style="font-family:var(--disp); font-weight:800; font-size:15px; letter-spacing:-0.02em; margin-bottom:6px;">Ø{{ r.dia }}</div>
+                      <div style="font-family:var(--disp); font-weight:800; font-size:20px; letter-spacing:-0.03em; color:var(--accent);">{{ r.bars }}</div>
+                      <div style="font-family:var(--mono); font-size:8px; font-weight:700; color:var(--fg3); letter-spacing:0.08em; margin-top:3px;">BARS</div>
+                      <div style="margin-top:6px;"><span style="font-family:var(--mono); font-size:7.5px; font-weight:700; padding:2px 6px; border-radius:5px; background:{{ r.algBg }}; color:{{ r.algFg }};">{{ r.alg }}</span></div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+      </sc-if>
+
+      <!-- WASTE TAB -->
+      <sc-if value="{{ isTabWaste }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px;">
+          <sc-for list="{{ wasteTiles }}" as="w" hint-placeholder-count="4">
+            <div style="background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; box-shadow:var(--shadow);">
+              <div style="font-family:var(--disp); font-weight:800; font-size:32px; letter-spacing:-0.03em; color:{{ w.color }};">{{ w.value }}</div>
+              <div style="font-family:var(--body); font-size:13px; color:var(--fg2); margin-top:4px;">{{ w.label }}</div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow); padding:24px;">
+          <div style="font-family:var(--disp); font-weight:700; font-size:18px; letter-spacing:-0.02em; margin-bottom:18px;">Available offcuts by diameter</div>
+          <div style="display:flex; flex-direction:column; gap:14px;">
+            <sc-for list="{{ wasteByDia }}" as="d" hint-placeholder-count="7">
+              <div style="display:flex; align-items:center; gap:16px;">
+                <div style="width:74px; flex-shrink:0; display:flex; align-items:center; gap:8px;"><span style="width:11px; height:11px; border-radius:50%; background:{{ d.color }};"></span><span style="font-family:var(--mono); font-size:13px; font-weight:700;">Ø{{ d.dia }}</span></div>
+                <div style="flex:1; height:30px; background:#f1f3f8; border-radius:8px; overflow:hidden; position:relative;">
+                  <div style="height:100%; width:{{ d.pct }}; background:linear-gradient(90deg, {{ d.color }}, {{ d.color2 }}); border-radius:8px; transform-origin:left; animation:growW 0.7s cubic-bezier(0.22,1,0.36,1) both; display:flex; align-items:center; padding-left:12px;"><span style="font-family:var(--mono); font-size:11px; font-weight:700; color:#fff;">{{ d.avail }} pcs</span></div>
+                </div>
+                <div style="width:130px; flex-shrink:0; text-align:right; font-family:var(--body); font-size:12.5px; color:var(--fg2);"><span style="font-family:var(--disp); font-weight:700; color:var(--fg1);">{{ d.len }}</span> available</div>
+                <div style="width:70px; flex-shrink:0; text-align:right; font-family:var(--body); font-size:12px; color:var(--fg3);">{{ d.used }} used</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+
+      <!-- DASHBOARD TAB -->
+      <sc-if value="{{ isTabDash }}" hint-placeholder-val="{{ false }}">
+      <div>
+        <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:18px;">
+          <sc-for list="{{ dashTiles }}" as="t" hint-placeholder-count="4">
+            <div class="tipw">
+              <div class="tip">{{ t.tooltip }}</div>
+              <div style="background:var(--card); border:1px solid var(--line); border-radius:16px; padding:20px; box-shadow:var(--shadow); position:relative; overflow:hidden; cursor:default;">
+                <div style="position:absolute; top:-14px; right:-14px; width:64px; height:64px; border-radius:50%; background:{{ t.tint }};"></div>
+                <div style="position:relative;">
+                  <div style="color:{{ t.color }}; margin-bottom:10px;">{{ t.icon }}</div>
+                  <div style="font-family:var(--disp); font-weight:800; font-size:28px; letter-spacing:-0.03em;">{{ t.value }}</div>
+                  <div style="font-family:var(--body); font-size:12.5px; color:var(--fg2); margin-top:3px;">{{ t.label }}</div>
+                </div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:grid; grid-template-columns:1.4fr 1fr; gap:16px;">
+          <div style="background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow); padding:24px;">
+            <div style="font-family:var(--disp); font-weight:700; font-size:17px; letter-spacing:-0.02em; margin-bottom:4px;">Waste recovered per sheet</div>
+            <div style="font-family:var(--body); font-size:12.5px; color:var(--fg2); margin-bottom:20px;">Meters of offcut returned to inventory and reused downstream.</div>
+            <div style="display:flex; align-items:flex-end; gap:16px; height:180px; padding-top:10px;">
+              <sc-for list="{{ dashBars }}" as="b" hint-placeholder-count="6">
+                <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:8px; height:100%; justify-content:flex-end;">
+                  <span style="font-family:var(--mono); font-size:11px; font-weight:700; color:var(--accent3);">{{ b.val }}</span>
+                  <div class="tipw" style="width:100%; max-width:46px; height:{{ b.h }}; position:relative;">
+                    <div class="tip">{{ b.tooltip }}</div>
+                    <div style="width:100%; height:100%; background:linear-gradient(180deg, #10b981, #34d399); border-radius:7px 7px 3px 3px; transform-origin:bottom; animation:growH 0.6s cubic-bezier(0.22,1,0.36,1) both;"></div>
+                  </div>
+                  <span style="font-family:var(--body); font-size:11px; font-weight:600; color:var(--fg2);">{{ b.label }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow); padding:24px;">
+            <div style="font-family:var(--disp); font-weight:700; font-size:17px; letter-spacing:-0.02em; margin-bottom:18px;">Utilization by sheet</div>
+            <div style="display:flex; flex-direction:column; gap:15px;">
+              <sc-for list="{{ dashUtil }}" as="u" hint-placeholder-count="5">
+                <div class="tipw">
+                  <div class="tip">{{ u.tooltip }}</div>
+                  <div style="display:flex; justify-content:space-between; margin-bottom:6px;"><span style="font-family:var(--body); font-size:12.5px; font-weight:600;">{{ u.label }}</span><span style="font-family:var(--mono); font-size:12px; font-weight:700; color:{{ u.color }};">{{ u.pct }}</span></div>
+                  <div style="height:8px; background:#f1f3f8; border-radius:999px; overflow:hidden;"><div style="height:100%; width:{{ u.pct }}; background:{{ u.color }}; border-radius:999px; transform-origin:left; animation:growW 0.6s cubic-bezier(0.22,1,0.36,1) both;"></div></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <!-- ============ SHEET RESULTS ============ -->
+    <sc-if value="{{ isSheet }}" hint-placeholder-val="{{ true }}">
+    <div style="padding-top:34px;">
+      <!-- sheet header card -->
+      <div style="background:linear-gradient(135deg,rgba(99,102,241,0.05),rgba(14,165,233,0.03)); border:1px solid rgba(99,102,241,0.14); border-radius:20px; padding:22px 26px; margin-bottom:18px; position:relative; overflow:hidden;">
+        <div style="position:absolute; top:0; left:0; right:0; height:3px; background:linear-gradient(90deg,#6366f1,#0ea5e9);"></div>
+        <div style="position:absolute; top:-30px; right:-30px; width:120px; height:120px; border-radius:50%; background:radial-gradient(circle,rgba(99,102,241,0.12),transparent 70%); pointer-events:none;"></div>
+        <div onClick="{{ backToProject }}" style="display:inline-flex; align-items:center; gap:7px; font-family:var(--body); font-size:12.5px; font-weight:600; color:var(--accent); cursor:pointer; margin-bottom:16px;" style-hover="color:#4f46e5;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Back to {{ proj.name }}
+        </div>
+        <div style="display:flex; align-items:center; gap:18px;">
+          <div style="width:62px; height:62px; border-radius:18px; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,#6366f1,#0ea5e9); box-shadow:0 12px 28px rgba(99,102,241,0.32); font-family:var(--disp); font-weight:800; font-size:22px; color:#fff; flex-shrink:0;">#{{ sheet.n }}</div>
+          <div>
+            <h1 style="font-family:var(--disp); font-weight:800; font-size:clamp(1.6rem,2.8vw,2.2rem); letter-spacing:-0.04em;">{{ sheet.file }}</h1>
+            <div style="display:flex; align-items:center; gap:10px; margin-top:7px; flex-wrap:wrap;">
+              <span style="font-family:var(--body); font-size:13px; color:var(--fg2);">Sheet #{{ sheet.n }}</span>
+              <span style="width:4px; height:4px; border-radius:50%; background:var(--fg3); flex-shrink:0;"></span>
+              <span style="font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; padding:3px 9px; border-radius:999px; background:rgba(16,185,129,0.14); color:#059669;">{{ sheet.status }}</span>
+              <span style="width:4px; height:4px; border-radius:50%; background:var(--fg3); flex-shrink:0;"></span>
+              <span style="font-family:var(--body); font-size:13px; color:var(--fg2);">{{ sheet.rows }} bar marks · {{ sheet.diaCount }} diameters</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- dia filter -->
+      <div style="background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow); overflow:hidden; margin-bottom:18px;">
+        <div style="padding:13px 20px 12px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:9px;">
+          <div style="width:6px; height:6px; border-radius:50%; background:var(--accent);"></div>
+          <span style="font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:0.2em; color:var(--fg3); text-transform:uppercase;">SELECT DIAMETER</span>
+        </div>
+        <div style="padding:14px 16px; display:flex; gap:8px; flex-wrap:wrap;">
+          <sc-for list="{{ diaList }}" as="d" hint-placeholder-count="7">
+            <div onClick="{{ d.select }}" style="display:flex; flex-direction:column; align-items:center; gap:3px; min-width:82px; padding:12px 18px; border-radius:13px; cursor:pointer; border:1.5px solid {{ d.border }}; background:{{ d.bg }}; transition:all .15s;" style-hover="border-color:var(--accent); background:rgba(99,102,241,0.06);">
+              <span style="font-family:var(--disp); font-weight:800; font-size:20px; letter-spacing:-0.03em; color:{{ d.fg }};">Ø{{ d.dia }}</span>
+              <span style="font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:0.08em; color:{{ d.subFg }};">{{ d.bars }} bars</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <!-- algorithm comparison -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+        <sc-for list="{{ results.algos }}" as="a" hint-placeholder-count="2">
+          <div style="background:{{ a.cardBg }}; border:1.5px solid {{ a.border }}; border-radius:18px; box-shadow:{{ a.shadow }}; overflow:hidden;">
+            <div style="height:4px; background:{{ a.topStripe }};"></div>
+            <div style="padding:20px 22px 22px;">
+              <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:20px;">
+                <div>
+                  <div style="font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:0.14em; color:{{ a.accent }}; text-transform:uppercase; margin-bottom:7px;">{{ a.tag }}</div>
+                  <div style="font-family:var(--disp); font-weight:700; font-size:20px; letter-spacing:-0.03em;">{{ a.name }}</div>
+                </div>
+                <sc-if value="{{ a.winner }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex; align-items:center; gap:5px; font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:0.1em; padding:5px 11px; border-radius:999px; background:var(--accent3); color:#fff; flex-shrink:0; margin-top:2px;">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    BEST
+                  </div>
+                </sc-if>
+              </div>
+              <div style="display:flex; border-top:1px solid var(--line); padding-top:18px;">
+                <div style="flex:1; text-align:center; padding-right:1px;">
+                  <div style="font-family:var(--disp); font-weight:800; font-size:32px; letter-spacing:-0.04em; color:{{ a.numColor }};">{{ a.bars }}</div>
+                  <div style="font-family:var(--mono); font-size:8.5px; font-weight:700; letter-spacing:0.1em; color:var(--fg3); text-transform:uppercase; margin-top:4px;">bars used</div>
+                </div>
+                <div style="width:1px; background:var(--line); margin:0 4px;"></div>
+                <div style="flex:1; text-align:center;">
+                  <div style="font-family:var(--disp); font-weight:800; font-size:32px; letter-spacing:-0.04em;">{{ a.waste }}</div>
+                  <div style="font-family:var(--mono); font-size:8.5px; font-weight:700; letter-spacing:0.1em; color:var(--fg3); text-transform:uppercase; margin-top:4px;">total waste</div>
+                </div>
+                <div style="width:1px; background:var(--line); margin:0 4px;"></div>
+                <div style="flex:1; text-align:center; padding-left:1px;">
+                  <div style="font-family:var(--disp); font-weight:800; font-size:32px; letter-spacing:-0.04em; color:{{ a.numColor }};">{{ a.util }}</div>
+                  <div style="font-family:var(--mono); font-size:8.5px; font-weight:700; letter-spacing:0.1em; color:var(--fg3); text-transform:uppercase; margin-top:4px;">avg util.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- stat tiles -->
+      <div style="background:rgba(255,255,255,0.8); backdrop-filter:blur(12px); border:1px solid var(--line); border-radius:16px; margin-bottom:14px; display:flex; overflow:hidden;">
+        <sc-for list="{{ results.stats }}" as="s" hint-placeholder-count="5">
+          <div style="flex:1; padding:18px 20px; border-right:1px solid var(--line);">
+            <div style="font-family:var(--mono); font-size:8.5px; font-weight:700; letter-spacing:0.14em; color:var(--fg3); text-transform:uppercase; margin-bottom:8px;">{{ s.label }}</div>
+            <div style="font-family:var(--disp); font-weight:800; font-size:26px; letter-spacing:-0.04em; color:{{ s.color }};">{{ s.value }}</div>
+            <div style="font-family:var(--body); font-size:11px; color:var(--fg3); margin-top:3px;">{{ s.sub }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <!-- cutting patterns viz -->
+      <div style="background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--shadow); overflow:hidden;">
+        <div style="padding:18px 22px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:11px;">
+            <div style="width:36px; height:36px; border-radius:11px; background:rgba(99,102,241,0.1); display:flex; align-items:center; justify-content:center; color:var(--accent);"><svg width="19" height="19" viewBox="0 0 24 24" fill="none"><circle cx="6" cy="6" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 7.5 20 18M8.5 16.5 20 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+            <div>
+              <div style="font-family:var(--disp); font-weight:700; font-size:17px; letter-spacing:-0.02em;">Cutting patterns · Ø{{ selectedDia }}mm</div>
+              <div style="font-family:var(--body); font-size:12px; color:var(--fg2);">Each bar drawn to scale — segments are cut marks, hatched tail is offcut.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <div style="display:flex; align-items:center; gap:7px; font-family:var(--body); font-weight:700; font-size:12.5px; color:var(--accent3); background:rgba(16,185,129,0.1); padding:8px 13px; border-radius:999px; cursor:pointer;" style-hover="background:var(--accent3); color:#fff;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M14 3v5h5M7 3h7l5 5v13H7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>Export Excel</div>
+          </div>
+        </div>
+
+        <!-- legend -->
+        <div style="padding:13px 22px; background:#f8f9fc; border-bottom:1px solid var(--line); display:flex; flex-wrap:wrap; gap:14px; align-items:center;">
+          <span style="font-family:var(--mono); font-size:9.5px; font-weight:700; letter-spacing:0.14em; color:var(--fg3); text-transform:uppercase;">BAR MARKS</span>
+          <sc-for list="{{ results.legend }}" as="l" hint-placeholder-count="5">
+            <div style="display:flex; align-items:center; gap:6px;"><span style="width:11px; height:11px; border-radius:3px; background:{{ l.color }};"></span><span style="font-family:var(--mono); font-size:11px; font-weight:700; color:var(--fg2);">{{ l.code }}</span></div>
+          </sc-for>
+          <div style="display:flex; align-items:center; gap:6px;"><span style="width:11px; height:11px; border-radius:3px; background:repeating-linear-gradient(45deg, rgba(244,63,94,0.35) 0 3px, rgba(244,63,94,0.12) 3px 6px);"></span><span style="font-family:var(--mono); font-size:11px; font-weight:700; color:var(--fg2);">OFFCUT</span></div>
+        </div>
+
+        <!-- bars -->
+        <div style="padding:8px 22px 16px;">
+          <sc-for list="{{ results.bars }}" as="bar" hint-placeholder-count="8">
+            <div style="display:flex; align-items:center; gap:14px; padding:14px 0; border-bottom:1px solid var(--line);">
+              <div style="display:flex; flex-direction:column; align-items:center; gap:4px; width:52px; flex-shrink:0;">
+                <div style="width:36px; height:36px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-family:var(--disp); font-weight:800; font-size:15px; background:{{ bar.numBg }}; color:{{ bar.numFg }}; border:1px solid {{ bar.numBorder }};">{{ bar.num }}</div>
+                <span style="font-family:var(--mono); font-size:8px; font-weight:700; letter-spacing:0.08em; color:{{ bar.srcFg }};">{{ bar.srcTag }}</span>
+              </div>
+              <div style="width:110px; flex-shrink:0;">
+                <div style="font-family:var(--body); font-size:12px; font-weight:700; color:var(--fg1);">{{ bar.stockLabel }}</div>
+                <sc-if value="{{ bar.reused }}" hint-placeholder-val="{{ false }}"><div style="font-family:var(--body); font-size:10px; color:#10b981; display:flex; align-items:center; gap:4px; margin-top:2px;"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M7 19a4 4 0 0 1-3.5-6L6 8m11-3a4 4 0 0 1 3.5 6L18 16" stroke="#10b981" stroke-width="2" stroke-linecap="round"/></svg>{{ bar.srcDetail }}</div></sc-if>
+              </div>
+              <div style="flex:1; min-width:0;">
+                <div style="display:flex; height:40px; border-radius:10px; overflow:hidden; border:1px solid var(--line); background:#f1f3f8; box-shadow:inset 0 1px 3px rgba(0,0,0,0.05);">
+                  <sc-for list="{{ bar.segments }}" as="seg" hint-placeholder-count="3">
+                    <div title="{{ seg.title }}" style="width:{{ seg.width }}; background:linear-gradient(180deg, {{ seg.color }}, {{ seg.color2 }}); display:flex; align-items:center; justify-content:center; border-right:2px solid rgba(255,255,255,0.55); overflow:hidden;"><span style="font-family:var(--mono); font-size:9.5px; font-weight:700; color:#fff; white-space:nowrap; text-shadow:0 1px 2px rgba(0,0,0,0.18);">{{ seg.label }}</span></div>
+                  </sc-for>
+                  <div style="width:{{ bar.wasteWidth }}; background:repeating-linear-gradient(45deg, rgba(244,63,94,0.26) 0 6px, rgba(244,63,94,0.09) 6px 12px); display:flex; align-items:center; justify-content:center; overflow:hidden;"><span style="font-family:var(--mono); font-size:9px; font-weight:700; color:#e11d48; white-space:nowrap;">{{ bar.wasteLabel }}</span></div>
+                </div>
+              </div>
+              <div style="width:90px; flex-shrink:0; text-align:right;">
+                <div style="font-family:var(--disp); font-weight:800; font-size:16px; color:{{ bar.utilColor }};">{{ bar.util }}</div>
+                <div style="height:4px; width:100%; background:#f1f3f8; border-radius:999px; overflow:hidden; margin-top:5px;"><div style="height:100%; width:{{ bar.util }}; background:{{ bar.utilColor }}; border-radius:999px;"></div></div>
+                <div style="font-family:var(--body); font-size:10px; color:{{ bar.wasteFg }}; margin-top:4px;">{{ bar.wasteM }} waste</div>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+  </main>
+
+  <!-- create modal -->
+  <sc-if value="{{ showCreate }}" hint-placeholder-val="{{ false }}">
+  <div onClick="{{ closeCreate }}" style="position:fixed; inset:0; z-index:60; background:rgba(15,17,23,0.45); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:20px; animation:fadeUp 0.25s ease both;">
+    <div onClick="{{ stop }}" style="background:#fff; border-radius:24px; box-shadow:0 30px 80px rgba(0,0,0,0.3); width:100%; max-width:440px; padding:28px; border:1px solid var(--line);">
+      <div style="display:flex; align-items:center; gap:13px; margin-bottom:20px;">
+        <div style="width:46px; height:46px; border-radius:13px; background:linear-gradient(135deg, #6366f1, #0ea5e9); display:flex; align-items:center; justify-content:center; box-shadow:0 8px 20px rgba(99,102,241,0.32);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 7.5 12 3l9 4.5M3 7.5 12 12m-9-4.5V16.5L12 21m0-9 9-4.5M12 12v9" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div>
+          <div style="font-family:var(--disp); font-weight:800; font-size:19px; letter-spacing:-0.03em;">New Project</div>
+          <div style="font-family:var(--body); font-size:12.5px; color:var(--fg2);">Group sheets that should share offcut inventory.</div>
+        </div>
+      </div>
+      <label style="font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:0.14em; color:var(--fg3); text-transform:uppercase;">PROJECT NAME</label>
+      <input value="{{ newName }}" onInput="{{ setNewName }}" placeholder="e.g. Tower C — Cores 5–8" style="width:100%; margin-top:8px; padding:13px 15px; font-family:var(--body); font-size:14.5px; border:1.5px solid var(--line2); border-radius:12px; outline:none; background:#f8f9fc;" style-focus="border-color:var(--accent); background:#fff;" />
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:22px;">
+        <div onClick="{{ closeCreate }}" style="font-family:var(--body); font-weight:600; font-size:14px; color:var(--fg2); padding:11px 18px; border-radius:999px; cursor:pointer;" style-hover="background:#f1f3f8; color:var(--fg1);">Cancel</div>
+        <div onClick="{{ createProject }}" style="font-family:var(--body); font-weight:700; font-size:14px; color:#fff; background:var(--accent); padding:11px 22px; border-radius:999px; cursor:pointer; box-shadow:0 6px 18px rgba(99,102,241,0.32);" style-hover="background:#4f46e5;">Create Project</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1120,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  state = { view: 'home', tab: 'sheets', projectId: 1, sheetId: 11, selectedDia: 16, showCreate: false, newName: '' };
+
+  PAL = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#a855f7', '#f97316', '#f43f5e', '#22c55e'];
+  PAL2 = ['#818cf8', '#38bdf8', '#34d399', '#fbbf24', '#c084fc', '#fb923c', '#fb7185', '#4ade80'];
+
+  ICONS = {
+    upload: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 16V4M6 10l6-6 6 6M4 20h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    recycle: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7 19a4 4 0 0 1-3.5-6L6 8m5-3 2.5 4M17 5a4 4 0 0 1 3.5 6L18 16m-1 3-5 .01M9 19l3 2 0-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    chart: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    save: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 3h11l3 3v15H5zM9 3v5h6" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+    bolt: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M13 2 4 14h7l-1 8 9-12h-7z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+    file: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M7 3h7l5 5v13H7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 3v5h5" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+    bars: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    pct: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M19 5 5 19M8 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0Zm12 8a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z" stroke="currentColor" stroke-width="1.8"/></svg>'
+  };
+
+  PROJECTS = [
+    { id: 1, name: 'Tower B — Cores 1–4', status: 'active', created: 'Jun 14, 09:12', accent: '#6366f1',
+      wasteAvail: 38, wasteTotal: 56, wasteUsed: 18, wasteLen: '214.6m',
+      byDia: { 8: [4,2,18.2], 10: [3,2,14.9], 12: [9,3,42.1], 16: [11,5,63.4], 20: [7,4,38.9], 25: [3,1,21.4], 32: [1,1,15.7] },
+      sheets: [
+        { id: 11, n: 1, file: 'GF-Columns.xlsx', status: 'calculated', date: 'Jun 14, 09:20', calc: 24, waste: 9, rows: 86, type: 'sheet',
+          results: [{dia:8,alg:'FFD',bars:14},{dia:12,alg:'SWP',bars:22},{dia:16,alg:'SWP',bars:31},{dia:20,alg:'FFD',bars:18},{dia:25,alg:'SWP',bars:12},{dia:32,alg:'FFD',bars:7}] },
+        { id: 12, n: 2, file: 'L1–L5-Beams.xlsx', status: 'calculated', date: 'Jun 14, 10:02', calc: 30, waste: 14, rows: 112, type: 'sheet',
+          results: [{dia:10,alg:'FFD',bars:16},{dia:12,alg:'SWP',bars:28},{dia:16,alg:'SWP',bars:35},{dia:20,alg:'FFD',bars:24},{dia:25,alg:'SWP',bars:15}] },
+        { id: 13, n: 3, file: 'Core-Walls.xlsx', status: 'calculated', date: 'Jun 15, 08:41', calc: 26, waste: 11, rows: 94, type: 'sheet',
+          results: [{dia:12,alg:'SWP',bars:24},{dia:16,alg:'FFD',bars:29},{dia:20,alg:'SWP',bars:21},{dia:25,alg:'FFD',bars:13}] },
+        { id: 14, n: 4, file: 'Manual Waste Upload', status: 'uploaded', date: 'Jun 15, 14:10', calc: 0, waste: 18, rows: 0, type: 'waste', results: [] },
+        { id: 15, n: 5, file: 'Stair-Cores.xlsx', status: 'calculated', date: 'Jun 16, 09:55', calc: 20, waste: 6, rows: 71, type: 'sheet',
+          results: [{dia:8,alg:'FFD',bars:11},{dia:12,alg:'SWP',bars:19},{dia:16,alg:'SWP',bars:23}] },
+        { id: 16, n: 6, file: 'L6–L10-Beams.xlsx', status: 'uploaded', date: 'Jun 16, 11:33', calc: 0, waste: 0, rows: 108, type: 'sheet', results: [] }
+      ] },
+    { id: 2, name: 'Riverside Podium Slabs', status: 'calculated', created: 'Jun 9, 13:40', accent: '#0ea5e9',
+      wasteAvail: 12, wasteTotal: 24, wasteUsed: 12, wasteLen: '88.3m',
+      byDia: { 10: [2,1,9.1], 12: [4,3,28.6], 16: [4,5,34.2], 20: [2,3,16.4] },
+      sheets: [
+        { id: 21, n: 1, file: 'P-Slab-Bottom.xlsx', status: 'calculated', date: 'Jun 9, 14:00', calc: 22, waste: 6, rows: 78, type: 'sheet', results: [{dia:10,alg:'FFD',bars:13},{dia:12,alg:'SWP',bars:26},{dia:16,alg:'SWP',bars:30}] },
+        { id: 22, n: 2, file: 'P-Slab-Top.xlsx', status: 'calculated', date: 'Jun 9, 15:12', calc: 24, waste: 8, rows: 82, type: 'sheet', results: [{dia:10,alg:'FFD',bars:14},{dia:12,alg:'SWP',bars:25},{dia:16,alg:'FFD',bars:28}] },
+        { id: 23, n: 3, file: 'Drop-Panels.xlsx', status: 'calculated', date: 'Jun 10, 08:30', calc: 18, waste: 4, rows: 56, type: 'sheet', results: [{dia:12,alg:'SWP',bars:17},{dia:16,alg:'SWP',bars:21},{dia:20,alg:'FFD',bars:14}] },
+        { id: 24, n: 4, file: 'Edge-Beams.xlsx', status: 'calculated', date: 'Jun 10, 10:05', calc: 24, waste: 6, rows: 64, type: 'sheet', results: [{dia:12,alg:'FFD',bars:19},{dia:16,alg:'SWP',bars:24},{dia:20,alg:'SWP',bars:16}] }
+      ] },
+    { id: 3, name: 'Metro Depot — Phase 2', status: 'uploaded', created: 'Jun 17, 16:05', accent: '#f59e0b',
+      wasteAvail: 0, wasteTotal: 0, wasteUsed: 0, wasteLen: '0.0m', byDia: {},
+      sheets: [
+        { id: 31, n: 1, file: 'Pit-Walls.xlsx', status: 'uploaded', date: 'Jun 17, 16:10', calc: 0, waste: 0, rows: 96, type: 'sheet', results: [] },
+        { id: 32, n: 2, file: 'Ground-Beams.xlsx', status: 'uploaded', date: 'Jun 17, 16:18', calc: 0, waste: 0, rows: 73, type: 'sheet', results: [] }
+      ] }
+  ];
+
+  rng(seed) { let t = seed * 1973 + 13; return () => { t = (t * 16807 + 17) % 2147483647; return (t % 100000) / 100000; }; }
+
+  getProject() { return this.PROJECTS.find(p => p.id === this.state.projectId) || this.PROJECTS[0]; }
+  getSheet() { const p = this.getProject(); return p.sheets.find(s => s.id === this.state.sheetId) || p.sheets[0]; }
+
+  statusStyle(s) {
+    if (s === 'active') return ['rgba(99,102,241,0.12)', '#4f46e5'];
+    if (s === 'calculated' || s === 'completed') return ['rgba(16,185,129,0.14)', '#059669'];
+    if (s === 'uploaded') return ['rgba(245,158,11,0.16)', '#b45309'];
+    return ['rgba(0,0,0,0.06)', '#6b7280'];
+  }
+
+  // diameters that have results for the current sheet (fallback to full set)
+  diasFor(sheet) {
+    const set = (sheet.results || []).map(r => r.dia);
+    const all = [8, 10, 12, 16, 20, 25, 32];
+    return all.filter(d => set.includes(d) || sheet.results.length === 0);
+  }
+
+  genResults(dia) {
+    const rnd = this.rng(dia + this.state.sheetId * 7);
+    const codes = [];
+    const prefix = dia >= 20 ? 'C' : (dia >= 12 ? 'B' : 'R');
+    const nCodes = 5;
+    for (let i = 0; i < nCodes; i++) {
+      const len = +(1.45 + rnd() * 4.9).toFixed(2);
+      codes.push({ code: prefix + dia + '/0' + (i + 1), len, ci: i });
+    }
+    const nBars = 6 + Math.floor(rnd() * 3);
+    const sources = ['Sheet #2 · Bar #14', 'Sheet #5 · Bar #03', 'Sheet #3 · Bar #21', 'Sheet #2 · Bar #08'];
+    const bars = [];
+    let totalWaste = 0, utilSum = 0, reusable = 0, totalCuts = 0;
+    for (let b = 0; b < nBars; b++) {
+      const reused = b > 0 && rnd() < 0.24;
+      const barLen = reused ? +(3 + rnd() * 3).toFixed(2) : 12;
+      let remaining = barLen;
+      const segs = [];
+      let guard = 0;
+      while (remaining > 1.35 && segs.length < 6 && guard < 20) {
+        guard++;
+        if (rnd() < 0.12 && segs.length > 0) break;
+        const cand = codes.filter(c => c.len <= remaining - 0.001);
+        if (!cand.length) break;
+        const c = cand[Math.floor(rnd() * cand.length)];
+        segs.push(c);
+        remaining = +(remaining - c.len).toFixed(3);
+      }
+      if (!segs.length) { const c = codes[0]; segs.push(c); remaining = +(barLen - c.len).toFixed(3); }
+      const waste = Math.max(0, +remaining.toFixed(3));
+      const util = ((barLen - waste) / barLen) * 100;
+      totalWaste += waste; utilSum += util; totalCuts += segs.length;
+      if (waste >= 1) reusable++;
+      const segments = segs.map(c => ({
+        title: c.code + ' · ' + c.len.toFixed(2) + 'm',
+        label: c.len.toFixed(2),
+        width: (c.len / barLen * 100).toFixed(2) + '%',
+        color: this.PAL[c.ci], color2: this.PAL2[c.ci]
+      }));
+      const utilColor = util > 95 ? '#10b981' : (util > 86 ? '#f59e0b' : '#f43f5e');
+      bars.push({
+        num: b + 1, reused,
+        numBg: reused ? 'rgba(168,85,247,0.1)' : 'rgba(99,102,241,0.09)',
+        numFg: reused ? '#9333ea' : '#4f46e5',
+        numBorder: reused ? 'rgba(168,85,247,0.2)' : 'rgba(99,102,241,0.18)',
+        srcTag: reused ? 'REUSE' : 'NEW',
+        srcFg: reused ? '#9333ea' : '#9aa1ac',
+        stockLabel: reused ? barLen.toFixed(2) + 'm offcut' : '12.00m bar',
+        srcDetail: reused ? sources[b % sources.length] : '',
+        segments,
+        wasteWidth: (waste / barLen * 100).toFixed(2) + '%',
+        wasteLabel: waste > 0.4 ? waste.toFixed(2) : '',
+        wasteM: waste.toFixed(2) + 'm',
+        wasteFg: waste > 1 ? '#e11d48' : '#9aa1ac',
+        util: util.toFixed(1) + '%',
+        utilColor
+      });
+    }
+    const swpBars = nBars;
+    const ffdBars = nBars + (rnd() < 0.7 ? 1 : 2);
+    const avgUtil = utilSum / nBars;
+    const ffdUtil = avgUtil - 1.4 - rnd();
+    const ffdWaste = totalWaste + 0.6 + rnd() * 1.2;
+    const legend = codes.map(c => ({ code: c.code, color: this.PAL[c.ci] }));
+    const algos = [
+      { tag: 'FIRST-FIT DECREASING', name: 'FFD Greedy', winner: false, accent: '#0ea5e9',
+        border: 'rgba(0,0,0,0.08)', shadow: '0 4px 24px rgba(0,0,0,0.07)',
+        cardBg: '#fff', topStripe: 'transparent', numColor: '#0f1117',
+        bars: ffdBars, waste: ffdWaste.toFixed(2) + 'm', util: ffdUtil.toFixed(1) + '%' },
+      { tag: 'SWAP-OPTIMIZED · RECOMMENDED', name: 'Swap Optimizer', winner: true, accent: '#6366f1',
+        border: 'rgba(99,102,241,0.38)', shadow: '0 12px 40px rgba(99,102,241,0.18), 0 2px 8px rgba(99,102,241,0.08)',
+        cardBg: 'rgba(99,102,241,0.025)', topStripe: 'linear-gradient(90deg,#6366f1,#0ea5e9)', numColor: '#4f46e5',
+        bars: swpBars, waste: totalWaste.toFixed(2) + 'm', util: avgUtil.toFixed(1) + '%' }
+    ];
+    const stats = [
+      { label: 'BARS USED', value: swpBars, sub: 'new + reused', color: '#6366f1' },
+      { label: 'TOTAL WASTE', value: totalWaste.toFixed(2) + 'm', sub: ((totalWaste / (swpBars * 12)) * 100).toFixed(1) + '% of stock', color: '#f43f5e' },
+      { label: 'AVG UTILIZATION', value: avgUtil.toFixed(1) + '%', sub: 'across all bars', color: '#10b981' },
+      { label: 'REUSABLE PIECES', value: reusable, sub: '≥ 1m offcuts', color: '#a855f7' },
+      { label: 'CUTS PRODUCED', value: totalCuts, sub: 'bar marks', color: '#0f1117' }
+    ];
+    return { algos, stats, bars, legend, barsCount: swpBars };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const v = {
+      isHome: s.view === 'home', isProjects: s.view === 'projects', isProject: s.view === 'project', isSheet: s.view === 'sheet',
+      showCreate: s.showCreate, newName: s.newName, selectedDia: s.selectedDia,
+      goHome: () => this.setState({ view: 'home' }),
+      goProjects: () => this.setState({ view: 'projects' }),
+      openCreate: () => this.setState({ showCreate: true, newName: '' }),
+      closeCreate: () => this.setState({ showCreate: false }),
+      stop: (e) => { e.stopPropagation(); },
+      setNewName: (e) => this.setState({ newName: e.target.value }),
+      createProject: () => {
+        const name = (s.newName || '').trim() || 'Untitled Project';
+        const id = Math.max(...this.PROJECTS.map(p => p.id)) + 1;
+        this.PROJECTS.unshift({ id, name, status: 'uploaded', created: 'Just now', accent: '#a855f7', wasteAvail: 0, wasteTotal: 0, wasteUsed: 0, wasteLen: '0.0m', byDia: {}, sheets: [] });
+        this.setState({ showCreate: false, view: 'projects' });
+      },
+      backToProject: () => this.setState({ view: 'project', tab: 'sheets' })
+    };
+
+    // HOME
+    v.steps = [
+      { no: '01', title: 'Create a project', desc: 'Group related sheets so they can share one pool of offcut inventory.', icon: this.svg(this.ICONS.file), tint: 'rgba(99,102,241,0.1)', color: '#6366f1' },
+      { no: '02', title: 'Upload sheets', desc: 'Drop in Excel bar-bending schedules. Every diameter is parsed automatically.', icon: this.svg(this.ICONS.upload), tint: 'rgba(14,165,233,0.1)', color: '#0ea5e9' },
+      { no: '03', title: 'Optimize & export', desc: 'Run both methods, reuse waste across sheets, export a site-ready cutting plan.', icon: this.svg(this.ICONS.recycle), tint: 'rgba(16,185,129,0.1)', color: '#10b981' }
+    ];
+    v.features = [
+      { title: 'Cross-sheet waste reuse', desc: 'Offcuts from one sheet automatically become stock for the next. Nothing goes to landfill if it can still be cut.', icon: this.svg(this.ICONS.recycle), tint: 'rgba(16,185,129,0.1)', color: '#10b981' },
+      { title: 'Two optimisation methods', desc: 'First-Fit Decreasing for speed, Swap Optimiser for minimum waste. Compare both and pick the winner.', icon: this.svg(this.ICONS.bolt), tint: 'rgba(245,158,11,0.1)', color: '#f59e0b' },
+      { title: 'Site-ready Excel export', desc: 'Clean, labelled cutting schedules your bar-benders can read on the job without a laptop.', icon: this.svg(this.ICONS.chart), tint: 'rgba(14,165,233,0.1)', color: '#0ea5e9' },
+      { title: 'Persistent project history', desc: 'Every result and offcut is saved. Reopen any sheet months later and re-run with updated inventory.', icon: this.svg(this.ICONS.save), tint: 'rgba(99,102,241,0.1)', color: '#6366f1' }
+    ];
+
+    // PROJECTS LIST
+    const totSheets = this.PROJECTS.reduce((a, p) => a + p.sheets.length, 0);
+    const totCalc = this.PROJECTS.reduce((a, p) => a + p.sheets.reduce((b, s2) => b + s2.calc, 0), 0);
+    const totWaste = this.PROJECTS.reduce((a, p) => a + p.wasteTotal, 0);
+    v.summary = [
+      { label: 'PROJECTS', value: this.PROJECTS.length, color: '#6366f1' },
+      { label: 'SHEETS', value: totSheets, color: '#0ea5e9' },
+      { label: 'CALCULATIONS', value: totCalc, color: '#a855f7' },
+      { label: 'OFFCUTS TRACKED', value: totWaste, color: '#10b981' }
+    ];
+    v.projects = this.PROJECTS.map(p => {
+      const [sb, sf] = this.statusStyle(p.status);
+      return {
+        name: p.name, status: p.status, statusBg: sb, statusFg: sf, accent: p.accent,
+        tint: p.accent + '14', border: p.accent + '33',
+        created: p.created, sheetCount: p.sheets.length, wasteCount: p.wasteTotal,
+        open: () => this.setState({ view: 'project', projectId: p.id, tab: 'sheets' }),
+        sheets: p.sheets.slice(0, 3).map(sh => {
+          const [shb, shf] = this.statusStyle(sh.status);
+          const isW = sh.type === 'waste';
+          return {
+            tag: isW ? '♻' : ('#' + sh.n), file: sh.file,
+            badgeBg: isW ? 'rgba(245,158,11,0.14)' : 'rgba(99,102,241,0.1)',
+            badgeFg: isW ? '#b45309' : '#4f46e5',
+            meta: isW ? sh.waste + ' offcuts' : sh.calc + ' calculations · ' + sh.waste + ' offcuts',
+            status: sh.status, statusBg: shb, statusFg: shf,
+            open: () => this.setState({ view: 'sheet', projectId: p.id, sheetId: sh.id, selectedDia: (sh.results[0] && sh.results.find(r => r.dia === 16) ? 16 : (sh.results[0] ? sh.results[0].dia : 16)) })
+          };
+        })
+      };
+    });
+
+    // PROJECT DETAIL
+    const proj = this.getProject();
+    v.proj = { name: proj.name, sub: proj.sheets.length + ' sheets · ' + proj.wasteAvail + ' offcuts available · ' + proj.wasteLen + ' reusable stock' };
+    v.isTabSheets = s.tab === 'sheets'; v.isTabWaste = s.tab === 'waste'; v.isTabDash = s.tab === 'dashboard';
+    v.setTabSheets = () => this.setState({ tab: 'sheets' });
+    v.setTabWaste = () => this.setState({ tab: 'waste' });
+    v.setTabDash = () => this.setState({ tab: 'dashboard' });
+    const tabOn = ['#fff', '#0f1117', '0 1px 3px rgba(0,0,0,0.1)'];
+    const tabOff = ['transparent', '#6b7280', 'none'];
+    const ts = v.isTabSheets ? tabOn : tabOff, tw = v.isTabWaste ? tabOn : tabOff, td = v.isTabDash ? tabOn : tabOff;
+    v.tabSheetsBg = ts[0]; v.tabSheetsFg = ts[1]; v.tabSheetsSh = ts[2];
+    v.tabWasteBg = tw[0]; v.tabWasteFg = tw[1]; v.tabWasteSh = tw[2];
+    v.tabDashBg = td[0]; v.tabDashFg = td[1]; v.tabDashSh = td[2];
+    v.proj.sheetCount = proj.sheets.length; v.proj.wasteAvail = proj.wasteAvail;
+
+    v.projSheets = proj.sheets.map(sh => {
+      const [shb, shf] = this.statusStyle(sh.status);
+      const isW = sh.type === 'waste';
+      return {
+        file: sh.file, isWaste: isW, date: sh.date, status: sh.status, statusBg: shb, statusFg: shf,
+        iconBg: isW ? 'linear-gradient(135deg,rgba(245,158,11,0.16),rgba(249,115,22,0.12))' : 'linear-gradient(135deg,rgba(99,102,241,0.1),rgba(14,165,233,0.08))',
+        iconBorder: isW ? 'rgba(245,158,11,0.25)' : 'rgba(99,102,241,0.18)',
+        iconEl: isW ? this.iconColored(this.ICONS.recycle, '#d97706') : React.createElement('span', { style: { fontFamily:"'Bricolage Grotesque',sans-serif", fontWeight:800, fontSize:'16px', color:'#4f46e5' } }, '#' + sh.n),
+        metaA: isW ? (sh.waste + ' offcuts') : (sh.calc + ' calculations'),
+        metaB: isW ? 'returned to inventory' : (sh.waste + ' offcuts produced'),
+        hasResults: sh.results.length > 0,
+        noResults: sh.results.length === 0 && sh.type !== 'waste',
+        rows: sh.rows,
+        diaCount: sh.results.length,
+        results: sh.results.slice(0, 6).map(r => ({
+          dia: r.dia, alg: r.alg, bars: r.bars,
+          algBg: r.alg === 'SWP' ? 'rgba(99,102,241,0.12)' : 'rgba(14,165,233,0.12)',
+          algFg: r.alg === 'SWP' ? '#4f46e5' : '#0284c7'
+        })),
+        open: () => this.setState({ view: 'sheet', sheetId: sh.id, selectedDia: (sh.results.find(r => r.dia === 16) ? 16 : (sh.results[0] ? sh.results[0].dia : 16)) })
+      };
+    });
+
+    // WASTE TAB
+    v.wasteTiles = [
+      { value: proj.wasteTotal, label: 'Total pieces', color: '#6366f1' },
+      { value: proj.wasteAvail, label: 'Available', color: '#10b981' },
+      { value: proj.wasteUsed, label: 'Reused', color: '#6b7280' },
+      { value: proj.wasteLen, label: 'Available length', color: '#a855f7' }
+    ];
+    const diaEntries = Object.entries(proj.byDia);
+    const maxAvail = Math.max(1, ...diaEntries.map(([, d]) => d[0]));
+    v.wasteByDia = diaEntries.map(([dia, d], i) => ({
+      dia, avail: d[0], used: d[1], len: d[2].toFixed(1) + 'm',
+      pct: Math.max(12, (d[0] / maxAvail) * 100).toFixed(1) + '%',
+      color: this.PAL[i % this.PAL.length], color2: this.PAL2[i % this.PAL2.length]
+    }));
+
+    // DASHBOARD TAB
+    const calcSheets = proj.sheets.filter(sh => sh.results.length);
+    const totBars = calcSheets.reduce((a, sh) => a + sh.results.reduce((b, r) => b + r.bars, 0), 0);
+    v.dashTiles = [
+      { value: totBars, label: 'Bars planned', icon: this.svg(this.ICONS.bars), color: '#6366f1', tint: 'rgba(99,102,241,0.12)', tooltip: 'Total rebar bars planned across all calculated sheets in this project.' },
+      { value: proj.wasteLen, label: 'Offcut recovered', icon: this.svg(this.ICONS.recycle), color: '#10b981', tint: 'rgba(16,185,129,0.12)', tooltip: 'Total length of offcut pieces (≥ 1m) returned to inventory for reuse.' },
+      { value: '92.4%', label: 'Avg utilization', icon: this.svg(this.ICONS.pct), color: '#0ea5e9', tint: 'rgba(14,165,233,0.12)', tooltip: 'Mean bar utilization across all cuts. Higher = less steel wasted.' },
+      { value: proj.wasteUsed, label: 'Pieces reused', icon: this.svg(this.ICONS.bolt), color: '#a855f7', tint: 'rgba(168,85,247,0.12)', tooltip: 'Offcut pieces from earlier sheets reused as stock in later optimizations.' }
+    ];
+    const recVals = [42, 28, 19, 8, 34, 0];
+    const maxRec = 48;
+    v.dashBars = proj.sheets.map((sh, i) => {
+      const rv = recVals[i % recVals.length];
+      return {
+        label: '#' + sh.n,
+        val: rv > 0 ? rv + 'm' : '—',
+        h: Math.max(4, (rv / maxRec) * 100) + '%',
+        tooltip: rv > 0 ? rv + 'm recovered · ' + sh.file.replace('.xlsx','') : 'No offcut · ' + sh.file.replace('.xlsx','')
+      };
+    });
+    const utilVals = [94, 91, 96, 88, 93, 90];
+    v.dashUtil = calcSheets.slice(0, 5).map((sh, i) => {
+      const pc = utilVals[i % utilVals.length];
+      const grade = pc > 93 ? 'Excellent' : (pc > 89 ? 'Good' : 'Needs attention');
+      return {
+        label: sh.file,
+        pct: pc + '%',
+        color: pc > 93 ? '#10b981' : (pc > 89 ? '#0ea5e9' : '#f59e0b'),
+        tooltip: pc + '% avg utilization — ' + grade
+      };
+    });
+
+    // SHEET RESULTS
+    const sheet = this.getSheet();
+    v.sheet = { n: sheet.n, file: sheet.file, status: sheet.status, rows: sheet.rows, diaCount: this.diasFor(sheet).length };
+    const dias = this.diasFor(sheet);
+    v.diaList = dias.map(d => {
+      const active = d === s.selectedDia;
+      const r = sheet.results.find(rr => rr.dia === d);
+      return {
+        dia: d, bars: r ? r.bars : this.genResults(d).barsCount,
+        select: () => this.setState({ selectedDia: d }),
+        bg: active ? 'rgba(99,102,241,0.08)' : '#fff',
+        border: active ? 'rgba(99,102,241,0.6)' : 'var(--line)',
+        fg: active ? '#4f46e5' : '#0f1117',
+        subFg: active ? '#6366f1' : '#9aa1ac'
+      };
+    });
+    v.results = this.genResults(s.selectedDia);
+
+    return v;
+  }
+
+  svg(html) { return React.createElement('span', { dangerouslySetInnerHTML: { __html: html }, style: { display:'inline-flex', alignItems:'center', justifyContent:'center' } }); }
+  iconColored(svgStr, color) { return this.svg(svgStr.replace(/currentColor/g, color)); }
+}
+</script>
+</body>
+</html>

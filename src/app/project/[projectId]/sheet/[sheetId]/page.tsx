@@ -14,7 +14,7 @@ import { sanitizeExcelData } from "@/utils/sanitizeData";
 import type { BarCuttingDisplay } from "@/types/BarCuttingRow";
 import type { CuttingStockResult, WastePiece } from "@/types/CuttingStock";
 import { exportAllDiasToExcel, exportSavedResultsToExcel } from "@/utils/exportAllDias";
-import type { DiaSummaryResult, SavedDiaResult } from "@/utils/exportAllDias";
+import type { SavedDiaResult } from "@/utils/exportAllDias";
 import { WASTE_MIN_LENGTH_MM } from "@/constants/config";
 import { compressData } from "@/utils/compression";
 
@@ -363,14 +363,7 @@ export default function SheetPage() {
           if (wasteData.success && wasteData.waste) {
             // Filter out waste from current sheet and get only matching dia
             freshWasteForDia = wasteData.waste
-              .filter((w: {
-                dia: number;
-                sourceSheetId?: number;
-                sourceSheet?: { id: number };
-              }) => {
-                const sourceId = w.sourceSheetId || w.sourceSheet?.id;
-                return w.dia === dia;
-              })
+              .filter((w: { dia: number }) => w.dia === dia)
               .map((w: {
                 id: number;
                 dia: number;
@@ -926,34 +919,39 @@ export default function SheetPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 flex items-center justify-center">
+      <div className="flex min-h-[60vh] items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-slate-500">Loading sheet data...</p>
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-accent border-t-transparent" />
+          <p className="text-ink-2">Loading sheet data…</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
+    <div className="mx-auto max-w-[1120px] px-4 pt-8">
+        {/* Header card */}
+        <div className="relative mb-[18px] overflow-hidden rounded-[20px] border border-accent/[0.14] bg-gradient-to-br from-accent/[0.05] to-sky/[0.03] px-[26px] py-[22px]">
+          <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-accent to-sky" />
+          <div className="pointer-events-none absolute -right-8 -top-8 h-[120px] w-[120px] rounded-full bg-[radial-gradient(circle,rgba(99,102,241,0.12),transparent_70%)]" />
           <Link
             href={`/project/${projectId}`}
-            className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors mb-4 group"
+            className="group mb-4 inline-flex items-center gap-[7px] font-body text-[12.5px] font-semibold text-accent transition-colors hover:text-accent-deep"
           >
-            <IconArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <IconArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
             Back to Project
           </Link>
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <span className="text-2xl font-bold text-white">#{sheetInfo?.sheetNumber}</span>
+          <div className="flex items-center gap-[18px]">
+            <div className="flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-[18px] bg-gradient-to-br from-accent to-sky font-display text-[22px] font-extrabold text-white shadow-[0_12px_28px_rgba(99,102,241,0.32)]">
+              #{sheetInfo?.sheetNumber}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">{sheetInfo?.fileName}</h1>
-              <p className="text-slate-500 mt-1">Sheet #{sheetInfo?.sheetNumber} • <span className="capitalize">{sheetInfo?.status}</span></p>
+              <h1 className="font-display text-[clamp(1.6rem,2.8vw,2.2rem)] font-extrabold tracking-[-0.04em]">{sheetInfo?.fileName}</h1>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2.5">
+                <span className="font-body text-[13px] text-ink-2">Sheet #{sheetInfo?.sheetNumber}</span>
+                <span className="h-1 w-1 shrink-0 rounded-full bg-ink-3" />
+                <span className="rounded-full bg-grass/[0.14] px-2.5 py-[3px] font-mono text-[10px] font-bold uppercase tracking-[0.08em] text-[#059669]">{sheetInfo?.status}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -1138,8 +1136,6 @@ export default function SheetPage() {
             data={displayData}
             selectedDia={selectedDia}
             onDiaSelect={handleDiaSelect}
-            onDownloadAll={handleDownloadAllDias}
-            isDownloadingAll={isDownloadingAll}
           />
         )}
 
@@ -1225,7 +1221,6 @@ export default function SheetPage() {
 
         {/* Data Preview */}
         {filteredDisplayData && <ExcelPreviewTable data={filteredDisplayData} selectedDia={selectedDia} />}
-      </div>
     </div>
   );
 }

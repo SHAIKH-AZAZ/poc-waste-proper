@@ -80,30 +80,28 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
   if (!fileName) return null;
 
   return (
-    <div className="max-w-xl mx-auto bg-white shadow-xl shadow-slate-200/50 rounded-2xl border border-slate-100 overflow-hidden mb-8 animate-fade-in ring-1 ring-slate-100">
-      {/* Header Pattern Background */}
-      <div className="h-2 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+    <div className="card-surface mb-[18px] w-full overflow-hidden">
+      {/* top stripe */}
+      <div className="h-[3px] bg-gradient-to-r from-accent to-sky" />
 
       <div className="p-6">
         {/* File Header */}
-        <div className="flex items-start gap-4 mb-6">
-          <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0 border border-blue-100 text-blue-600">
+        <div className="mb-6 flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-accent/20 bg-accent/[0.08] text-accent">
             <IconFileSpreadsheet size={28} stroke={1.5} />
           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold text-slate-900 truncate" title={fileName}>
+          <div className="min-w-0 flex-1">
+            <h3 className="truncate font-display text-[18px] font-bold tracking-[-0.02em]" title={fileName}>
               {fileName}
             </h3>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Excel Workbook
-            </p>
+            <p className="mt-0.5 font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-3">Excel Workbook</p>
           </div>
           {datasetSizeInfo && (
-            <div className={`px-2.5 py-1 rounded-lg text-xs font-semibold border ${datasetSizeInfo.isVeryLargeDataset
-              ? "bg-red-50 text-red-700 border-red-100"
+            <div className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-bold ${datasetSizeInfo.isVeryLargeDataset
+              ? "bg-rose-500/10 text-rose-600"
               : datasetSizeInfo.isLargeDataset
-                ? "bg-amber-50 text-amber-700 border-amber-100"
-                : "bg-green-50 text-green-700 border-green-100"
+                ? "bg-amber-500/15 text-amber-700"
+                : "bg-grass/10 text-grass"
               }`}>
               {datasetSizeInfo.fileSizeMB.toFixed(1)} MB
             </div>
@@ -113,66 +111,23 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
         {rows.length > 0 ? (
           <>
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <IconDatabase size={14} className="text-slate-400" />
-                  <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Rows</p>
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-bold text-slate-900">
-                    <ClientOnly fallback={<span>{rows.length}</span>}>
-                      <AnimatedNumber value={rows.length} />
-                    </ClientOnly>
-                  </span>
-                  {selectedDia && (
-                    <span className="text-xs text-slate-400 font-medium">/ {totalRows}</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <IconColumns size={14} className="text-slate-400" />
-                  <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Columns</p>
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-bold text-slate-900">
-                    <ClientOnly fallback={<span>{headers.length}</span>}>
-                      <AnimatedNumber value={headers.length} />
-                    </ClientOnly>
-                  </span>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <IconCode size={14} className="text-slate-400" />
-                  <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">JSON Records</p>
-                </div>
-                <div className="flex items-baseline gap-1">
-                  <span className="text-xl font-bold text-indigo-600">
-                    <ClientOnly fallback={<span>{jsonData.length}</span>}>
-                      <AnimatedNumber value={jsonData.length} />
-                    </ClientOnly>
-                  </span>
-                </div>
-              </div>
-
-              {datasetSizeInfo && (
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <IconCpu size={14} className="text-slate-400" />
-                    <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Mem Usage</p>
+            <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              {[
+                { Icon: IconDatabase, label: "Rows", node: (
+                  <><ClientOnly fallback={<span>{rows.length}</span>}><AnimatedNumber value={rows.length} /></ClientOnly>{selectedDia && <span className="ml-1 font-body text-xs text-ink-3">/ {totalRows}</span>}</>
+                ), color: "text-ink" },
+                { Icon: IconColumns, label: "Columns", node: <ClientOnly fallback={<span>{headers.length}</span>}><AnimatedNumber value={headers.length} /></ClientOnly>, color: "text-ink" },
+                { Icon: IconCode, label: "JSON Records", node: <ClientOnly fallback={<span>{jsonData.length}</span>}><AnimatedNumber value={jsonData.length} /></ClientOnly>, color: "text-accent" },
+                ...(datasetSizeInfo ? [{ Icon: IconCpu, label: "Mem Usage", node: <>~{datasetSizeInfo.estimatedMemoryUsageMB.toFixed(0)}<span className="ml-0.5 font-body text-xs text-ink-3">MB</span></>, color: "text-ink-2" }] : []),
+              ].map((c) => (
+                <div key={c.label} className="rounded-[13px] border border-[var(--color-line)] bg-canvas p-3">
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <c.Icon size={13} className="text-ink-3" />
+                    <p className="font-mono text-[9px] font-bold uppercase tracking-[0.1em] text-ink-3">{c.label}</p>
                   </div>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-bold text-slate-700">
-                      ~{datasetSizeInfo.estimatedMemoryUsageMB.toFixed(0)}
-                    </span>
-                    <span className="text-xs text-slate-400">MB</span>
-                  </div>
+                  <div className={`font-display text-[21px] font-extrabold tracking-[-0.03em] ${c.color}`}>{c.node}</div>
                 </div>
-              )}
+              ))}
             </div>
 
             {/* Waste Stats (versioned) */}
@@ -290,9 +245,7 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
             <div className="flex gap-3 pt-2">
               <button
                 onClick={clearData}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold
-                hover:bg-red-50 hover:text-red-600 hover:border-red-100
-                focus:outline-none focus:ring-2 focus:ring-red-100 transition-all duration-200 flex items-center justify-center gap-2"
+                className="flex flex-1 items-center justify-center gap-2 rounded-full border border-[var(--color-line-2)] px-4 py-3 font-body text-[14px] font-bold text-ink-2 transition-all hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600"
               >
                 <IconTrash size={18} />
                 Clear
@@ -301,16 +254,15 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
               <button
                 onClick={downloadResults}
                 disabled={isDownloading}
-                className={`flex-[2] px-4 py-2.5 rounded-xl font-semibold shadow-lg shadow-blue-500/20 text-white flex items-center justify-center gap-2 transition-all
-                  ${isDownloading
-                    ? "bg-slate-400 cursor-not-allowed shadow-none"
-                    : "bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 active:scale-95"
+                className={`flex flex-[2] items-center justify-center gap-2 rounded-full px-4 py-3 font-body text-[14px] font-bold text-white transition-all ${isDownloading
+                    ? "cursor-not-allowed bg-ink-3"
+                    : "bg-accent shadow-[0_8px_24px_rgba(99,102,241,0.34)] hover:-translate-y-0.5 hover:bg-accent-deep"
                   }`}
               >
                 {isDownloading ? (
                   <>
                     <IconLoader size={18} className="animate-spin" />
-                    <span>Generating...</span>
+                    <span>Generating…</span>
                   </>
                 ) : (
                   <>

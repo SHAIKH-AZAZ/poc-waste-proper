@@ -394,22 +394,6 @@ function setCell(
   }
 }
 
-function applyStyleToRange(
-  worksheet: XLSX.WorkSheet,
-  startRow: number,
-  startCol: number,
-  endRow: number,
-  endCol: number,
-  style: Record<string, any>,
-): void {
-  for (let row = startRow; row <= endRow; row++) {
-    for (let col = startCol; col <= endCol; col++) {
-      const cell = ensureCell(worksheet, row, col);
-      cell.s = mergeCellStyles(cell.s, style);
-    }
-  }
-}
-
 function ensureCell(
   worksheet: XLSX.WorkSheet,
   row: number,

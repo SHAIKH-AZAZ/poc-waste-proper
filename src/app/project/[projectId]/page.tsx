@@ -12,7 +12,6 @@ import {
   IconEye,
   IconRecycle,
   IconInfoCircle,
-  IconChartPie,
   IconChevronLeft,
   IconChevronRight,
   IconChevronsLeft,
@@ -274,40 +273,41 @@ export default function ProjectPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
+    <div className="mx-auto max-w-[1120px] px-4 pt-8">
+        {/* Header card */}
+        <div className="relative mb-[18px] overflow-hidden rounded-[20px] border border-accent/[0.14] bg-gradient-to-br from-accent/[0.05] to-sky/[0.02] px-[26px] py-[22px]">
+          <div className="absolute inset-x-0 top-0 h-[3px] bg-gradient-to-r from-accent to-sky" />
+          <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-[radial-gradient(circle,rgba(14,165,233,0.1),transparent_70%)]" />
           <Link
             href="/projects"
-            className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 transition-colors mb-4 group"
+            className="group mb-4 inline-flex items-center gap-[7px] font-body text-[12.5px] font-semibold text-accent transition-colors hover:text-accent-deep"
           >
-            <IconArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <IconArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
             Back to Projects
           </Link>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <IconPackage className="w-8 h-8 text-white" />
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-[18px]">
+              <div className="flex h-[62px] w-[62px] shrink-0 items-center justify-center rounded-[18px] bg-gradient-to-br from-accent to-sky shadow-[0_12px_28px_rgba(99,102,241,0.32)]">
+                <IconPackage className="h-7 w-7 text-white" stroke={1.5} />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900">{projectName || `Project #${projectId}`}</h1>
-                <p className="text-slate-500 mt-1">
-                  {sheets.length} sheet(s) • {wasteSummary?.availablePieces || 0} waste pieces available
+              <div className="min-w-0">
+                <h1 className="font-display text-[clamp(1.6rem,2.8vw,2.2rem)] font-extrabold tracking-[-0.04em]">{projectName || `Project #${projectId}`}</h1>
+                <p className="mt-1.5 font-body text-[13.5px] text-ink-2">
+                  {sheets.length} sheets · {wasteSummary?.availablePieces || 0} offcuts available
                 </p>
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex shrink-0 gap-2.5">
               <button
                 onClick={fetchProjectData}
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-all"
+                className="flex items-center gap-2 rounded-full border border-[var(--color-line)] bg-white px-4 py-2.5 text-ink-2 transition-colors hover:text-ink"
               >
-                <IconRefresh className={`w-5 h-5 ${loading ? "animate-spin" : ""}`} />
+                <IconRefresh className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
               </button>
-              <label className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all cursor-pointer shadow-lg shadow-blue-500/20 font-medium">
-                <IconUpload className="w-5 h-5" />
-                {uploading ? "Uploading..." : "Upload Sheet"}
+              <label className="flex cursor-pointer items-center gap-2 rounded-full bg-accent px-[18px] py-2.5 pl-[15px] font-body text-[14px] font-bold text-white shadow-[0_6px_18px_rgba(99,102,241,0.3)] transition-all hover:-translate-y-0.5 hover:bg-accent-deep">
+                <IconUpload className="h-5 w-5" />
+                {uploading ? "Uploading…" : "Upload Sheet"}
                 <input
                   type="file"
                   accept=".xlsx,.xls"
@@ -328,19 +328,13 @@ export default function ProjectPage() {
         )}
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 bg-slate-100/80 p-1.5 rounded-xl w-fit">
+        <div className="mb-6 inline-flex w-fit gap-[3px] rounded-[14px] border border-[var(--color-line)] bg-[rgba(241,243,248,0.9)] p-1">
           <button
             onClick={() => setActiveTab("sheets")}
-            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "sheets" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-              }`}
+            className={`flex items-center gap-2 rounded-[10px] px-5 py-2.5 font-body text-[13.5px] font-bold transition-all ${activeTab === "sheets" ? "bg-white text-ink shadow-[0_1px_3px_rgba(0,0,0,0.1)]" : "text-ink-2 hover:text-ink"}`}
           >
-            <span className="flex items-center gap-2">
-              <IconFile className="w-4 h-4" />
-              Sheets
-              <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${activeTab === "sheets" ? "bg-slate-100/50 text-slate-700" : "bg-slate-200 text-slate-600"}`}>
-                {sheets.length}
-              </span>
-            </span>
+            Sheets
+            <span className="rounded-full bg-accent/[0.12] px-2 py-0.5 font-mono text-[9.5px] font-bold text-accent">{sheets.length}</span>
           </button>
           <button
             onClick={() => {
@@ -348,25 +342,16 @@ export default function ProjectPage() {
               setSelectedWasteDia(null);
               setSelectedWasteStatus(null);
             }}
-            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "waste" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-              }`}
+            className={`flex items-center gap-2 rounded-[10px] px-5 py-2.5 font-body text-[13.5px] font-bold transition-all ${activeTab === "waste" ? "bg-white text-ink shadow-[0_1px_3px_rgba(0,0,0,0.1)]" : "text-ink-2 hover:text-ink"}`}
           >
-            <span className="flex items-center gap-2">
-              Waste Inventory
-              <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${activeTab === "waste" ? "bg-slate-100/50 text-slate-700" : "bg-slate-200 text-slate-600"}`}>
-                {wasteSummary?.availablePieces || 0}
-              </span>
-            </span>
+            Offcut Inventory
+            <span className="rounded-full bg-grass/[0.14] px-2 py-0.5 font-mono text-[9.5px] font-bold text-grass">{wasteSummary?.availablePieces || 0}</span>
           </button>
           <button
             onClick={() => setActiveTab("dashboard")}
-            className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === "dashboard" ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
-              }`}
+            className={`rounded-[10px] px-5 py-2.5 font-body text-[13.5px] font-bold transition-all ${activeTab === "dashboard" ? "bg-white text-ink shadow-[0_1px_3px_rgba(0,0,0,0.1)]" : "text-ink-2 hover:text-ink"}`}
           >
-            <span className="flex items-center gap-2">
-              <IconChartPie className="w-4 h-4" />
-              Dashboard
-            </span>
+            Dashboard
           </button>
         </div>
 
@@ -549,130 +534,111 @@ export default function ProjectPage() {
             <div className="flex justify-end">
               <button
                 onClick={() => setShowWasteUploadModal(true)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl hover:from-emerald-600 hover:to-green-700 transition-all shadow-lg shadow-emerald-500/20 font-medium"
+                className="flex items-center gap-2 rounded-full bg-grass px-5 py-2.5 font-body text-[14px] font-bold text-white shadow-[0_6px_18px_rgba(16,185,129,0.3)] transition-all hover:-translate-y-0.5 hover:bg-[#059669]"
               >
-                <IconRecycle className="w-5 h-5" />
+                <IconRecycle className="h-5 w-5" />
                 Upload Waste Materials
               </button>
             </div>
 
             {/* Waste Summary */}
             {wasteSummary && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <button
-                  onClick={() => setSelectedWasteStatus(null)}
-                  className={`p-5 rounded-2xl border transition-all text-left ${selectedWasteStatus === null
-                    ? "bg-white border-blue-400 ring-2 ring-blue-400/10 shadow-md"
-                    : "bg-white border-slate-200 hover:border-blue-200 shadow-sm"
-                    }`}
-                >
-                  <p className="text-3xl font-bold text-blue-600">{wasteSummary.totalPieces}</p>
-                  <p className="text-sm text-slate-500 mt-1">Total Pieces</p>
-                </button>
-                <button
-                  onClick={() => setSelectedWasteStatus(selectedWasteStatus === "available" ? null : "available")}
-                  className={`p-5 rounded-2xl border transition-all text-left ${selectedWasteStatus === "available"
-                    ? "bg-emerald-50 border-emerald-400 ring-2 ring-emerald-400/10 shadow-md"
-                    : "bg-white border-slate-200 hover:border-emerald-200 shadow-sm"
-                    }`}
-                >
-                  <p className="text-3xl font-bold text-emerald-600">{wasteSummary.availablePieces}</p>
-                  <p className="text-sm text-slate-500 mt-1">Available</p>
-                </button>
-                <button
-                  onClick={() => setSelectedWasteStatus(selectedWasteStatus === "used" ? null : "used")}
-                  className={`p-5 rounded-2xl border transition-all text-left ${selectedWasteStatus === "used"
-                    ? "bg-slate-50 border-slate-400 ring-2 ring-slate-400/10 shadow-md"
-                    : "bg-white border-slate-200 hover:border-slate-300 shadow-sm"
-                    }`}
-                >
-                  <p className="text-3xl font-bold text-slate-600">{wasteSummary.usedPieces}</p>
-                  <p className="text-sm text-slate-500 mt-1">Used</p>
-                </button>
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                  <p className="text-3xl font-bold text-purple-600">{formatLength(wasteSummary.totalAvailableLength)}</p>
-                  <p className="text-sm text-slate-500 mt-1">Available Length</p>
-                </div>
+              <div className="grid grid-cols-2 gap-[14px] md:grid-cols-4">
+                {[
+                  { v: wasteSummary.totalPieces, l: "Total pieces", c: "#6366f1", status: null as string | null, active: selectedWasteStatus === null },
+                  { v: wasteSummary.availablePieces, l: "Available", c: "#10b981", status: "available", active: selectedWasteStatus === "available" },
+                  { v: wasteSummary.usedPieces, l: "Reused", c: "#6b7280", status: "used", active: selectedWasteStatus === "used" },
+                  { v: formatLength(wasteSummary.totalAvailableLength), l: "Available length", c: "#a855f7", status: undefined, active: false },
+                ].map((t) => {
+                  const clickable = t.status !== undefined;
+                  return (
+                    <button
+                      key={t.l}
+                      onClick={clickable ? () => setSelectedWasteStatus(t.active ? null : t.status as string | null) : undefined}
+                      className={`card-surface relative overflow-hidden p-5 text-left transition-all ${clickable ? "hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-h)]" : ""} ${t.active ? "ring-2 ring-accent/30" : ""}`}
+                    >
+                      <div className="absolute -bottom-2.5 -right-2.5 h-[72px] w-[72px] rounded-full opacity-[0.07]" style={{ background: t.c }} />
+                      <p className="font-display text-[32px] font-extrabold tracking-[-0.04em]" style={{ color: t.c }}>{t.v}</p>
+                      <p className="mt-1 font-body text-[13px] text-ink-2">{t.l}</p>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
-            {/* Waste by Dia */}
+            {/* Available offcuts by diameter */}
             {wasteSummary && Object.keys(wasteSummary.byDia).length > 0 && (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                  <h3 className="font-semibold text-slate-900">Waste by Diameter</h3>
+              <div className="card-surface p-6">
+                <div className="mb-5 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                  <h3 className="font-display text-[18px] font-bold tracking-[-0.02em]">Available offcuts by diameter</h3>
                   <div className="flex flex-wrap items-center gap-2">
-                    {/* Status Toggles */}
-                    <div className="flex bg-slate-100 p-1 rounded-lg">
-                      <button
-                        onClick={() => setSelectedWasteStatus(null)}
-                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${selectedWasteStatus === null
-                          ? "bg-white text-slate-900 shadow-sm"
-                          : "text-slate-500 hover:text-slate-700"
-                          }`}
-                      >
-                        All
-                      </button>
-                      <button
-                        onClick={() => setSelectedWasteStatus("available")}
-                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${selectedWasteStatus === "available"
-                          ? "bg-white text-emerald-600 shadow-sm"
-                          : "text-slate-500 hover:text-slate-700"
-                          }`}
-                      >
-                        Available
-                      </button>
-                      <button
-                        onClick={() => setSelectedWasteStatus("used")}
-                        className={`px-3 py-1 text-xs font-medium rounded-md transition-all ${selectedWasteStatus === "used"
-                          ? "bg-white text-slate-900 shadow-sm"
-                          : "text-slate-500 hover:text-slate-700"
-                          }`}
-                      >
-                        Used
-                      </button>
+                    <div className="flex gap-[3px] rounded-[10px] border border-[var(--color-line)] bg-[rgba(241,243,248,0.9)] p-1">
+                      {[
+                        { k: null as string | null, label: "All" },
+                        { k: "available", label: "Available" },
+                        { k: "used", label: "Used" },
+                      ].map((o) => (
+                        <button
+                          key={o.label}
+                          onClick={() => setSelectedWasteStatus(o.k)}
+                          className={`rounded-[7px] px-3 py-1 font-body text-[11px] font-bold transition-all ${selectedWasteStatus === o.k ? "bg-white text-ink shadow-[0_1px_3px_rgba(0,0,0,0.1)]" : "text-ink-2 hover:text-ink"}`}
+                        >
+                          {o.label}
+                        </button>
+                      ))}
                     </div>
-
                     {(selectedWasteDia || selectedWasteStatus) && (
                       <button
                         onClick={() => {
                           setSelectedWasteDia(null);
                           setSelectedWasteStatus(null);
                         }}
-                        className="text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 px-2 py-1 rounded transition-colors"
+                        className="rounded-full bg-accent/[0.08] px-2.5 py-1 font-body text-[11px] font-bold text-accent transition-colors hover:bg-accent hover:text-white"
                       >
-                        Clear All Filters
+                        Clear filters
                       </button>
                     )}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-                  {Object.entries(wasteSummary.byDia).map(([diaString, data]) => {
-                    const dia = parseInt(diaString);
-                    const isSelected = selectedWasteDia === dia;
-                    return (
-                      <button
-                        key={dia}
-                        onClick={() => {
-                          if (isSelected) {
-                            setSelectedWasteDia(null);
-                          } else {
-                            setSelectedWasteDia(dia);
-                            fetchWasteDetails(dia);
-                          }
-                        }}
-                        className={`p-4 rounded-xl border transition-all text-left ${isSelected
-                          ? "bg-blue-50 border-blue-400 shadow-sm ring-1 ring-blue-400/20"
-                          : "bg-gradient-to-br from-slate-50 to-slate-100/50 border-slate-200 hover:border-blue-200 hover:bg-white"
-                          }`}
-                      >
-                        <div className={`text-lg font-bold ${isSelected ? "text-blue-700" : "text-slate-900"}`}>Dia {dia}mm</div>
-                        <div className="text-sm text-slate-500">
-                          <span className={`${isSelected ? "text-blue-600" : "text-emerald-600"} font-medium`}>{data.available}</span> available • {formatLength(data.totalLength)}
-                        </div>
-                      </button>
-                    );
-                  })}
+                <div className="flex flex-col gap-3.5">
+                  {(() => {
+                    const entries = Object.entries(wasteSummary.byDia);
+                    const maxAvail = Math.max(1, ...entries.map(([, d]) => d.available));
+                    const PAL = ["#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#a855f7", "#f97316", "#f43f5e"];
+                    const PAL2 = ["#818cf8", "#38bdf8", "#34d399", "#fbbf24", "#c084fc", "#fb923c", "#fb7185"];
+                    return entries.map(([diaString, data], i) => {
+                      const dia = parseInt(diaString);
+                      const isSelected = selectedWasteDia === dia;
+                      const pct = Math.max(12, (data.available / maxAvail) * 100);
+                      return (
+                        <button
+                          key={dia}
+                          onClick={() => {
+                            if (isSelected) setSelectedWasteDia(null);
+                            else {
+                              setSelectedWasteDia(dia);
+                              fetchWasteDetails(dia);
+                            }
+                          }}
+                          className={`flex items-center gap-4 rounded-xl px-2 py-1.5 text-left transition-colors ${isSelected ? "bg-accent/[0.06]" : "hover:bg-canvas"}`}
+                        >
+                          <div className="flex w-[74px] shrink-0 items-center gap-2">
+                            <span className="h-[11px] w-[11px] rounded-full" style={{ background: PAL[i % PAL.length] }} />
+                            <span className="font-mono text-[13px] font-bold">Ø{dia}</span>
+                          </div>
+                          <div className="relative h-[30px] flex-1 overflow-hidden rounded-lg bg-[#f1f3f8]">
+                            <div className="anim-grow-w flex h-full items-center rounded-lg pl-3" style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${PAL[i % PAL.length]}, ${PAL2[i % PAL2.length]})` }}>
+                              <span className="font-mono text-[11px] font-bold text-white">{data.available} pcs</span>
+                            </div>
+                          </div>
+                          <div className="w-[130px] shrink-0 text-right font-body text-[12.5px] text-ink-2">
+                            <span className="font-display font-bold text-ink">{formatLength(data.totalLength)}</span> available
+                          </div>
+                          <div className="w-[70px] shrink-0 text-right font-body text-[12px] text-ink-3">{data.used} used</div>
+                        </button>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             )}
@@ -871,7 +837,6 @@ export default function ProjectPage() {
         {!loading && activeTab === "dashboard" && (
           <DashboardAnalytics sheets={sheets} waste={waste} formatLength={formatLength} />
         )}
-      </div>
-    </div >
+    </div>
   );
 }
