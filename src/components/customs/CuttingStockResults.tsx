@@ -231,10 +231,33 @@ function PatternsCard({ result, title, defaultOpen }: { result: CuttingStockResu
     [result]
   );
 
-  const total = sorted.length;
+  // Collapse identical bars (same cuts + stock length + source) into one row with a ×count.
+  const grouped = React.useMemo(() => {
+    const out: { detail: (typeof sorted)[number]; count: number }[] = [];
+    const idx = new Map<string, number>();
+    for (const d of sorted) {
+      const bl = d.isFromWaste && d.wasteSource ? d.wasteSource.originalLength / 1000 : 12;
+      const sig = [
+        d.isFromWaste ? 1 : 0,
+        bl.toFixed(3),
+        d.cuts.map((c) => cleanCode(c.barCode) + ":" + c.length.toFixed(3)).join("|"),
+        d.isFromWaste && d.wasteSource ? `${d.wasteSource.sourceSheetId}-${d.wasteSource.sourceBarNumber}` : "",
+      ].join("#");
+      const at = idx.get(sig);
+      if (at === undefined) {
+        idx.set(sig, out.length);
+        out.push({ detail: d, count: 1 });
+      } else {
+        out[at].count += 1;
+      }
+    }
+    return out;
+  }, [sorted]);
+
+  const total = grouped.length;
   const totalPages = Math.ceil(total / perPage);
   const start = (page - 1) * perPage;
-  const slice = sorted.slice(start, start + perPage);
+  const slice = grouped.slice(start, start + perPage);
 
   return (
     <div className="card-surface overflow-hidden">
@@ -282,7 +305,7 @@ function PatternsCard({ result, title, defaultOpen }: { result: CuttingStockResu
 
           {/* bars */}
           <div className="px-[22px] pb-4 pt-2">
-            {slice.map((detail, idx) => {
+            {slice.map(({ detail, count }, idx) => {
               const barLen = detail.isFromWaste && detail.wasteSource ? detail.wasteSource.originalLength / 1000 : 12.0;
               const used = detail.cuts.reduce((s, c) => s + c.length, 0);
               let waste = barLen - used;
@@ -295,14 +318,15 @@ function PatternsCard({ result, title, defaultOpen }: { result: CuttingStockResu
                   {/* number + tag */}
                   <div className="flex w-[52px] shrink-0 flex-col items-center gap-1">
                     <div
-                      className="flex h-9 w-9 items-center justify-center rounded-[11px] border font-display text-[15px] font-extrabold"
+                      className={`flex h-9 w-9 items-center justify-center rounded-[11px] border font-display font-extrabold ${count > 1 ? "text-[12px]" : "text-[15px]"}`}
                       style={{
                         background: reused ? "rgba(168,85,247,0.1)" : "rgba(99,102,241,0.09)",
                         color: reused ? "#9333ea" : "#4f46e5",
                         borderColor: reused ? "rgba(168,85,247,0.2)" : "rgba(99,102,241,0.18)",
                       }}
+                      title={count > 1 ? `${count} identical bars` : `Bar #${detail.barNumber}`}
                     >
-                      {detail.barNumber}
+                      {count > 1 ? `×${count}` : detail.barNumber}
                     </div>
                     <span className="font-mono text-[8px] font-bold tracking-[0.08em]" style={{ color: reused ? "#9333ea" : "#9aa1ac" }}>
                       {reused ? "REUSE" : "NEW"}
@@ -311,6 +335,9 @@ function PatternsCard({ result, title, defaultOpen }: { result: CuttingStockResu
                   {/* stock label */}
                   <div className="w-[112px] shrink-0">
                     <div className="font-body text-[12px] font-bold text-ink">{reused ? `${barLen.toFixed(2)}m offcut` : "12.00m bar"}</div>
+                    {count > 1 && (
+                      <div className="mt-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.06em] text-accent">×{count} identical bars</div>
+                    )}
                     {reused && detail.wasteSource && (
                       <div className="mt-0.5 flex items-center gap-1 font-body text-[10px] text-grass">
                         <IconRecycle size={10} />
