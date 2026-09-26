@@ -12,18 +12,11 @@ import { CuttingStockPreprocessor } from "@/utils/cuttingStockPreprocessor";
 import { getWorkerManager } from "@/utils/workerManager";
 import { sanitizeExcelData } from "@/utils/sanitizeData";
 import type { BarCuttingDisplay } from "@/types/BarCuttingRow";
-import type { CuttingStockResult, WastePiece } from "@/types/CuttingStock";
+import type { CuttingStockResult, DetailedCut, GeneratedWaste, SavedResultRow, WastePiece } from "@/types/CuttingStock";
 import { exportAllDiasToExcel, exportSavedResultsToExcel } from "@/utils/exportAllDias";
 import type { SavedDiaResult } from "@/utils/exportAllDias";
 import { WASTE_MIN_LENGTH_MM } from "@/constants/config";
 import { compressData } from "@/utils/compression";
-
-interface AvailableWasteForDia {
-  dia: number;
-  pieces: WastePiece[];
-  totalLength: number;
-  totalPieces: number;
-}
 
 interface ReusedPieceInfo {
   dia: number;
@@ -42,7 +35,7 @@ export interface SheetWasteStats {
 }
 
 // Reconstruct a CuttingStockResult from a saved DB result row (enriched with patterns/detailedCuts/summary)
-function reconstructResultFromDb(r: any): CuttingStockResult {
+function reconstructResultFromDb(r: SavedResultRow): CuttingStockResult {
   return {
     algorithm: r.algorithm,
     dia: r.dia,
@@ -64,8 +57,8 @@ function reconstructResultFromDb(r: any): CuttingStockResult {
 }
 
 function buildWasteStatsFromDbResults(
-  dbResults: any[],
-  generatedWaste: any[]
+  dbResults: SavedResultRow[],
+  generatedWaste: GeneratedWaste[]
 ): SheetWasteStats | null {
   if (!dbResults?.length) return null;
 
@@ -86,9 +79,9 @@ function buildWasteStatsFromDbResults(
   // Version = baseline (v1) + one per distinct downstream sheet that reused this
   // sheet's offcuts (not per individual piece — that would inflate the number).
   const consumingSheets = new Set<string>();
-  generatedWaste?.forEach((w: any) => {
+  generatedWaste?.forEach((w) => {
     if (w.status === "used" && Array.isArray(w.usages)) {
-      w.usages.forEach((u: any) => {
+      w.usages.forEach((u) => {
         const isSelf = String(u.usedInSheetId) === String(w.sourceSheetId);
         if (!isSelf) {
           consumingSheets.add(String(u.usedInSheetId));
@@ -135,13 +128,12 @@ export default function SheetPage() {
   const [resultsFromCache, setResultsFromCache] = useState(false);
 
   // Waste reuse state
-  const [availableWaste, setAvailableWaste] = useState<AvailableWasteForDia[]>([]);
   const [showWastePrompt, setShowWastePrompt] = useState(false);
   const [useWaste, setUseWaste] = useState(false);
   const [wasteForCurrentDia, setWasteForCurrentDia] = useState<WastePiece[]>([]);
 
   // Live Waste Tracking
-  const [generatedWaste, setGeneratedWaste] = useState<any[]>([]);
+  const [generatedWaste, setGeneratedWaste] = useState<GeneratedWaste[]>([]);
   const [patchedGreedyResult, setPatchedGreedyResult] = useState<CuttingStockResult | null>(null);
   const [patchedDynamicResult, setPatchedDynamicResult] = useState<CuttingStockResult | null>(null);
 
@@ -161,46 +153,8 @@ export default function SheetPage() {
 
     // Fire every independent request at once — none of these depend on each other.
     const bundleP = fetch(`/api/sheet-bundle?sheetId=${sheetId}`).then((r) => r.json());
-    const wasteAvailP = fetch(`/api/waste?projectId=${projectId}&status=available`).then((r) => r.json());
     const genWasteP = fetch(`/api/waste?projectId=${projectId}&sourceSheetId=${sheetId}`).then((r) => r.json());
     const resultsP = fetch(`/api/results?sheetId=${sheetId}`, { cache: "no-store" }).then((r) => r.json());
-
-    // ── Secondary: available offcut inventory (feeds the reuse prompt) ──
-    wasteAvailP
-      .then((wasteData) => {
-        if (!wasteData?.success || !wasteData.waste) return;
-        const wasteByDia: Record<number, WastePiece[]> = {};
-        wasteData.waste.forEach((w: {
-          id: number; dia: number; length: number;
-          sourceSheetId?: number; sourceBarNumber?: number;
-          sourceSheet?: { id: number; sheetNumber: number; fileName: string };
-          cutsOnSourceBar?: { barCode: string; length: number; element: string }[];
-        }) => {
-          const sourceId = w.sourceSheetId || w.sourceSheet?.id;
-          if (!wasteByDia[w.dia]) wasteByDia[w.dia] = [];
-          wasteByDia[w.dia].push({
-            id: String(w.id),
-            projectId: parseInt(projectId),
-            sourceSheetId: sourceId || 0,
-            sourceSheetNumber: w.sourceSheet?.sheetNumber || 0,
-            sourceSheetName: w.sourceSheet?.fileName || `Sheet #${w.sourceSheet?.sheetNumber}`,
-            sourceBarNumber: w.sourceBarNumber || 0,
-            sourcePatternId: "",
-            cutsOnSourceBar: w.cutsOnSourceBar || [],
-            dia: w.dia,
-            length: w.length,
-            status: "available",
-            createdAt: new Date(),
-          });
-        });
-        setAvailableWaste(Object.entries(wasteByDia).map(([dia, pieces]) => ({
-          dia: parseInt(dia),
-          pieces,
-          totalLength: pieces.reduce((sum, p) => sum + p.length, 0),
-          totalPieces: pieces.length,
-        })));
-      })
-      .catch(() => { /* non-fatal */ });
 
     // ── Secondary: generated waste + saved results → versioned waste stats ──
     Promise.all([genWasteP, resultsP])
@@ -259,7 +213,7 @@ export default function SheetPage() {
     // Create a map of produced waste by Bar Number
     // Logic: Each bar in the result produces at most one "main" waste piece.
     // The WasteInventory record has sourceBarNumber.
-    const wasteBySourceBar = new Map<number, any>();
+    const wasteBySourceBar = new Map<number, GeneratedWaste>();
     producedWaste.forEach(w => {
       // We are looking for waste PRODUCED by this sheet that is now USED
       if (w.sourceBarNumber) {
@@ -268,7 +222,7 @@ export default function SheetPage() {
     });
 
     // Iterate detailed cuts to patch WASTE OUTPUTS (Recovered Waste)
-    patched.detailedCuts.forEach((cut: any, index: number) => {
+    patched.detailedCuts.forEach((cut: DetailedCut, index: number) => {
       const barNum = cut.barNumber || index + 1;
 
       // Check if this cut produced a waste piece that is now used
@@ -281,13 +235,6 @@ export default function SheetPage() {
         // Mark as recovered in the UI
         cut.isWasteRecovered = true;
         cut.recoveredAmount = wasteLengthM;
-
-        // Find where it was used
-        const usage = producedWasteItem.usages && producedWasteItem.usages[0];
-        cut.recoveredWasteInfo = {
-          usedInSheet: usage?.usedInSheet?.fileName || `Sheet #${usage?.usedInSheetId || 'Unknown'}`,
-          wasteId: producedWasteItem.id
-        };
 
         // Subtract from Net Waste of this sheet
         // We don't change 'cut.waste' (the physical waste), but we can add a 'netWaste' property
@@ -479,7 +426,7 @@ export default function SheetPage() {
       console.error("[Sheet] Error saving results:", err);
       setCalculationError(`Saved Locally Only. Network Error: ${err instanceof Error ? err.message : String(err)}`);
     }
-  }, [sheetId]);
+  }, [sheetId, loadSheetData]);
 
   // Run calculation
   const runCalculation = useCallback(async (dia: number, withWaste: boolean, wastePieces: WastePiece[]) => {
@@ -668,7 +615,7 @@ export default function SheetPage() {
         }
       }
     },
-    [displayData, sheetInfo, projectId, sheetId, runCalculation]
+    [displayData, projectId, sheetId, runCalculation]
   );
 
   // Run exact pattern-search calculation
@@ -790,7 +737,7 @@ export default function SheetPage() {
   }, [displayData, sheetInfo, generatedWaste, sheetId, projectId, saveResults]);
 
   // Re-download an already-calculated sheet from saved results (no recompute, no prompt, read-only)
-  const downloadSavedResults = useCallback(async (savedRows: any[]) => {
+  const downloadSavedResults = useCallback(async (savedRows: SavedResultRow[]) => {
     if (!sheetInfo) return;
     setIsDownloadingAll(true);
     try {
@@ -1129,8 +1076,8 @@ export default function SheetPage() {
                 {resultsFromCache ? (
                   <span>
                     Reused <span className="font-bold">{
-                      (patchedGreedyResult || greedyResult)?.detailedCuts.filter(d => (d as any).isFromWaste).length ||
-                      (patchedDynamicResult || dynamicResult)?.detailedCuts.filter(d => (d as any).isFromWaste).length || 0
+                      (patchedGreedyResult || greedyResult)?.detailedCuts.filter(d => d.isFromWaste).length ||
+                      (patchedDynamicResult || dynamicResult)?.detailedCuts.filter(d => d.isFromWaste).length || 0
                     }</span> waste pieces from inventory
                   </span>
                 ) : (
@@ -1139,8 +1086,8 @@ export default function SheetPage() {
                     {(patchedGreedyResult || greedyResult || patchedDynamicResult || dynamicResult) && (
                       <>
                         {" "}• <span className="font-bold">
-                          {(patchedGreedyResult || greedyResult)?.detailedCuts.filter(d => (d as any).isFromWaste).length ||
-                            (patchedDynamicResult || dynamicResult)?.detailedCuts.filter(d => (d as any).isFromWaste).length || 0}
+                          {(patchedGreedyResult || greedyResult)?.detailedCuts.filter(d => d.isFromWaste).length ||
+                            (patchedDynamicResult || dynamicResult)?.detailedCuts.filter(d => d.isFromWaste).length || 0}
                         </span> actually used
                       </>
                     )}
