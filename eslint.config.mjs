@@ -1,17 +1,7 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
+import coreWebVitals from "eslint-config-next/core-web-vitals";
+import typescript from "eslint-config-next/typescript";
 
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals"),
-  ...compat.extends("next/typescript"),
   {
     ignores: [
       "node_modules/**",
@@ -20,8 +10,19 @@ const eslintConfig = [
       "build/**",
       "next-env.d.ts",
     ],
+  },
+  ...coreWebVitals,
+  ...typescript,
+  {
     rules: {
-      "@typescript-eslint/no-explicit-any": "warn", // or "error"
+      "@typescript-eslint/no-explicit-any": "warn",
+    },
+  },
+  {
+    // Plain Node CommonJS helper scripts
+    files: ["scripts/**/*.js"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
     },
   },
 ];

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface AnimatedNumberProps {
   value: number;
@@ -11,35 +11,36 @@ const AnimatedNumber: React.FC<AnimatedNumberProps> = ({
   duration = 800,
 }) => {
   const [displayValue, setDisplayValue] = useState(value);
-  const [isAnimating, setIsAnimating] = useState(false);
+  // Tracks what is currently on screen so an interrupted animation resumes from there
+  const fromRef = useRef(value);
 
   useEffect(() => {
-    // Only animate if the value actually changes and we're on the client
-    if (displayValue !== value && typeof window !== 'undefined') {
-      setIsAnimating(true);
-      
-      let start: number | null = null;
-      const initialValue = displayValue;
-      const change = value - initialValue;
+    const initialValue = fromRef.current;
+    if (initialValue === value) return;
 
-      const step = (timestamp: number) => {
-        if (!start) start = timestamp;
-        const progress = Math.min((timestamp - start) / duration, 1);
-        const currentValue = Math.floor(initialValue + change * progress);
-        setDisplayValue(currentValue);
-        
-        if (progress < 1) {
-          requestAnimationFrame(step);
-        } else {
-          setIsAnimating(false);
-        }
-      };
+    const change = value - initialValue;
+    let start: number | null = null;
+    let frame = 0;
 
-      requestAnimationFrame(step);
-    }
-  }, [value, duration, displayValue]);
+    const step = (timestamp: number) => {
+      if (start === null) start = timestamp;
+      const progress = Math.min((timestamp - start) / duration, 1);
+      const currentValue =
+        progress < 1 ? Math.floor(initialValue + change * progress) : value;
 
-  return <span className={isAnimating ? "transition-all duration-200" : ""}>{displayValue}</span>;
+      fromRef.current = currentValue;
+      setDisplayValue(currentValue);
+
+      if (progress < 1) {
+        frame = requestAnimationFrame(step);
+      }
+    };
+
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [value, duration]);
+
+  return <span>{displayValue}</span>;
 };
 
 export default AnimatedNumber;

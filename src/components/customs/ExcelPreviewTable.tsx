@@ -20,22 +20,28 @@ export default function ExcelPreviewTable({ data, selectedDia }: ExcelPreviewTab
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
 
-  if (!data || data.length === 0) return null;
-
-  const headers = Object.keys(data[0]) as (keyof BarCuttingDisplay)[];
-
-  // Reset to page 1 if data changes
-  React.useEffect(() => {
+  // Reset to page 1 if data changes (adjust during render, no effect needed)
+  const [prevData, setPrevData] = useState(data);
+  if (prevData !== data) {
+    setPrevData(data);
     setCurrentPage(1);
-  }, [data]);
+  }
+
+  const headers = useMemo(
+    () =>
+      data && data.length > 0
+        ? (Object.keys(data[0]) as (keyof BarCuttingDisplay)[])
+        : [],
+    [data]
+  );
 
   // Calculate total pages
-  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const totalPages = Math.ceil((data?.length ?? 0) / itemsPerPage);
 
   // Get current page data
   const paginatedData = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
-    return data.slice(startIndex, startIndex + itemsPerPage);
+    return data?.slice(startIndex, startIndex + itemsPerPage) ?? [];
   }, [data, currentPage, itemsPerPage]);
 
   // Calculate column width based on CONTENT of the CURRENT PAGE (or full data for stability? Full data prefers stability)
@@ -46,7 +52,7 @@ export default function ExcelPreviewTable({ data, selectedDia }: ExcelPreviewTab
       let maxContentLength = headerLength;
 
       // Sample first 100 rows for performance if data is huge, or all if small
-      const sampleData = data.slice(0, 100);
+      const sampleData = data?.slice(0, 100) ?? [];
       sampleData.forEach((row) => {
         const cellContent = String(Object.values(row)[index] || "").length;
         maxContentLength = Math.max(maxContentLength, cellContent);
@@ -90,6 +96,8 @@ export default function ExcelPreviewTable({ data, selectedDia }: ExcelPreviewTab
     const p = Math.max(1, Math.min(page, totalPages));
     setCurrentPage(p);
   };
+
+  if (!data || data.length === 0) return null;
 
   return (
     <div className="card-surface flex h-[700px] w-full flex-col overflow-hidden">

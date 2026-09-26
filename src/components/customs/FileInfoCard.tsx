@@ -205,7 +205,7 @@ const FileInfoCard: React.FC<FileInfoCardProps> = ({
                         </div>
                       </div>
                       <p className="text-xs text-slate-400 text-center">
-                        Waste reduced by reusing this sheet's offcuts in later sheets
+                        Waste reduced by reusing this sheet&apos;s offcuts in later sheets
                       </p>
                     </div>
                   )}

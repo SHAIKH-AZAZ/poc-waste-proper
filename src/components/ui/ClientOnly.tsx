@@ -1,17 +1,21 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 interface ClientOnlyProps {
   children: React.ReactNode;
   fallback?: React.ReactNode;
 }
 
-export default function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
-  const [hasMounted, setHasMounted] = useState(false);
+// chisle: useSyncExternalStore is the hydration-safe "am I on the client" read;
+// a never-changing subscription means server snapshot false, client snapshot true.
+const subscribe = () => () => {};
 
-  useEffect(() => {
-    setHasMounted(true);
-  }, []);
+export default function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
+  const hasMounted = useSyncExternalStore(
+    subscribe,
+    () => true,
+    () => false
+  );
 
   if (!hasMounted) {
     return <>{fallback}</>;

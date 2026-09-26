@@ -585,7 +585,6 @@ export class TrueDynamicCuttingStock {
     
     // Reconstruct solution
     const cuts: PatternCut[] = [];
-    let w = capacity;
     
     // Reconstruct
     // For Unbounded Knapsack, we need to track what we added
