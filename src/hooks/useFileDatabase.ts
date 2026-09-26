@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
-import type { CuttingStockResult } from "@/types/CuttingStock";
+import type { CuttingStockResult, CuttingPattern, DetailedCut } from "@/types/CuttingStock";
+import type { BarCuttingDisplay } from "@/types/BarCuttingRow";
 
 interface Project {
   id: number;
@@ -22,14 +23,14 @@ interface CalculationResult {
   averageUtilization: number;
   executionTime: number;
   createdAt: Date;
-  patterns?: any[];
-  detailedCuts?: any[];
+  patterns?: CuttingPattern[];
+  detailedCuts?: DetailedCut[];
 }
 
 export function useFileDatabase() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [results, setResults] = useState<CalculationResult[]>([]);
-  const [excelData, setExcelData] = useState<any[]>([]);
+  const [excelData, setExcelData] = useState<BarCuttingDisplay[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

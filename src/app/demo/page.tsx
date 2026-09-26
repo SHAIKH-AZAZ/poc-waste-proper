@@ -7,10 +7,11 @@ import { WasteOptimizedCuttingStock } from '@/algorithms/wasteOptimizedCuttingSt
 import { CuttingStockPreprocessor } from '@/utils/cuttingStockPreprocessor'
 import { progressEmitter } from '@/utils/progressEmitter'
 import type { BarCuttingDisplay } from '@/types/BarCuttingRow'
+import type { CuttingStockResult } from '@/types/CuttingStock'
 
 export default function DemoPage() {
   const { stats, isProcessing } = useProcessingProgress()
-  const [results, setResults] = useState<any>(null)
+  const [results, setResults] = useState<CuttingStockResult[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   // Sample data
@@ -39,7 +40,7 @@ export default function DemoPage() {
       const optimizer = new WasteOptimizedCuttingStock()
 
       // Process each diameter
-      const allResults: any[] = []
+      const allResults: CuttingStockResult[] = []
       const diameters = [12, 16]
 
       for (let i = 0; i < diameters.length; i++) {
@@ -122,7 +123,7 @@ export default function DemoPage() {
           <div className="space-y-6">
             <h2 className="text-2xl font-bold text-white">Results</h2>
 
-            {results.map((result: any, idx: number) => (
+            {results.map((result, idx) => (
               <div
                 key={idx}
                 className="bg-slate-800 border border-slate-700 rounded-lg p-6 space-y-4"
@@ -176,7 +177,7 @@ export default function DemoPage() {
                     Cutting Patterns ({result.patterns.length})
                   </p>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {result.patterns.map((pattern: any, pidx: number) => (
+                    {result.patterns.map((pattern, pidx) => (
                       <div
                         key={pidx}
                         className="bg-slate-600 rounded p-2 text-xs text-slate-300 flex justify-between"

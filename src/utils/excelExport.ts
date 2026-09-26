@@ -109,17 +109,17 @@ function createComparisonSheet(
     ],
     [
       "Waste from New Bars (m)",
-      parseFloat(((greedyResult.summary as any).wasteFromNewBars ?? greedyResult.totalWaste).toFixed(3)),
-      parseFloat(((dynamicResult.summary as any).wasteFromNewBars ?? dynamicResult.totalWaste).toFixed(3)),
-      parseFloat((((dynamicResult.summary as any).wasteFromNewBars ?? dynamicResult.totalWaste) - 
-                  ((greedyResult.summary as any).wasteFromNewBars ?? greedyResult.totalWaste)).toFixed(3)),
+      parseFloat((greedyResult.summary.wasteFromNewBars ?? greedyResult.totalWaste).toFixed(3)),
+      parseFloat((dynamicResult.summary.wasteFromNewBars ?? dynamicResult.totalWaste).toFixed(3)),
+      parseFloat(((dynamicResult.summary.wasteFromNewBars ?? dynamicResult.totalWaste) - 
+                  (greedyResult.summary.wasteFromNewBars ?? greedyResult.totalWaste)).toFixed(3)),
     ],
     [
       "Waste from Reused Pieces (m)",
-      parseFloat(((greedyResult.summary as any).wasteFromReusedPieces ?? 0).toFixed(3)),
-      parseFloat(((dynamicResult.summary as any).wasteFromReusedPieces ?? 0).toFixed(3)),
-      parseFloat((((dynamicResult.summary as any).wasteFromReusedPieces ?? 0) - 
-                  ((greedyResult.summary as any).wasteFromReusedPieces ?? 0)).toFixed(3)),
+      parseFloat((greedyResult.summary.wasteFromReusedPieces ?? 0).toFixed(3)),
+      parseFloat((dynamicResult.summary.wasteFromReusedPieces ?? 0).toFixed(3)),
+      parseFloat(((dynamicResult.summary.wasteFromReusedPieces ?? 0) - 
+                  (greedyResult.summary.wasteFromReusedPieces ?? 0)).toFixed(3)),
     ],
     [
       "Average Utilization (%)",

@@ -96,7 +96,7 @@ export class WasteOptimizedCuttingStock {
 
     // OPTIMIZATION 4: Post-process to consolidate waste
     console.log(`[WasteOptimized] 🔄 STEP 4: Consolidating waste...`);
-    const optimizedSolution = this.consolidateWaste(solution, patterns);
+    const optimizedSolution = this.consolidateWaste(solution);
     console.log(`[WasteOptimized] ✅ Waste consolidation complete`);
     console.log(`[WasteOptimized]    📊 Consolidation checks: ${this.stats.consolidationChecks.toLocaleString()}`);
 
@@ -403,7 +403,7 @@ export class WasteOptimizedCuttingStock {
    * OPTIMIZATION 4: Consolidate waste
    * Try to pack waste segments from multiple bars into fewer bars
    */
-  private consolidateWaste(solution: DPState, allPatterns: CuttingPattern[]): DPState {
+  private consolidateWaste(solution: DPState): DPState {
     const wasteSegments: Array<{ patternIdx: number; waste: number }> = [];
 
     // Collect waste from each pattern

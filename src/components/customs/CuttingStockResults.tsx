@@ -36,8 +36,8 @@ const utilColor = (u: number) => (u > 95 ? "#10b981" : u > 86 ? "#f59e0b" : "#f4
 // pick winner: fewer new bars, then fewer total bars, then less waste
 function pickWinner(g: CuttingStockResult | null, d: CuttingStockResult | null) {
   if (g && d) {
-    const gNew = (g.summary as any).newBarsUsed ?? g.totalBarsUsed;
-    const dNew = (d.summary as any).newBarsUsed ?? d.totalBarsUsed;
+    const gNew = g.summary.newBarsUsed ?? g.totalBarsUsed;
+    const dNew = d.summary.newBarsUsed ?? d.totalBarsUsed;
     if (gNew !== dNew) return gNew < dNew ? "greedy" : "dynamic";
     if (g.totalBarsUsed !== d.totalBarsUsed) return g.totalBarsUsed < d.totalBarsUsed ? "greedy" : "dynamic";
     return g.totalWaste <= d.totalWaste ? "greedy" : "dynamic";
@@ -222,8 +222,8 @@ function PatternsCard({ result, title, defaultOpen }: { result: CuttingStockResu
   const sorted = React.useMemo(
     () =>
       [...result.detailedCuts].sort((a, b) => {
-        const aW = (a as any).isFromWaste || a.patternId?.startsWith("waste_");
-        const bW = (b as any).isFromWaste || b.patternId?.startsWith("waste_");
+        const aW = a.isFromWaste || a.patternId?.startsWith("waste_");
+        const bW = b.isFromWaste || b.patternId?.startsWith("waste_");
         if (aW && !bW) return -1;
         if (!aW && bW) return 1;
         return a.barNumber - b.barNumber;
@@ -312,7 +312,7 @@ function PatternsCard({ result, title, defaultOpen }: { result: CuttingStockResu
               if (Math.abs(waste) < 0.0001) waste = 0;
               const util = (used / barLen) * 100;
               const reused = !!detail.isFromWaste;
-              const recovered = (detail as any).isWasteRecovered;
+              const recovered = detail.isWasteRecovered;
               return (
                 <div key={`bar-${detail.barNumber}-${idx}`} className="flex items-center gap-[14px] border-b border-[var(--color-line)] py-[11px] last:border-b-0">
                   {/* number + tag */}

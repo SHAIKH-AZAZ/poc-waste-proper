@@ -678,7 +678,7 @@ export class SwapOptimization {
     return bins;
   }
   
-  private shuffleArray(array: any[]) {
+  private shuffleArray<T>(array: T[]) {
       for (let i = array.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [array[i], array[j]] = [array[j], array[i]];
@@ -780,7 +780,7 @@ export class SwapOptimization {
     let wasteFromNewBars = 0;
     let wasteFromReusedPieces = 0;
     
-    patterns.forEach((pattern, index) => {
+    patterns.forEach((pattern) => {
       const isWasteBin = pattern.id.startsWith('waste_pattern_');
       if (isWasteBin) {
         wasteFromReusedPieces += pattern.waste;

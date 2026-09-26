@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
         }).toArray();
 
         // Map origins by ID string
-        const originMap = new Map<string, any>();
+        const originMap = new Map<string, (typeof origins)[number]>();
         origins.forEach(o => originMap.set(o._id.toString(), o));
 
         // Attach to waste items

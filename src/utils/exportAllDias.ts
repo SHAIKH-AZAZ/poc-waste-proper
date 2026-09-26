@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx-js-style";
 import type { BarCuttingDisplay } from "@/types/BarCuttingRow";
-import type { CuttingStockResult, WastePiece } from "@/types/CuttingStock";
+import type { CuttingStockResult, DetailedCut, GeneratedWaste, WastePiece } from "@/types/CuttingStock";
 import { getUniqueDiaFromDisplay } from "./barCodeUtils";
 import { CuttingStockPreprocessor } from "./cuttingStockPreprocessor";
 import {
@@ -10,6 +10,7 @@ import {
 import { getWorkerManager } from "./workerManager";
 
 type SummaryCell = string | number;
+type CellStyle = Record<string, unknown>;
 type AlgorithmKey = "greedy" | "dynamic";
 
 const STANDARD_BAR_LENGTH_M = 12.0;
@@ -33,7 +34,7 @@ export async function exportAllDiasToExcel(
   displayData: BarCuttingDisplay[],
   fileName: string,
   onProgress?: (dia: number, current: number, total: number) => void,
-  generatedWaste: any[] = [], // Optional generated waste for live tracking
+  generatedWaste: GeneratedWaste[] = [], // Optional generated waste for live tracking
   availableWaste: WastePiece[] = [] // Inventory to reuse (always-reuse on export)
 ): Promise<Map<number, DiaSummaryResult>> {
   const uniqueDias = getUniqueDiaFromDisplay(displayData);
@@ -160,7 +161,7 @@ function methodLabel(algorithm: string): string {
 export async function exportSavedResultsToExcel(
   saved: SavedDiaResult[],
   fileName: string,
-  generatedWaste: any[] = [],
+  generatedWaste: GeneratedWaste[] = [],
 ): Promise<void> {
   const generatedAt = new Date();
   const projectName = getProjectNameFromFileName(fileName);
@@ -844,7 +845,7 @@ function applyStyleToRange(
   startCol: number,
   endRow: number,
   endCol: number,
-  style: Record<string, any>
+  style: CellStyle
 ): void {
   for (let row = startRow; row <= endRow; row++) {
     for (let col = startCol; col <= endCol; col++) {
@@ -857,7 +858,7 @@ function applyCellStyle(
   worksheet: XLSX.WorkSheet,
   row: number,
   col: number,
-  style: Record<string, any>
+  style: CellStyle
 ): void {
   const cell = ensureCell(worksheet, row, col);
   cell.s = mergeCellStyles(cell.s, style);
@@ -871,14 +872,14 @@ function ensureCell(worksheet: XLSX.WorkSheet, row: number, col: number): XLSX.C
   return worksheet[address] as XLSX.CellObject;
 }
 
-function mergeCellStyles(...styles: Array<Record<string, any> | undefined>): Record<string, any> {
-  const merged: Record<string, any> = {};
+function mergeCellStyles(...styles: Array<CellStyle | undefined>): CellStyle {
+  const merged: CellStyle = {};
 
   for (const style of styles) {
     if (!style) continue;
     for (const [key, value] of Object.entries(style)) {
       if (isPlainObject(value)) {
-        merged[key] = mergeCellStyles(merged[key], value);
+        merged[key] = mergeCellStyles(merged[key] as CellStyle | undefined, value);
       } else {
         merged[key] = value;
       }
@@ -888,7 +889,7 @@ function mergeCellStyles(...styles: Array<Record<string, any> | undefined>): Rec
   return merged;
 }
 
-function isPlainObject(value: unknown): value is Record<string, any> {
+function isPlainObject(value: unknown): value is CellStyle {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -916,11 +917,11 @@ function addDiaSheet(
  * Helper to patch result with live waste stats
  * (Duplicated from SheetPage logic for isolated export)
  */
-function patchResultWithLiveWaste(result: CuttingStockResult, generatedWaste: any[]): CuttingStockResult {
+function patchResultWithLiveWaste(result: CuttingStockResult, generatedWaste: GeneratedWaste[]): CuttingStockResult {
   if (!result || generatedWaste.length === 0) return result;
 
   // Clone result deeply
-  const patched = JSON.parse(JSON.stringify(result));
+  const patched: CuttingStockResult = structuredClone(result);
   
   // Filter waste for this dia
   const relevantWaste = generatedWaste.filter(w => w.dia === result.dia);
@@ -929,7 +930,7 @@ function patchResultWithLiveWaste(result: CuttingStockResult, generatedWaste: an
   let totallyRecoveredLength = 0;
   
   // Map waste by Source Bar Number
-  const wasteByBar = new Map<number, any>();
+  const wasteByBar = new Map<number, GeneratedWaste>();
   relevantWaste.forEach(w => {
     if (w.status === 'used' && w.usages && w.usages.length > 0) {
       wasteByBar.set(w.sourceBarNumber, w);
@@ -937,13 +938,13 @@ function patchResultWithLiveWaste(result: CuttingStockResult, generatedWaste: an
   });
 
   // Iterate detailed cuts and update
-  patched.detailedCuts.forEach((cut: any, index: number) => {
+  patched.detailedCuts.forEach((cut: DetailedCut, index: number) => {
     const barNum = cut.barNumber || index + 1;
     const recoveredWaste = wasteByBar.get(barNum);
     
-    if (recoveredWaste) {
+    if (recoveredWaste?.usages) {
       // Calculate how much was recovered
-      const recoveredAmount = recoveredWaste.usages.reduce((sum: number, u: any) => sum + (u.cutLength || 0), 0) / 1000;
+      const recoveredAmount = recoveredWaste.usages.reduce((sum, u) => sum + (u.cutLength || 0), 0) / 1000;
       
       // CRITICAL FIX: Only subtract if source is DIFFERENT from the producing results
       // (Self-recovery shouldn't reduce net waste of the producer sheet)
@@ -951,15 +952,15 @@ function patchResultWithLiveWaste(result: CuttingStockResult, generatedWaste: an
       // but we want to avoid "self-recovery" indicators if the usage was in the same sheet.
       // Since we don't have the current sheetId easily here, we skip the detailed indicator 
       // if it looks like a self-recovery (usage in same sheet as source).
-      const isSelfRecovery = recoveredWaste.usages.some((u: any) => String(u.usedInSheetId) === String(recoveredWaste.sourceSheetId));
+      const isSelfRecovery = recoveredWaste.usages.some((u) => String(u.usedInSheetId) === String(recoveredWaste.sourceSheetId));
 
       if (!isSelfRecovery) {
         // Update cut properties
         cut.isWasteRecovered = true;
         cut.recoveredAmount = recoveredAmount; // m
         cut.usedInSheetName = recoveredWaste.usages
-          .map((u: any) => u.usedInSheet?.fileName ?? "another sheet")
-          .filter((v: string, i: number, a: string[]) => a.indexOf(v) === i)
+          .map((u) => u.usedInSheet?.fileName ?? "another sheet")
+          .filter((v, i, a) => a.indexOf(v) === i)
           .join(", ");
         
         // Subtract from WASTE

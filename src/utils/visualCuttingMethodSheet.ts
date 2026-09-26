@@ -5,6 +5,8 @@ import type {
   DetailedCut,
 } from "@/types/CuttingStock";
 
+type CellStyle = Record<string, unknown>;
+
 interface VisualCuttingMethodSheetOptions {
   projectName: string;
   generatedAt?: Date;
@@ -134,7 +136,7 @@ export function createVisualCuttingMethodSheet(
     let rowHasRecovered = false;
 
     group.segments.forEach((segment) => {
-      let style: Record<string, any>;
+      let style: CellStyle;
       if (segment.type === "recovered") {
         style = RECOVERED_STYLE;
         rowHasRecovered = true;
@@ -204,9 +206,9 @@ function buildPatternGroups(result: CuttingStockResult): PatternGroup[] {
     const wasteLength = Math.max(0, roundValue(barLength - usedLength));
     const isFromWaste =
       detail.isFromWaste || detail.patternId?.startsWith("waste_") || false;
-    const isWasteRecovered = (detail as any).isWasteRecovered === true;
-    const usedInSheetName: string = (detail as any).usedInSheetName ?? "";
-    const recoveredAmount: number = (detail as any).recoveredAmount ?? 0;
+    const isWasteRecovered = detail.isWasteRecovered === true;
+    const usedInSheetName: string = detail.usedInSheetName ?? "";
+    const recoveredAmount: number = detail.recoveredAmount ?? 0;
 
     const wasteSegments: VisualSegment[] = [];
     if (isWasteRecovered && recoveredAmount > 0) {
@@ -341,7 +343,7 @@ function formatBarDescription(dia: number, group: PatternGroup): string {
   return `${dia} mm dia (Bar length - ${formatMeters(group.barLength)} m${group.sourceDescription})`;
 }
 
-function createCutStyle(dia: number): Record<string, any> {
+function createCutStyle(dia: number): CellStyle {
   return {
     fill: {
       patternType: "solid",
@@ -383,7 +385,7 @@ function setCell(
   row: number,
   col: number,
   value: string | number,
-  style?: Record<string, any>,
+  style?: CellStyle,
 ): void {
   const cell = ensureCell(worksheet, row, col);
   cell.v = value;
@@ -407,15 +409,15 @@ function ensureCell(
 }
 
 function mergeCellStyles(
-  ...styles: Array<Record<string, any> | undefined>
-): Record<string, any> {
-  const merged: Record<string, any> = {};
+  ...styles: Array<CellStyle | undefined>
+): CellStyle {
+  const merged: CellStyle = {};
 
   for (const style of styles) {
     if (!style) continue;
     for (const [key, value] of Object.entries(style)) {
       if (isPlainObject(value)) {
-        merged[key] = mergeCellStyles(merged[key], value);
+        merged[key] = mergeCellStyles(merged[key] as CellStyle | undefined, value);
       } else {
         merged[key] = value;
       }
@@ -425,6 +427,6 @@ function mergeCellStyles(
   return merged;
 }
 
-function isPlainObject(value: unknown): value is Record<string, any> {
+function isPlainObject(value: unknown): value is CellStyle {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }

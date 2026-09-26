@@ -190,7 +190,7 @@ export async function POST(req: NextRequest) {
     // However, for performance, returning the count is usually sufficient for bulk uploads.
     // If exact returned objects are needed by frontend (which they don't seem to be based on usage), 
     // we can skip fetching them back.
-    const createdWaste: any[] = []; // Sending empty array to avoid fetching back 1000s of records
+    const createdWaste: unknown[] = []; // Sending empty array to avoid fetching back 1000s of records
 
     return NextResponse.json({
       success: true,

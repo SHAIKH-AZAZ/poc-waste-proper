@@ -3,7 +3,7 @@ import pako from "pako";
 /**
  * Compresses a JSON object into a Base64 encoded Gzip string
  */
-export const compressData = (data: any): string => {
+export const compressData = (data: unknown): string => {
   try {
     const jsonString = JSON.stringify(data);
     const compressed = pako.gzip(jsonString);
@@ -24,7 +24,7 @@ export const compressData = (data: any): string => {
 /**
  * Decompresses a Base64 encoded Gzip string back into a JSON object
  */
-export const decompressData = (base64String: string): any => {
+export const decompressData = (base64String: string): unknown => {
   try {
     // Convert Base64 to Binary String
     const binary = atob(base64String);

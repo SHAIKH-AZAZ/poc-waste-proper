@@ -242,152 +242,6 @@ export default function SheetPage() {
     return filterDisplayDataByDia(displayData, selectedDia);
   }, [displayData, selectedDia]);
 
-  // Handle Dia selection
-  const handleDiaSelect = useCallback(
-    async (dia: number | null) => {
-      setSelectedDia(dia);
-      setGreedyResult(null);
-      setDynamicResult(null);
-      setGreedyProgress({ stage: "", percentage: 0 });
-      setDynamicProgress({ stage: "", percentage: 0 });
-      setCalculationError(null);
-      setUseWaste(false);
-      setResultsFromCache(false);
-
-      if (dia !== null && displayData) {
-        // STEP 1: Check if result already exists in database
-        try {
-          console.log(`[Sheet] Checking for existing result for dia ${dia}...`);
-          const existingRes = await fetch(`/api/results?sheetId=${sheetId}`, { cache: "no-store" });
-          const existingData = await existingRes.json();
-
-          console.log(`[Sheet] API response:`, existingData);
-
-          if (existingData.success && existingData.results && existingData.results.length > 0) {
-            const existingResult = existingData.results.find(
-              (r: { dia: number }) => r.dia === dia
-            );
-
-            console.log(`[Sheet] Found result for dia ${dia}:`, existingResult ? "YES" : "NO");
-
-            if (existingResult) {
-              console.log(`[Sheet] Loading existing result for dia ${dia} from database`);
-              console.log(`[Sheet] Result details:`, {
-                algorithm: existingResult.algorithm,
-                totalBarsUsed: existingResult.totalBarsUsed,
-                wastePiecesReused: existingResult.wastePiecesReused,
-                detailedCutsCount: existingResult.detailedCuts?.length || 0,
-              });
-
-              // Log waste info from detailedCuts
-              const wasteBarCount = existingResult.detailedCuts?.filter(
-                (d: { isFromWaste?: boolean }) => d.isFromWaste
-              ).length || 0;
-              console.log(`[Sheet] Bars from waste in detailedCuts: ${wasteBarCount}`);
-
-              // Load existing result - convert to CuttingStockResult format
-              const loadedResult: CuttingStockResult = {
-                algorithm: existingResult.algorithm,
-                dia: existingResult.dia,
-                patterns: existingResult.patterns || [],
-                totalBarsUsed: existingResult.totalBarsUsed,
-                totalWaste: existingResult.totalWaste,
-                averageUtilization: existingResult.averageUtilization,
-                executionTime: existingResult.executionTime,
-                summary: existingResult.summary || {
-                  totalStandardBars: existingResult.totalBarsUsed,
-                  totalWasteLength: existingResult.totalWaste,
-                  totalWastePercentage: 0,
-                  averageUtilization: existingResult.averageUtilization,
-                  patternCount: existingResult.patterns?.length || 0,
-                  totalCutsProduced: 0,
-                },
-                detailedCuts: existingResult.detailedCuts || [],
-              };
-
-              // Set as the result for the winning algorithm
-              if (existingResult.algorithm === "greedy") {
-                setGreedyResult(loadedResult);
-              } else {
-                setDynamicResult(loadedResult);
-              }
-
-              // Check if waste was used (by looking at detailedCuts)
-              const usedWasteCount = loadedResult.detailedCuts?.filter(
-                (d) => d.isFromWaste
-              ).length || 0;
-              if (usedWasteCount > 0) {
-                setUseWaste(true);
-                setWasteForCurrentDia([]); // We don't have the original waste pieces, just indicate it was used
-              }
-
-              console.log(`[Sheet] Loaded existing result, skipping recalculation`);
-              setResultsFromCache(true);
-              return; // Don't recalculate
-            }
-          }
-        } catch (err) {
-          console.error(`[Sheet] Error checking existing results:`, err);
-          // Continue to calculation if check fails
-        }
-
-        console.log(`[Sheet] No existing result found, proceeding to calculation...`);
-        // STEP 2: No existing result - check for available waste
-        try {
-          const wasteRes = await fetch(`/api/waste?projectId=${projectId}&status=available`);
-          const wasteData = await wasteRes.json();
-
-          let freshWasteForDia: WastePiece[] = [];
-
-          if (wasteData.success && wasteData.waste) {
-            // Filter out waste from current sheet and get only matching dia
-            freshWasteForDia = wasteData.waste
-              .filter((w: { dia: number }) => w.dia === dia)
-              .map((w: {
-                id: number;
-                dia: number;
-                length: number;
-                sourceSheetId?: number;
-                sourceBarNumber?: number;
-                sourceSheet?: { id: number; sheetNumber: number; fileName: string };
-                cutsOnSourceBar?: { barCode: string; length: number; element: string }[];
-              }) => ({
-                id: String(w.id),
-                projectId: parseInt(projectId),
-                sourceSheetId: w.sourceSheetId || w.sourceSheet?.id || 0,
-                sourceSheetNumber: w.sourceSheet?.sheetNumber || 0,
-                sourceSheetName: w.sourceSheet?.fileName || `Sheet #${w.sourceSheet?.sheetNumber}`,
-                sourceBarNumber: w.sourceBarNumber || 0,
-                sourcePatternId: "",
-                cutsOnSourceBar: w.cutsOnSourceBar || [],
-                dia: w.dia,
-                length: w.length,
-                status: "available" as const,
-                createdAt: new Date(),
-              }));
-
-            console.log(`[Sheet] Fresh waste check for dia ${dia}: ${freshWasteForDia.length} pieces available`);
-          }
-
-          if (freshWasteForDia.length > 0) {
-            // Show waste prompt if there's available waste from OTHER sheets
-            setWasteForCurrentDia(freshWasteForDia);
-            setShowWastePrompt(true);
-          } else {
-            // No waste available, run calculation directly
-            console.log(`[Sheet] No waste available for dia ${dia}, running with new bars only`);
-            runCalculation(dia, false, []);
-          }
-        } catch (err) {
-          console.error(`[Sheet] Error checking waste:`, err);
-          // On error, just run without waste
-          runCalculation(dia, false, []);
-        }
-      }
-    },
-    [displayData, sheetInfo, projectId, sheetId]
-  );
-
   // Patch result with live waste data
   const patchResultWithLiveWaste = useCallback((result: CuttingStockResult | null): CuttingStockResult | null => {
     if (!result || generatedWaste.length === 0) return result;
@@ -471,89 +325,8 @@ export default function SheetPage() {
     setPatchedDynamicResult(patchResultWithLiveWaste(dynamicResult));
   }, [dynamicResult, patchResultWithLiveWaste]);
 
-  // Run calculation
-  const runCalculation = async (dia: number, withWaste: boolean, wastePieces: WastePiece[]) => {
-    if (!displayData) return;
-
-    setIsCalculating(true);
-    setShowWastePrompt(false);
-    setUseWaste(withWaste);
-
-    try {
-      const preprocessor = new CuttingStockPreprocessor();
-      const requests = preprocessor.convertToCuttingRequests(displayData);
-
-      console.log(`[Sheet] Starting calculation for dia ${dia}, useWaste: ${withWaste}`);
-      if (withWaste) {
-        console.log(`[Sheet] Available waste pieces: ${wastePieces.length}`);
-        wastePieces.forEach((w, i) => console.log(`  [${i}] ${w.length}mm from sheet ${w.sourceSheetId}`));
-      }
-
-      // Run both algorithms with waste pieces if enabled
-      const workerManager = getWorkerManager();
-      const { greedy: greedyRes, dynamic: dynamicRes } = await workerManager.runBoth(
-        requests,
-        dia,
-        {
-          greedy: (stage, percentage) => setGreedyProgress({ stage, percentage }),
-          dynamic: (stage, percentage) => setDynamicProgress({ stage, percentage }),
-        },
-        withWaste ? wastePieces : undefined
-      );
-
-      console.log("[Sheet] Calculation complete");
-      setGreedyResult(greedyRes);
-      setDynamicResult(dynamicRes);
-
-      // Save results (best algorithm only)
-      await saveResults(dia, greedyRes, dynamicRes, withWaste ? wastePieces : undefined);
-    } catch (error) {
-      console.error("[Sheet] Calculation error:", error);
-      setCalculationError(error instanceof Error ? error.message : "Calculation failed");
-    } finally {
-      setIsCalculating(false);
-    }
-  };
-
-  // Run exact pattern-search calculation
-  const runTrueDynamic = async () => {
-    if (!displayData || !selectedDia) return;
-
-    // Warning for large datasets
-    if (displayData.length > 50) {
-      if (!confirm(`Warning: You have ${displayData.length} items. Pattern DP cutting-stock search is extremely computationally expensive. \n\nIt works best for < 50 items. For larger datasets, it may hang your browser or crash. \n\nAre you sure you want to proceed?`)) {
-        return;
-      }
-    }
-
-    setIsCalculating(true);
-    setDynamicProgress({ stage: "Starting pattern DP search...", percentage: 0 });
-
-    try {
-      const preprocessor = new CuttingStockPreprocessor();
-      const requests = preprocessor.convertToCuttingRequests(displayData);
-
-      const workerManager = getWorkerManager();
-      const result = await workerManager.runTrueDynamic(
-        requests,
-        selectedDia,
-        (stage, percentage) => setDynamicProgress({ stage, percentage })
-      );
-
-      setDynamicResult(result);
-      // Save result (keeping existing greedy result)
-      await saveResults(selectedDia, greedyResult, result, useWaste ? wasteForCurrentDia : undefined);
-
-    } catch (error) {
-      console.error("[Sheet] Pattern DP search error:", error);
-      setCalculationError(error instanceof Error ? error.message : "Calculation failed");
-    } finally {
-      setIsCalculating(false);
-    }
-  };
-
   // Save results to database
-  const saveResults = async (
+  const saveResults = useCallback(async (
     dia: number,
     greedyRes: CuttingStockResult | null,
     dynamicRes: CuttingStockResult | null,
@@ -706,6 +479,233 @@ export default function SheetPage() {
       console.error("[Sheet] Error saving results:", err);
       setCalculationError(`Saved Locally Only. Network Error: ${err instanceof Error ? err.message : String(err)}`);
     }
+  }, [sheetId]);
+
+  // Run calculation
+  const runCalculation = useCallback(async (dia: number, withWaste: boolean, wastePieces: WastePiece[]) => {
+    if (!displayData) return;
+
+    setIsCalculating(true);
+    setShowWastePrompt(false);
+    setUseWaste(withWaste);
+
+    try {
+      const preprocessor = new CuttingStockPreprocessor();
+      const requests = preprocessor.convertToCuttingRequests(displayData);
+
+      console.log(`[Sheet] Starting calculation for dia ${dia}, useWaste: ${withWaste}`);
+      if (withWaste) {
+        console.log(`[Sheet] Available waste pieces: ${wastePieces.length}`);
+        wastePieces.forEach((w, i) => console.log(`  [${i}] ${w.length}mm from sheet ${w.sourceSheetId}`));
+      }
+
+      // Run both algorithms with waste pieces if enabled
+      const workerManager = getWorkerManager();
+      const { greedy: greedyRes, dynamic: dynamicRes } = await workerManager.runBoth(
+        requests,
+        dia,
+        {
+          greedy: (stage, percentage) => setGreedyProgress({ stage, percentage }),
+          dynamic: (stage, percentage) => setDynamicProgress({ stage, percentage }),
+        },
+        withWaste ? wastePieces : undefined
+      );
+
+      console.log("[Sheet] Calculation complete");
+      setGreedyResult(greedyRes);
+      setDynamicResult(dynamicRes);
+
+      // Save results (best algorithm only)
+      await saveResults(dia, greedyRes, dynamicRes, withWaste ? wastePieces : undefined);
+    } catch (error) {
+      console.error("[Sheet] Calculation error:", error);
+      setCalculationError(error instanceof Error ? error.message : "Calculation failed");
+    } finally {
+      setIsCalculating(false);
+    }
+  }, [displayData, saveResults]);
+
+  // Handle Dia selection
+  const handleDiaSelect = useCallback(
+    async (dia: number | null) => {
+      setSelectedDia(dia);
+      setGreedyResult(null);
+      setDynamicResult(null);
+      setGreedyProgress({ stage: "", percentage: 0 });
+      setDynamicProgress({ stage: "", percentage: 0 });
+      setCalculationError(null);
+      setUseWaste(false);
+      setResultsFromCache(false);
+
+      if (dia !== null && displayData) {
+        // STEP 1: Check if result already exists in database
+        try {
+          console.log(`[Sheet] Checking for existing result for dia ${dia}...`);
+          const existingRes = await fetch(`/api/results?sheetId=${sheetId}`, { cache: "no-store" });
+          const existingData = await existingRes.json();
+
+          console.log(`[Sheet] API response:`, existingData);
+
+          if (existingData.success && existingData.results && existingData.results.length > 0) {
+            const existingResult = existingData.results.find(
+              (r: { dia: number }) => r.dia === dia
+            );
+
+            console.log(`[Sheet] Found result for dia ${dia}:`, existingResult ? "YES" : "NO");
+
+            if (existingResult) {
+              console.log(`[Sheet] Loading existing result for dia ${dia} from database`);
+              console.log(`[Sheet] Result details:`, {
+                algorithm: existingResult.algorithm,
+                totalBarsUsed: existingResult.totalBarsUsed,
+                wastePiecesReused: existingResult.wastePiecesReused,
+                detailedCutsCount: existingResult.detailedCuts?.length || 0,
+              });
+
+              // Log waste info from detailedCuts
+              const wasteBarCount = existingResult.detailedCuts?.filter(
+                (d: { isFromWaste?: boolean }) => d.isFromWaste
+              ).length || 0;
+              console.log(`[Sheet] Bars from waste in detailedCuts: ${wasteBarCount}`);
+
+              // Load existing result - convert to CuttingStockResult format
+              const loadedResult: CuttingStockResult = {
+                algorithm: existingResult.algorithm,
+                dia: existingResult.dia,
+                patterns: existingResult.patterns || [],
+                totalBarsUsed: existingResult.totalBarsUsed,
+                totalWaste: existingResult.totalWaste,
+                averageUtilization: existingResult.averageUtilization,
+                executionTime: existingResult.executionTime,
+                summary: existingResult.summary || {
+                  totalStandardBars: existingResult.totalBarsUsed,
+                  totalWasteLength: existingResult.totalWaste,
+                  totalWastePercentage: 0,
+                  averageUtilization: existingResult.averageUtilization,
+                  patternCount: existingResult.patterns?.length || 0,
+                  totalCutsProduced: 0,
+                },
+                detailedCuts: existingResult.detailedCuts || [],
+              };
+
+              // Set as the result for the winning algorithm
+              if (existingResult.algorithm === "greedy") {
+                setGreedyResult(loadedResult);
+              } else {
+                setDynamicResult(loadedResult);
+              }
+
+              // Check if waste was used (by looking at detailedCuts)
+              const usedWasteCount = loadedResult.detailedCuts?.filter(
+                (d) => d.isFromWaste
+              ).length || 0;
+              if (usedWasteCount > 0) {
+                setUseWaste(true);
+                setWasteForCurrentDia([]); // We don't have the original waste pieces, just indicate it was used
+              }
+
+              console.log(`[Sheet] Loaded existing result, skipping recalculation`);
+              setResultsFromCache(true);
+              return; // Don't recalculate
+            }
+          }
+        } catch (err) {
+          console.error(`[Sheet] Error checking existing results:`, err);
+          // Continue to calculation if check fails
+        }
+
+        console.log(`[Sheet] No existing result found, proceeding to calculation...`);
+        // STEP 2: No existing result - check for available waste
+        try {
+          const wasteRes = await fetch(`/api/waste?projectId=${projectId}&status=available`);
+          const wasteData = await wasteRes.json();
+
+          let freshWasteForDia: WastePiece[] = [];
+
+          if (wasteData.success && wasteData.waste) {
+            // Filter out waste from current sheet and get only matching dia
+            freshWasteForDia = wasteData.waste
+              .filter((w: { dia: number }) => w.dia === dia)
+              .map((w: {
+                id: number;
+                dia: number;
+                length: number;
+                sourceSheetId?: number;
+                sourceBarNumber?: number;
+                sourceSheet?: { id: number; sheetNumber: number; fileName: string };
+                cutsOnSourceBar?: { barCode: string; length: number; element: string }[];
+              }) => ({
+                id: String(w.id),
+                projectId: parseInt(projectId),
+                sourceSheetId: w.sourceSheetId || w.sourceSheet?.id || 0,
+                sourceSheetNumber: w.sourceSheet?.sheetNumber || 0,
+                sourceSheetName: w.sourceSheet?.fileName || `Sheet #${w.sourceSheet?.sheetNumber}`,
+                sourceBarNumber: w.sourceBarNumber || 0,
+                sourcePatternId: "",
+                cutsOnSourceBar: w.cutsOnSourceBar || [],
+                dia: w.dia,
+                length: w.length,
+                status: "available" as const,
+                createdAt: new Date(),
+              }));
+
+            console.log(`[Sheet] Fresh waste check for dia ${dia}: ${freshWasteForDia.length} pieces available`);
+          }
+
+          if (freshWasteForDia.length > 0) {
+            // Show waste prompt if there's available waste from OTHER sheets
+            setWasteForCurrentDia(freshWasteForDia);
+            setShowWastePrompt(true);
+          } else {
+            // No waste available, run calculation directly
+            console.log(`[Sheet] No waste available for dia ${dia}, running with new bars only`);
+            runCalculation(dia, false, []);
+          }
+        } catch (err) {
+          console.error(`[Sheet] Error checking waste:`, err);
+          // On error, just run without waste
+          runCalculation(dia, false, []);
+        }
+      }
+    },
+    [displayData, sheetInfo, projectId, sheetId, runCalculation]
+  );
+
+  // Run exact pattern-search calculation
+  const runTrueDynamic = async () => {
+    if (!displayData || !selectedDia) return;
+
+    // Warning for large datasets
+    if (displayData.length > 50) {
+      if (!confirm(`Warning: You have ${displayData.length} items. Pattern DP cutting-stock search is extremely computationally expensive. \n\nIt works best for < 50 items. For larger datasets, it may hang your browser or crash. \n\nAre you sure you want to proceed?`)) {
+        return;
+      }
+    }
+
+    setIsCalculating(true);
+    setDynamicProgress({ stage: "Starting pattern DP search...", percentage: 0 });
+
+    try {
+      const preprocessor = new CuttingStockPreprocessor();
+      const requests = preprocessor.convertToCuttingRequests(displayData);
+
+      const workerManager = getWorkerManager();
+      const result = await workerManager.runTrueDynamic(
+        requests,
+        selectedDia,
+        (stage, percentage) => setDynamicProgress({ stage, percentage })
+      );
+
+      setDynamicResult(result);
+      // Save result (keeping existing greedy result)
+      await saveResults(selectedDia, greedyResult, result, useWaste ? wasteForCurrentDia : undefined);
+
+    } catch (error) {
+      console.error("[Sheet] Pattern DP search error:", error);
+      setCalculationError(error instanceof Error ? error.message : "Calculation failed");
+    } finally {
+      setIsCalculating(false);
+    }
   };
 
   const formatLength = (mm: number) => `${(mm / 1000).toFixed(2)}m`;
@@ -787,7 +787,7 @@ export default function SheetPage() {
     } finally {
       setIsDownloadingAll(false);
     }
-  }, [displayData, sheetInfo, generatedWaste, sheetId, projectId]);
+  }, [displayData, sheetInfo, generatedWaste, sheetId, projectId, saveResults]);
 
   // Re-download an already-calculated sheet from saved results (no recompute, no prompt, read-only)
   const downloadSavedResults = useCallback(async (savedRows: any[]) => {

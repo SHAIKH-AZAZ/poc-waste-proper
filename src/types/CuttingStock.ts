@@ -106,6 +106,10 @@ export interface DetailedCut {
     sourceBarNumber: number;
     originalLength: number;
   };
+  // Set when this bar's offcut was later reused (UI/export annotations)
+  isWasteRecovered?: boolean;
+  recoveredAmount?: number;   // meters
+  usedInSheetName?: string;
 }
 
 export interface CutInstruction {
@@ -188,4 +192,35 @@ export interface AvailableWaste {
   pieces: WastePiece[];
   totalLength: number;          // Total available length in mm
   totalPieces: number;
+}
+
+// Waste inventory row as returned by GET /api/waste (includes its usages)
+export interface GeneratedWaste {
+  id: number;
+  dia: number;
+  length: number;               // in mm
+  status: string;
+  sourceSheetId: number;
+  sourceBarNumber: number;
+  usages?: {
+    usedInSheetId: number;
+    cutLength: number;          // in mm
+    usedInSheet?: { fileName: string } | null;
+  }[];
+}
+
+// Saved CalculationResult row from GET /api/results (Decimals arrive as strings),
+// enriched with patterns/detailedCuts/summary from Mongo
+export interface SavedResultRow {
+  algorithm: CuttingStockResult["algorithm"];
+  dia: number;
+  totalBarsUsed: number;
+  totalWaste: number | string;
+  averageUtilization: number | string;
+  executionTime: number | string;
+  baselineWaste?: number | string | null;
+  totalStockLength?: number | string | null;
+  patterns?: CuttingPattern[];
+  detailedCuts?: DetailedCut[];
+  summary?: CuttingSummary;
 }

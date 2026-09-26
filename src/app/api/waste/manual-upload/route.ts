@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Return empty array for createdWaste as we don't need the IDs immediately
-    const createdWaste: any[] = [];
+    const createdWaste: unknown[] = [];
 
     return NextResponse.json({
       success: true,

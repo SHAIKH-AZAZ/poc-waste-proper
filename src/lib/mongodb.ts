@@ -2,9 +2,7 @@ import { MongoClient, Db } from "mongodb";
 
 // Global singleton for MongoDB connection (works in both dev and prod)
 declare global {
-  // eslint-disable-next-line no-var
   var _mongoClient: MongoClient | undefined;
-  // eslint-disable-next-line no-var
   var _mongoClientPromise: Promise<MongoClient> | undefined;
 }
 

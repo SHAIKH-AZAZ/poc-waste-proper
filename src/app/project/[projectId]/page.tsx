@@ -140,10 +140,6 @@ export default function ProjectPage() {
   // Lazy load detailed waste data (with Mongo origins) when needed
   const fetchWasteDetails = async (dia: number) => {
     try {
-      // Check if we already have details for this dia (optimization)
-      const existingItems = waste.filter(w => w.dia === dia);
-      const hasDetails = existingItems.some(w => w.cutsOnSourceBar && w.cutsOnSourceBar.length > 0);
-
       // If we simply have empty source bars, it might be that there ARE no cuts, or we haven't fetched them.
       // But typically "summaryOnly" returns empty arrays.
       // To be safe, we just fetch if we are in a "summary" state (which we can assume if we haven't fetched details yet).
@@ -230,22 +226,6 @@ export default function ProjectPage() {
 
   const formatLength = (mm: number) => {
     return `${(mm / 1000).toFixed(2)}m`;
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "calculated":
-      case "completed":
-        return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-600/20";
-      case "uploaded":
-        return "bg-amber-100 text-amber-700 ring-1 ring-amber-600/20";
-      case "available":
-        return "bg-blue-100 text-blue-700 ring-1 ring-blue-600/20";
-      case "used":
-        return "bg-slate-100 text-slate-600 ring-1 ring-slate-500/20";
-      default:
-        return "bg-slate-100 text-slate-600 ring-1 ring-slate-500/20";
-    }
   };
 
   // Filter waste by selected diameter and status
